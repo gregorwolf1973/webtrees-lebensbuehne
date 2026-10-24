@@ -50,6 +50,11 @@ data/lebensbuehne/klaenge/<name>.mp3     Geräusche (auch .ogg, .wav, .flac, .m4
 
 Jedes Mitglied kann außerdem im Ton-Menü über „Datei wählen …“ ein eigenes Lied einbinden. Es bleibt nur im eigenen Browser gespeichert.
 
+**Empfohlene Musik.** Das Modul liefert kein Lied mit, die Datei bringt jeder selbst mit:
+
+- **„Time“ von Hans Zimmer** (Filmmusik zu „Inception“, 2010): ruhiger Aufbau, großer Höhepunkt. Das Tempo der Zeitreise passt sich der Länge an.
+- **„Ein Licht geht an“**, das Lied zur Lebensbühne (ca. 17 Minuten, mit Suno komponiert), ein Weg von der Auswanderung ins Banat bis heute: [anhören auf Suno](https://suno.com/song/a7b9fe0a-e52c-4c97-b7ea-6142434f33cc)
+
 Der Dateiname bestimmt den Einsatz. Varianten heißen `kanone_2.mp3`, `kanone_3.mp3` usw.
 
 | Name | Einsatz |
