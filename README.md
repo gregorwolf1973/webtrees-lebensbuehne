@@ -1,5 +1,7 @@
 # Lebensbühne für webtrees
 
+[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://buymeacoffee.com/gregorwolf1973)
+
 Die Lebensbühne zeigt einen Stammbaum als begehbaren 3D-Zeittunnel: Vorfahren, Nachkommen und Partnerfamilien
 stehen als Bilderkarten in der Tiefe des Raums, nach Geburtsjahr gestaffelt. Ein Zeitregler und eine Zeitreise
 lassen die Generationen aufleuchten und wieder verblassen. Dazu kommen Lebensgeschichten, Fotos, eine Karte des
@@ -24,7 +26,7 @@ tunnel with a time travel, life stories, photos, maps and historical events. The
 
 ## Installation
 
-1. Das Repository als ZIP herunterladen und nach `modules_v4/lebensbuehne/` entpacken. Im Ordner muss direkt die Datei `module.php` liegen.
+1. Unter [Releases](https://github.com/gregorwolf1973/webtrees-lebensbuehne/releases/latest) die Datei `lebensbuehne-<Version>.zip` herunterladen und im Ordner `modules_v4/` von webtrees entpacken. Es entsteht `modules_v4/lebensbuehne/`, darin liegt direkt die Datei `module.php`.
 2. In webtrees unter *Verwaltung → Module → Diagramme* prüfen, dass die „Lebensbühne“ aktiviert ist.
 3. Aufruf: im Diagramm-Menü einer Person den Punkt „Lebensbühne“ wählen, oder direkt `…/tree/<Baum>/lebensbuehne/<XREF>`.
 
@@ -73,3 +75,9 @@ Die Ereignisse stehen in `resources/data/zeitgeschehen.json`. Mitgeliefert ist e
 ## Lizenz
 
 GNU General Public License v3 oder später (siehe `LICENSE`). Mitgeliefert sind three.js (MIT-Lizenz) und Leaflet (BSD-2-Lizenz), die Lizenztexte liegen in `resources/vendor/`.
+
+## Unterstützen
+
+Wenn dir die Lebensbühne gefällt, freue ich mich über einen Kaffee:
+
+[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://buymeacoffee.com/gregorwolf1973)
