@@ -1,0 +1,404 @@
+<?php
+
+/**
+ * Lebensbühne – ein 3D-Zeittunnel für webtrees.
+ * Copyright (C) 2026 Gregor Wolf
+ * Lizenz: GNU GPL v3 oder später, siehe LICENSE.
+ */
+
+declare(strict_types=1);
+
+namespace GregorWolf\Lebensbuehne;
+
+use Fisharebest\Webtrees\Auth;
+use Fisharebest\Webtrees\Contracts\UserInterface;
+use Fisharebest\Webtrees\DB;
+use Fisharebest\Webtrees\Http\Exceptions\HttpAccessDeniedException;
+use Fisharebest\Webtrees\Http\Exceptions\HttpNotFoundException;
+use Fisharebest\Webtrees\Http\RequestHandlers\LoginPage;
+use Fisharebest\Webtrees\Individual;
+use Fisharebest\Webtrees\Menu;
+use Fisharebest\Webtrees\Module\AbstractModule;
+use Fisharebest\Webtrees\Module\ModuleChartInterface;
+use Fisharebest\Webtrees\Module\ModuleChartTrait;
+use Fisharebest\Webtrees\Module\ModuleCustomInterface;
+use Fisharebest\Webtrees\Module\ModuleCustomTrait;
+use Fisharebest\Webtrees\Registry;
+use Fisharebest\Webtrees\Tree;
+use Fisharebest\Webtrees\Validator;
+use Fisharebest\Webtrees\View;
+use Fisharebest\Webtrees\Webtrees;
+use Imagick;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Server\RequestHandlerInterface;
+use Throwable;
+
+use function basename;
+use function extension_loaded;
+use function fclose;
+use function file_get_contents;
+use function file_put_contents;
+use function filesize;
+use function fopen;
+use function fread;
+use function fseek;
+use function glob;
+use function intdiv;
+use function is_array;
+use function is_dir;
+use function is_file;
+use function is_object;
+use function json_decode;
+use function json_encode;
+use function max;
+use function md5;
+use function min;
+use function mkdir;
+use function pathinfo;
+use function preg_match;
+use function redirect;
+use function rename;
+use function response;
+use function route;
+use function strlen;
+use function strtolower;
+use function view;
+
+/**
+ * Die Lebensbühne als Diagramm-Modul: eine eigene Vollbildseite mit dem 3D-Zeittunnel, dazu geschützte Adressen
+ * für die Daten, die Gesichtsausschnitte und eigene Klänge. Alles ist nur für angemeldete Mitglieder des
+ * Stammbaums erreichbar – Gäste werden zur Anmeldung geschickt.
+ */
+final class LebensbuehneModule extends AbstractModule implements ModuleCustomInterface, ModuleChartInterface, RequestHandlerInterface
+{
+    use ModuleCustomTrait;
+    use ModuleChartTrait;
+
+    public const string VERSION = '1.0.0';
+
+    private const string ROUTE_SEITE   = 'lebensbuehne-seite';
+    private const string ROUTE_DATEN   = 'lebensbuehne-daten';
+    private const string ROUTE_GESICHT = 'lebensbuehne-gesicht';
+    private const string ROUTE_KLANG   = 'lebensbuehne-klang';
+
+    private const string AUDIO = '/^[\w-]+\.(mp3|ogg|oga|opus|wav|flac|m4a)$/i';
+
+    private const array AUDIO_TYP = [
+        'mp3' => 'audio/mpeg', 'ogg' => 'audio/ogg', 'oga' => 'audio/ogg', 'opus' => 'audio/ogg',
+        'wav' => 'audio/wav', 'flac' => 'audio/flac', 'm4a' => 'audio/mp4',
+    ];
+
+    // Standard: nur für Mitglieder (in der Modulverwaltung änderbar; Gäste sind im Code zusätzlich ausgeschlossen)
+    protected int $access_level = Auth::PRIV_USER;
+
+    public function boot(): void
+    {
+        $karte = Registry::routeFactory()->routeMap();
+        $karte->get(self::ROUTE_SEITE, '/tree/{tree}/lebensbuehne/{xref}', $this);
+        $karte->get(self::ROUTE_DATEN, '/tree/{tree}/lebensbuehne-daten', $this);
+        $karte->get(self::ROUTE_GESICHT, '/tree/{tree}/lebensbuehne-gesicht/{xref}/{media}', $this);
+        $karte->get(self::ROUTE_KLANG, '/tree/{tree}/lebensbuehne-klang/{datei}', $this);
+
+        View::registerNamespace($this->name(), $this->resourcesFolder() . 'views/');
+    }
+
+    public function title(): string
+    {
+        return 'Lebensbühne';
+    }
+
+    public function description(): string
+    {
+        return 'Vorfahren und Nachkommen als begehbarer 3D-Zeittunnel – mit Zeitreise, Lebensgeschichten, Karten und Zeitgeschehen.';
+    }
+
+    public function customModuleAuthorName(): string
+    {
+        return 'Gregor Wolf';
+    }
+
+    public function customModuleVersion(): string
+    {
+        return self::VERSION;
+    }
+
+    public function customModuleSupportUrl(): string
+    {
+        return 'https://github.com/gregorwolf1973/webtrees-lebensbuehne';
+    }
+
+    public function customModuleLatestVersionUrl(): string
+    {
+        return 'https://raw.githubusercontent.com/gregorwolf1973/webtrees-lebensbuehne/main/latest-version.txt';
+    }
+
+    public function resourcesFolder(): string
+    {
+        return __DIR__ . '/../resources/';
+    }
+
+    public function chartMenuClass(): string
+    {
+        return 'menu-chart-lebensbuehne';
+    }
+
+    public function chartBoxMenu(Individual $individual): Menu|null
+    {
+        return $this->chartMenu($individual);
+    }
+
+    public function chartUrl(Individual $individual, array $parameters = []): string
+    {
+        return route(self::ROUTE_SEITE, ['tree' => $individual->tree()->name(), 'xref' => $individual->xref()] + $parameters);
+    }
+
+    public function handle(ServerRequestInterface $request): ResponseInterface
+    {
+        $tree  = Validator::attributes($request)->tree();
+        $user  = Validator::attributes($request)->user();
+        $route = $request->getAttribute('route');
+        $name  = is_object($route) ? (string) $route->name : '';
+
+        // Nur angemeldete Mitglieder dieses Stammbaums – unabhängig von der Einstellung in der Modulverwaltung
+        if (!Auth::isMember($tree, $user)) {
+            if ($name === self::ROUTE_SEITE) {
+                return redirect(route(LoginPage::class, ['tree' => $tree->name(), 'url' => (string) $request->getUri()]));
+            }
+            throw new HttpAccessDeniedException('Die Lebensbühne ist nur für angemeldete Familienmitglieder.');
+        }
+        Auth::checkComponentAccess($this, ModuleChartInterface::class, $tree, $user);
+
+        return match ($name) {
+            self::ROUTE_SEITE   => $this->seite($request, $tree),
+            self::ROUTE_DATEN   => $this->daten($tree, $user),
+            self::ROUTE_GESICHT => $this->gesicht($request, $tree),
+            self::ROUTE_KLANG   => $this->klang($request, $tree),
+            default             => throw new HttpNotFoundException(),
+        };
+    }
+
+    private function seite(ServerRequestInterface $request, Tree $tree): ResponseInterface
+    {
+        $xref       = Validator::attributes($request)->isXref()->string('xref');
+        $individual = Auth::checkIndividualAccess(Registry::individualFactory()->make($xref, $tree), false, true);
+
+        $importe = [
+            'three'                                  => $this->assetUrl('vendor/three/three.module.min.js'),
+            'three/addons/controls/OrbitControls.js' => $this->assetUrl('vendor/three/OrbitControls.js'),
+        ];
+        foreach (['app', 'daten', 'panel', 'klang'] as $datei) {
+            $importe['lb/' . $datei . '.js'] = $this->assetUrl('js/' . $datei . '.js');
+        }
+
+        $musik = $this->musikDatei();
+        $config = [
+            'daten'         => route(self::ROUTE_DATEN, ['tree' => $tree->name()]),
+            'zeitgeschehen' => $this->assetUrl('data/zeitgeschehen.json'),
+            'klaenge'       => route(self::ROUTE_KLANG, ['tree' => $tree->name(), 'datei' => 'liste.json']),
+            'klangDatei'    => route(self::ROUTE_KLANG, ['tree' => $tree->name(), 'datei' => 'DATEI']),
+            'musik'         => $musik !== null ? route(self::ROUTE_KLANG, ['tree' => $tree->name(), 'datei' => basename($musik)]) : null,
+            'musikName'     => 'Lied der Familie',
+            'start'         => $individual->xref(),
+        ];
+
+        return response(view($this->name() . '::seite', [
+            'titel'      => 'Lebensbühne – ' . $tree->title(),
+            'baum'       => $tree->title(),
+            'zurueck'    => $individual->url(),
+            'config'     => $config,
+            'importe'    => $importe,
+            'css'        => $this->assetUrl('css/stil.css'),
+            'leafletCss' => $this->assetUrl('vendor/leaflet/leaflet.css'),
+            'leafletJs'  => $this->assetUrl('vendor/leaflet/leaflet.js'),
+            'appJs'      => $importe['lb/app.js'],
+        ]));
+    }
+
+    private function daten(Tree $tree, UserInterface $user): ResponseInterface
+    {
+        $stufe = Auth::accessLevel($tree, $user);
+
+        // Zwischenspeicher je Stammbaum und Zugriffsstufe; jede Änderung im Stammbaum erneuert ihn
+        $stand = DB::table('change')->where('gedcom_id', '=', $tree->id())
+            ->selectRaw("COALESCE(MAX(change_id), 0) AS m, SUM(CASE WHEN status = 'accepted' THEN 1 ELSE 0 END) AS a")
+            ->first();
+        $schluessel = 'lebensbuehne-' . $tree->id() . '-' . $stufe . '-' . ($stand->m ?? 0) . '-' . ($stand->a ?? 0) . '-' . self::VERSION;
+
+        $json = Registry::cache()->file()->remember($schluessel, function () use ($tree, $stufe): string {
+            $daten = new Daten($tree, $stufe, self::ROUTE_GESICHT);
+
+            return (string) json_encode($daten->alle(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        }, 86400);
+
+        return response($json, 200, ['content-type' => 'application/json', 'cache-control' => 'private, no-cache']);
+    }
+
+    // Gesichtsausschnitt (bzw. quadratisches Hauptbild) für die Karte, aus der Originaldatei geschnitten
+    private function gesicht(ServerRequestInterface $request, Tree $tree): ResponseInterface
+    {
+        $xref    = Validator::attributes($request)->isXref()->string('xref');
+        $mid     = Validator::attributes($request)->isXref()->string('media');
+        $quadrat = Validator::queryParams($request)->string('q', '') === '1';
+
+        $person = Registry::individualFactory()->make($xref, $tree);
+        $media  = Registry::mediaFactory()->make($mid, $tree);
+        $datei  = $media !== null && $media->canShow() ? $media->firstImageFile() : null;
+        if ($person === null || !$person->canShow() || $datei === null || $datei->isExternal() || !$datei->fileExists()) {
+            throw new HttpNotFoundException();
+        }
+        $rahmen = $quadrat ? null : $this->rahmen($tree, $mid, $xref);
+        if (!$quadrat && $rahmen === null) {
+            throw new HttpNotFoundException();
+        }
+
+        $ordner = Webtrees::DATA_DIR . 'lebensbuehne/cache/';
+        $ziel   = $ordner . $tree->id() . '_' . $xref . '_' . $mid . '_' . md5(json_encode($rahmen) . '|' . $datei->filename()) . '.jpg';
+        if (!is_file($ziel)) {
+            try {
+                if (!extension_loaded('imagick')) {
+                    return redirect($datei->imageUrl(400, 400, 'crop'));
+                }
+                if (!is_dir($ordner)) {
+                    mkdir($ordner, 0775, true);
+                }
+                file_put_contents($ziel . '.tmp', $this->schneide($datei->fileContents(), $rahmen));
+                rename($ziel . '.tmp', $ziel);
+            } catch (Throwable) {
+                return redirect($datei->imageUrl(400, 400, 'crop'));
+            }
+        }
+
+        return response((string) file_get_contents($ziel), 200, ['content-type' => 'image/jpeg', 'cache-control' => 'private, max-age=2592000']);
+    }
+
+    /**
+     * @param list<int>|null $rahmen [x1, y1, x2, y2] im Originalbild; null = mittig quadratisch
+     */
+    private function schneide(string $bild, ?array $rahmen): string
+    {
+        $im = new Imagick();
+        $im->readImageBlob($bild);
+        if ($im->getNumberImages() > 1) {
+            $im->setIteratorIndex(0);
+            $im = $im->getImage();
+        }
+        $im->autoOrient();
+        $w = $im->getImageWidth();
+        $h = $im->getImageHeight();
+        if ($rahmen !== null) {
+            [$x1, $y1, $x2, $y2] = $rahmen;
+            // Rand um das Gesicht, quadratisch
+            $s  = (int) (max($x2 - $x1, $y2 - $y1) * 1.5);
+            $cx = intdiv($x1 + $x2, 2);
+            $cy = intdiv($y1 + $y2, 2);
+            $x  = max(0, min($w - 1, $cx - intdiv($s, 2)));
+            $y  = max(0, min($h - 1, $cy - intdiv($s, 2)));
+            $s  = min($s, $w - $x, $h - $y);
+            $im->cropImage($s, $s, $x, $y);
+        } else {
+            $s = min($w, $h);
+            $im->cropImage($s, $s, intdiv($w - $s, 2), max(0, intdiv($h - $s, 4)));
+        }
+        $im->setImagePage(0, 0, 0, 0);
+        $im->thumbnailImage(400, 400, true);
+        $im->setImageFormat('jpeg');
+        $im->setImageCompressionQuality(82);
+        $im->stripImage();
+
+        return $im->getImageBlob();
+    }
+
+    /**
+     * Gesichtsrahmen einer Person auf einem Bild (Modul „webtrees-faces“).
+     *
+     * @return list<int>|null
+     */
+    private function rahmen(Tree $tree, string $mid, string $xref): ?array
+    {
+        if (!DB::schema()->hasTable('media_faces')) {
+            return null;
+        }
+        $zeile = DB::table('media_faces')->where('f_m_tree', '=', $tree->id())->where('f_m_id', '=', $mid)->value('f_coordinates');
+        foreach (json_decode((string) $zeile, true) ?: [] as $e) {
+            if (($e['pid'] ?? null) === $xref && is_array($e['coords'] ?? null) && count($e['coords']) >= 4) {
+                return array_map(static fn ($v): int => (int) (float) $v, array_slice($e['coords'], 0, 4));
+            }
+        }
+
+        return null;
+    }
+
+    // Eigene Klänge und das Lied liegen im webtrees-Datenordner unter lebensbuehne/ (nicht öffentlich erreichbar)
+    private function klang(ServerRequestInterface $request, Tree $tree): ResponseInterface
+    {
+        $datei  = Validator::attributes($request)->string('datei');
+        $ordner = Webtrees::DATA_DIR . 'lebensbuehne/';
+
+        if ($datei === 'liste.json') {
+            $liste = [];
+            foreach (glob($ordner . 'klaenge/*') ?: [] as $pfad) {
+                $name = basename($pfad);
+                if (preg_match(self::AUDIO, $name)) {
+                    $liste[strtolower((string) pathinfo($name, PATHINFO_FILENAME))] = $name;
+                }
+            }
+
+            return response((string) json_encode((object) $liste, JSON_UNESCAPED_UNICODE), 200, ['content-type' => 'application/json', 'cache-control' => 'private, no-cache']);
+        }
+
+        if (!preg_match(self::AUDIO, $datei)) {
+            throw new HttpNotFoundException();
+        }
+        $pfad = preg_match('/^musik\./i', $datei) ? $ordner . $datei : $ordner . 'klaenge/' . $datei;
+        if (!is_file($pfad)) {
+            throw new HttpNotFoundException();
+        }
+
+        return $this->dateiAntwort($request, $pfad);
+    }
+
+    private function musikDatei(): ?string
+    {
+        foreach (['mp3', 'm4a', 'ogg', 'opus', 'wav'] as $endung) {
+            $pfad = Webtrees::DATA_DIR . 'lebensbuehne/musik.' . $endung;
+            if (is_file($pfad)) {
+                return $pfad;
+            }
+        }
+
+        return null;
+    }
+
+    // Audiodatei ausliefern, mit Teilbereichen (Range), damit der Browser im Lied springen kann
+    private function dateiAntwort(ServerRequestInterface $request, string $pfad): ResponseInterface
+    {
+        $groesse = (int) filesize($pfad);
+        $kopf    = [
+            'content-type'  => self::AUDIO_TYP[strtolower((string) pathinfo($pfad, PATHINFO_EXTENSION))] ?? 'application/octet-stream',
+            'accept-ranges' => 'bytes',
+            'cache-control' => 'private, max-age=86400',
+        ];
+
+        if (preg_match('/^bytes=(\d*)-(\d*)$/', $request->getHeaderLine('range'), $m) && ($m[1] !== '' || $m[2] !== '')) {
+            if ($m[1] === '') {
+                $von = max(0, $groesse - (int) $m[2]);
+                $bis = $groesse - 1;
+            } else {
+                $von = (int) $m[1];
+                $bis = $m[2] === '' ? $groesse - 1 : min((int) $m[2], $groesse - 1);
+            }
+            if ($von > $bis || $von >= $groesse) {
+                return response('', 416, ['content-range' => 'bytes */' . $groesse]);
+            }
+            $h = fopen($pfad, 'rb');
+            fseek($h, $von);
+            $teil = (string) fread($h, $bis - $von + 1);
+            fclose($h);
+
+            return response($teil, 206, $kopf + ['content-range' => 'bytes ' . $von . '-' . $bis . '/' . $groesse, 'content-length' => (string) strlen($teil)]);
+        }
+
+        return response((string) file_get_contents($pfad), 200, $kopf + ['content-length' => (string) $groesse]);
+    }
+}

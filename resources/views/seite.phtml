@@ -1,0 +1,98 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * Vollbildseite der Lebensbühne (eigenes Layout, ohne die webtrees-Menüs).
+ *
+ * @var string               $titel
+ * @var string               $baum
+ * @var string               $zurueck
+ * @var array<string,mixed>  $config
+ * @var array<string,string> $importe
+ * @var string               $css
+ * @var string               $leafletCss
+ * @var string               $leafletJs
+ * @var string               $appJs
+ */
+
+$json = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT;
+?>
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title><?= e($titel) ?></title>
+  <link rel="stylesheet" href="<?= e($leafletCss) ?>">
+  <link rel="stylesheet" href="<?= e($css) ?>">
+  <script src="<?= e($leafletJs) ?>"></script>
+  <script type="importmap"><?= json_encode(['imports' => $importe], $json) ?></script>
+  <script>window.LEBENSBUEHNE = <?= json_encode($config, $json) ?>;</script>
+</head>
+<body>
+  <div id="buehne"></div>
+
+  <header class="leiste-oben">
+    <div class="titel">
+      <a class="zurueck" href="<?= e($zurueck) ?>" title="Zurück zu webtrees">← <?= e($baum) ?></a>
+      <h1>Lebensbühne</h1>
+      <p id="info-zahl">Lade Stammbaum …</p>
+    </div>
+    <div class="werkzeuge">
+      <input id="suche" list="namen" placeholder="Person suchen …" autocomplete="off">
+      <datalist id="namen"></datalist>
+      <button id="ansicht-ueberblick">Überblick</button>
+      <span class="hp-label">Hauptperson</span>
+      <button id="hauptperson" class="hp" title="Klicken, um eine andere Hauptperson zu wählen">…</button>
+      <span class="umschalter" role="group" aria-label="Ansicht">
+        <button id="modus-vorfahren" aria-pressed="true">Vorfahren</button>
+        <button id="modus-nachkommen" aria-pressed="false">Nachkommen</button>
+        <button id="modus-partner" aria-pressed="false">Partner</button>
+      </span>
+    </div>
+    <ul class="legende">
+      <li><i class="vater"></i>väterlicherseits</li>
+      <li><i class="mutter"></i>mütterlicherseits</li>
+      <li><i class="nachkommen"></i>Nachkommen</li>
+      <li><i class="partner"></i>Partnerseite</li>
+      <li><i class="raute"></i>Zeitgeschehen</li>
+    </ul>
+  </header>
+
+  <footer class="leiste-unten">
+    <button id="abspielen">▶ Zeitreise</button>
+    <label class="tempo" title="Geschwindigkeit der Zeitreise">Tempo <input id="tempo" type="number" min="5" max="1200" step="5" value="60"> Jahre/min</label>
+    <button id="kamera" class="schalter" aria-pressed="false" title="Während der Zeitreise geht die Kamera mit und zeigt die gerade lebenden Personen">Kamera folgt</button>
+    <div class="ton-box">
+      <button id="ton" class="schalter" aria-expanded="false" aria-controls="ton-menue" title="Lied und Geräusche einstellen">♪ Ton</button>
+      <div id="ton-menue" class="ton-menue" hidden>
+        <h3>Lied</h3>
+        <label class="haken"><input type="checkbox" id="lied-an"> abspielen</label>
+        <p id="lied-name" class="lied-name"></p>
+        <button id="lied-waehlen" class="klein">Datei wählen …</button>
+        <label class="haken"><input type="checkbox" id="lied-tempo"> Tempo ans Lied anpassen</label>
+        <label class="laut">Lautstärke <input type="range" id="vol-lied" min="0" max="100"></label>
+        <h3>Geräusche</h3>
+        <label class="haken"><input type="checkbox" id="geraeusche-an"> abspielen</label>
+        <label class="laut">Lautstärke <input type="range" id="vol-geraeusche" min="0" max="100"></label>
+        <fieldset id="klang-arten" class="arten"></fieldset>
+        <input id="lied-datei" type="file" accept="audio/*" hidden>
+      </div>
+    </div>
+    <div class="regler">
+      <input id="jahr" type="range" min="1650" max="2026" step="1" value="1650" aria-label="Jahr">
+      <div class="skala"><span>1650</span><span>1700</span><span>1750</span><span>1800</span><span>1850</span><span>1900</span><span>1950</span><span>2000</span></div>
+    </div>
+    <div class="jahrbox"><span id="jahr-anzeige">–</span><small id="lebend"></small></div>
+  </footer>
+  <div id="zeit-karte" hidden></div>
+
+  <aside id="panel" hidden></aside>
+  <div id="tip" hidden></div>
+  <p class="hilfe">Ziehen: drehen · Rechte Maustaste: verschieben · Mausrad: zoomen · Klick auf ein Gesicht: Lebensgeschichte · Doppelklick: als Hauptperson</p>
+
+  <script type="module" src="<?= e($appJs) ?>"></script>
+</body>
+</html>

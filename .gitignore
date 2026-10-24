@@ -1,0 +1,8 @@
+# Eigene Klänge, Lieder und Daten gehören nicht ins Repository
+*.mp3
+*.m4a
+*.ogg
+*.wav
+*.opus
+*.flac
+.DS_Store

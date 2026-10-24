@@ -1,0 +1,516 @@
+[
+ {
+  "jahr": 1618,
+  "bis": 1648,
+  "regionen": [
+   "westen"
+  ],
+  "titel": "Dreißigjähriger Krieg",
+  "text": "Der Krieg verwüstet Franken, die Pfalz und Lothringen. Vielerorts stirbt ein Drittel der Bevölkerung oder mehr, ganze Dörfer stehen leer.",
+  "klang": "krieg"
+ },
+ {
+  "jahr": 1683,
+  "regionen": [
+   "europa"
+  ],
+  "titel": "Die Osmanen vor Wien",
+  "text": "Die zweite Belagerung Wiens scheitert. Danach drängen die Habsburger die Osmanen Schritt für Schritt aus Ungarn zurück.",
+  "klang": "krieg"
+ },
+ {
+  "jahr": 1688,
+  "bis": 1697,
+  "regionen": [
+   "westen"
+  ],
+  "titel": "Pfälzischer Erbfolgekrieg",
+  "text": "Französische Truppen verwüsten 1689 planmäßig die Pfalz: Heidelberg, Speyer und Worms brennen.",
+  "klang": "krieg"
+ },
+ {
+  "jahr": 1699,
+  "regionen": [
+   "ungarn"
+  ],
+  "titel": "Friede von Karlowitz",
+  "text": "Fast ganz Ungarn kommt an die Habsburger. Nur das Banat um Temeswar bleibt noch osmanisch."
+ },
+ {
+  "jahr": 1709,
+  "regionen": [
+   "europa"
+  ],
+  "titel": "Der große Frost",
+  "text": "Der Winter 1708/09 ist einer der kältesten seit Menschengedenken. Es folgen Missernten und Hunger in ganz Europa.",
+  "klang": "kaelte"
+ },
+ {
+  "jahr": 1716,
+  "regionen": [
+   "banat"
+  ],
+  "titel": "Prinz Eugen erobert Temeswar",
+  "text": "Nach 164 Jahren osmanischer Herrschaft fällt die Festung Temeswar im Oktober 1716 an die Habsburger.",
+  "klang": "krieg"
+ },
+ {
+  "jahr": 1718,
+  "regionen": [
+   "banat"
+  ],
+  "titel": "Das Banat wird kaiserlich",
+  "text": "Mit dem Frieden von Passarowitz wird das Banat habsburgische Krondomäne und direkt von Wien aus verwaltet. Gouverneur Graf Mercy lässt Sümpfe trockenlegen und Dörfer planen."
+ },
+ {
+  "jahr": 1722,
+  "bis": 1726,
+  "regionen": [
+   "banat",
+   "westen"
+  ],
+  "titel": "Erster Schwabenzug",
+  "text": "Unter Karl VI. ziehen Siedler aus Lothringen, der Pfalz, dem Trierer Land und Franken auf der Donau, in den „Ulmer Schachteln“, ins Banat.",
+  "klang": "wasser"
+ },
+ {
+  "jahr": 1738,
+  "bis": 1739,
+  "regionen": [
+   "banat"
+  ],
+  "titel": "Türkenkrieg und Pest",
+  "text": "Krieg und Pest entvölkern viele der jungen Siedlerdörfer im Banat.",
+  "klang": "krieg+not"
+ },
+ {
+  "jahr": 1740,
+  "regionen": [
+   "europa"
+  ],
+  "titel": "Maria Theresia",
+  "text": "Maria Theresia übernimmt die Herrschaft. Unter ihr wird die Besiedlung des Banats zum großen Staatsprojekt."
+ },
+ {
+  "jahr": 1763,
+  "bis": 1773,
+  "regionen": [
+   "banat",
+   "westen"
+  ],
+  "titel": "Theresianischer Schwabenzug",
+  "text": "Die größte Ansiedlungswelle: Tausende Familien aus Lothringen, Luxemburg, der Pfalz und dem Trierer Land ziehen ins Banat. Ein Spruch der Siedler: „Den Ersten der Tod, den Zweiten die Not, den Dritten das Brot.“",
+  "klang": "wasser"
+ },
+ {
+  "jahr": 1765,
+  "regionen": [
+   "banat"
+  ],
+  "titel": "Billed wird gegründet",
+  "text": "Billed entsteht als planmäßig angelegtes Siedlerdorf mit geraden Gassen und gleich großen Hausplätzen.",
+  "klang": "glocken"
+ },
+ {
+  "jahr": 1766,
+  "regionen": [
+   "westen"
+  ],
+  "titel": "Lothringen wird französisch",
+  "text": "Nach dem Tod von Herzog Stanislaus fällt Lothringen an Frankreich. Viele deutschsprachige Lothringer suchen ihr Glück im Banat."
+ },
+ {
+  "jahr": 1771,
+  "regionen": [
+   "banat"
+  ],
+  "titel": "Eisenwerk Reschitza",
+  "text": "Im Banater Bergland wird in Reschitza das Eisenwerk gegründet. Bergleute und Hüttenarbeiter kommen aus der Steiermark, Böhmen und Tirol."
+ },
+ {
+  "jahr": 1772,
+  "regionen": [
+   "banat"
+  ],
+  "titel": "Triebswetter wird besiedelt",
+  "text": "Im Frühjahr 1772 werden Triebswetter, Gottlob und Ostern auf bisherigem Weideland angelegt. Der Name ehrt den kaiserlichen Landvermesser Anton Triebswetter.",
+  "klang": "glocken"
+ },
+ {
+  "jahr": 1778,
+  "regionen": [
+   "banat",
+   "ungarn"
+  ],
+  "titel": "Das Banat kommt zu Ungarn",
+  "text": "Das Banat wird dem Königreich Ungarn eingegliedert. Der Süden bleibt als Militärgrenze unter Wiener Verwaltung."
+ },
+ {
+  "jahr": 1782,
+  "bis": 1787,
+  "regionen": [
+   "banat",
+   "westen"
+  ],
+  "titel": "Josephinischer Schwabenzug",
+  "text": "Mit dem Ansiedlungspatent von 1782 wirbt Joseph II. neue Kolonisten an. Viele kommen 1784/85 aus Lothringen, dem Saarland, der Pfalz und dem Trierer Land.",
+  "klang": "wasser"
+ },
+ {
+  "jahr": 1788,
+  "bis": 1791,
+  "regionen": [
+   "banat"
+  ],
+  "titel": "Letzter Türkenkrieg",
+  "text": "Osmanische Truppen fallen 1788 ins Banat ein. Viele Dörfer werden geplündert, die Bewohner fliehen.",
+  "klang": "krieg"
+ },
+ {
+  "jahr": 1789,
+  "regionen": [
+   "europa"
+  ],
+  "titel": "Französische Revolution",
+  "text": "In Paris beginnt die Revolution. Die folgenden Kriege prägen Europa für ein Vierteljahrhundert.",
+  "klang": "unruhe"
+ },
+ {
+  "jahr": 1816,
+  "regionen": [
+   "europa"
+  ],
+  "titel": "Das Jahr ohne Sommer",
+  "text": "Nach dem Ausbruch des Vulkans Tambora bleibt der Sommer kalt und nass. Missernten und Hunger in ganz Mitteleuropa.",
+  "klang": "kaelte+not"
+ },
+ {
+  "jahr": 1817,
+  "regionen": [
+   "banat"
+  ],
+  "titel": "Theater in Oravitza",
+  "text": "Die Bergstadt Oravitza bekommt ein Theater, heute das älteste erhaltene Theatergebäude Rumäniens.",
+  "klang": "jubel"
+ },
+ {
+  "jahr": 1831,
+  "regionen": [
+   "ungarn",
+   "banat"
+  ],
+  "titel": "Cholera",
+  "text": "Die erste Cholerawelle erreicht Ungarn und das Banat. Tausende sterben.",
+  "klang": "not"
+ },
+ {
+  "jahr": 1848,
+  "bis": 1849,
+  "regionen": [
+   "ungarn",
+   "banat"
+  ],
+  "titel": "Revolution in Ungarn",
+  "text": "Die Bauern werden von Fron und Zehnt befreit. Im Freiheitskrieg hält die Festung Temeswar 1849 eine 107-tägige Belagerung durch ungarische Truppen aus.",
+  "klang": "krieg+unruhe"
+ },
+ {
+  "jahr": 1849,
+  "bis": 1860,
+  "regionen": [
+   "banat"
+  ],
+  "titel": "Kronland Serbische Woiwodschaft und Temescher Banat",
+  "text": "Für ein Jahrzehnt wird das Banat ein eigenes österreichisches Kronland mit der Hauptstadt Temeswar, danach wieder Teil Ungarns."
+ },
+ {
+  "jahr": 1857,
+  "regionen": [
+   "banat"
+  ],
+  "titel": "Die Eisenbahn kommt",
+  "text": "Die Bahnlinie Szegedin–Temeswar wird eröffnet. Getreide aus der Banater Heide erreicht nun schnell Wien und Budapest.",
+  "klang": "zug"
+ },
+ {
+  "jahr": 1863,
+  "regionen": [
+   "banat"
+  ],
+  "titel": "Gebirgsbahn Oravitza–Anina",
+  "text": "Die kühne Bergbahn von Oravitza nach Anina wird eröffnet, eine der ersten Gebirgsbahnen Europas.",
+  "klang": "zug"
+ },
+ {
+  "jahr": 1867,
+  "regionen": [
+   "ungarn",
+   "banat"
+  ],
+  "titel": "Ausgleich: Österreich-Ungarn",
+  "text": "Die Doppelmonarchie entsteht. In Ungarn beginnt eine starke Magyarisierung: Schulen, Ämter und oft auch Familiennamen werden ungarisch."
+ },
+ {
+  "jahr": 1872,
+  "regionen": [
+   "banat"
+  ],
+  "titel": "Ende der Militärgrenze",
+  "text": "Die Militärgrenze im Süden des Banats wird aufgelöst und zivil verwaltet."
+ },
+ {
+  "jahr": 1879,
+  "regionen": [
+   "ungarn"
+  ],
+  "titel": "Flut von Szegedin",
+  "text": "Die Theiß überflutet im März Szegedin, fast die ganze Stadt wird zerstört. Auch die Gegend um Hódmezővásárhely ist betroffen.",
+  "klang": "flut"
+ },
+ {
+  "jahr": 1884,
+  "regionen": [
+   "banat"
+  ],
+  "titel": "Elektrisches Licht in Temeswar",
+  "text": "Temeswar ist die erste Stadt Europas mit elektrischer Straßenbeleuchtung.",
+  "klang": "strom"
+ },
+ {
+  "jahr": 1890,
+  "bis": 1914,
+  "regionen": [
+   "banat"
+  ],
+  "titel": "Auswanderung nach Amerika",
+  "text": "Zehntausende Banater wandern in die USA aus, viele kehren mit Erspartem zurück und kaufen Land.",
+  "klang": "wasser"
+ },
+ {
+  "jahr": 1914,
+  "bis": 1918,
+  "regionen": [
+   "europa"
+  ],
+  "titel": "Erster Weltkrieg",
+  "text": "Die Banater Männer dienen in der k.u.k. Armee an der Ost- und der Italienfront. Viele kehren nicht zurück.",
+  "klang": "krieg1+totenglocke"
+ },
+ {
+  "jahr": 1918,
+  "regionen": [
+   "europa"
+  ],
+  "titel": "Ende der Donaumonarchie",
+  "text": "Im Herbst 1918 zerfällt Österreich-Ungarn. Neue Staaten entstehen.",
+  "klang": "glocken"
+ },
+ {
+  "jahr": 1920,
+  "regionen": [
+   "banat"
+  ],
+  "titel": "Vertrag von Trianon",
+  "text": "Das Banat wird geteilt: Der größte Teil mit Temeswar kommt an Rumänien, der Westen an das Königreich der Serben, Kroaten und Slowenen, ein kleiner Rest bleibt bei Ungarn."
+ },
+ {
+  "jahr": 1923,
+  "regionen": [
+   "deutschland"
+  ],
+  "titel": "Inflation",
+  "text": "In Deutschland wird das Geld wertlos, ein Brot kostet am Ende Milliarden Mark.",
+  "klang": "unruhe"
+ },
+ {
+  "jahr": 1929,
+  "regionen": [
+   "europa"
+  ],
+  "titel": "Weltwirtschaftskrise",
+  "text": "Der Börsenkrach in New York stürzt die Welt in eine Krise. Getreidepreise fallen, auch die Banater Bauern verarmen.",
+  "klang": "not"
+ },
+ {
+  "jahr": 1933,
+  "regionen": [
+   "deutschland"
+  ],
+  "titel": "NS-Diktatur",
+  "text": "Hitler kommt an die Macht. Die Diktatur führt in den Krieg und den Völkermord an den europäischen Juden.",
+  "klang": "marsch",
+  "klangBis": 1939
+ },
+ {
+  "jahr": 1939,
+  "bis": 1945,
+  "regionen": [
+   "europa"
+  ],
+  "titel": "Zweiter Weltkrieg",
+  "text": "Der Krieg kostet weltweit über 60 Millionen Menschen das Leben.",
+  "klang": "krieg2+totenglocke"
+ },
+ {
+  "jahr": 1943,
+  "bis": 1945,
+  "regionen": [
+   "europa"
+  ],
+  "titel": "Luftkrieg",
+  "klang": "luftkrieg",
+  "nurKlang": true,
+  "text": "Nur für die Geräusche: Luftalarm und Bombenangriffe der letzten Kriegsjahre."
+ },
+ {
+  "jahr": 1943,
+  "regionen": [
+   "banat"
+  ],
+  "titel": "Rumäniendeutsche in der Waffen-SS",
+  "text": "Durch ein Abkommen zwischen Rumänien und Deutschland werden die meisten wehrfähigen Banater Schwaben zur Waffen-SS eingezogen."
+ },
+ {
+  "jahr": 1944,
+  "regionen": [
+   "banat"
+  ],
+  "titel": "Rumänien wechselt die Seiten",
+  "text": "Am 23. August 1944 schließt Rumänien Waffenstillstand mit der Sowjetunion. Im Herbst fliehen viele Banater Schwaben mit der zurückweichenden Front nach Westen.",
+  "klang": "krieg2"
+ },
+ {
+  "jahr": 1945,
+  "regionen": [
+   "banat"
+  ],
+  "titel": "Deportation in die Sowjetunion",
+  "text": "Im Januar werden rund 70.000 Rumäniendeutsche, Männer von 17 bis 45 und Frauen von 18 bis 30 Jahren, zur Zwangsarbeit in die Sowjetunion verschleppt. Im März enteignet die Bodenreform die deutschen Bauern.",
+  "klang": "zug+not+kaelte"
+ },
+ {
+  "jahr": 1945,
+  "regionen": [
+   "deutschland"
+  ],
+  "titel": "Kriegsende",
+  "text": "Deutschland liegt in Trümmern. Millionen Flüchtlinge und Vertriebene suchen eine neue Heimat.",
+  "klang": "glocken"
+ },
+ {
+  "jahr": 1946,
+  "bis": 1970,
+  "regionen": [
+   "deutschland"
+  ],
+  "titel": "Geretsried entsteht",
+  "text": "Ab 1946 ziehen Heimatvertriebene in die Baracken und Bunker zweier ehemaliger Rüstungswerke im Wolfratshauser Forst. 1950 wird Geretsried eine eigene Gemeinde, 1970 Stadt."
+ },
+ {
+  "jahr": 1947,
+  "regionen": [
+   "banat"
+  ],
+  "titel": "Volksrepublik Rumänien",
+  "text": "Der König muss abdanken, die Kommunisten übernehmen die Macht. 1948 werden Fabriken, Banken und Läden verstaatlicht."
+ },
+ {
+  "jahr": 1949,
+  "regionen": [
+   "deutschland"
+  ],
+  "titel": "Bundesrepublik Deutschland",
+  "text": "Das Grundgesetz tritt in Kraft, die Bundesrepublik wird gegründet."
+ },
+ {
+  "jahr": 1949,
+  "bis": 1953,
+  "regionen": [
+   "banat"
+  ],
+  "titel": "Donau-Schwarzmeer-Kanal",
+  "text": "Das kommunistische Regime lässt den Kanal vor allem von politischen Häftlingen und Zwangsarbeitern bauen. Tausende sterben, 1953 wird der Bau eingestellt.",
+  "klang": "not"
+ },
+ {
+  "jahr": 1951,
+  "bis": 1956,
+  "regionen": [
+   "banat"
+  ],
+  "titel": "Deportation in den Bărăgan",
+  "text": "In der Nacht zum 18. Juni 1951 werden rund 40.000 Menschen aus einem 25 Kilometer breiten Streifen an der jugoslawischen Grenze in die Bărăgan-Steppe verschleppt. Sie müssen dort ihre Dörfer selbst bauen und dürfen erst ab 1956 heimkehren.",
+  "klang": "not+kaelte"
+ },
+ {
+  "jahr": 1956,
+  "regionen": [
+   "ungarn"
+  ],
+  "titel": "Ungarischer Volksaufstand",
+  "text": "Der Aufstand gegen die kommunistische Herrschaft wird von sowjetischen Panzern niedergeschlagen.",
+  "klang": "gefecht+unruhe"
+ },
+ {
+  "jahr": 1965,
+  "regionen": [
+   "banat"
+  ],
+  "titel": "Ceaușescu",
+  "text": "Nicolae Ceaușescu übernimmt die Führung Rumäniens. Seine Herrschaft wird immer repressiver."
+ },
+ {
+  "jahr": 1972,
+  "regionen": [
+   "deutschland"
+  ],
+  "titel": "Olympische Spiele in München",
+  "text": "München empfängt die Welt. Der Anschlag auf die israelische Mannschaft überschattet die Spiele.",
+  "klang": "jubel"
+ },
+ {
+  "jahr": 1978,
+  "regionen": [
+   "banat",
+   "deutschland"
+  ],
+  "titel": "Freikauf der Rumäniendeutschen",
+  "text": "Helmut Schmidt und Ceaușescu vereinbaren die Ausreise von jährlich rund 11.000 Rumäniendeutschen, die Bundesrepublik zahlt dafür ein Kopfgeld."
+ },
+ {
+  "jahr": 1989,
+  "regionen": [
+   "banat"
+  ],
+  "titel": "Revolution in Temeswar",
+  "text": "Am 16. Dezember beginnt in Temeswar der Aufstand, der Ceaușescu stürzt.",
+  "klang": "gefecht+unruhe"
+ },
+ {
+  "jahr": 1989,
+  "regionen": [
+   "deutschland"
+  ],
+  "titel": "Mauerfall",
+  "text": "Am 9. November öffnet die DDR die Grenze.",
+  "klang": "jubel"
+ },
+ {
+  "jahr": 1990,
+  "regionen": [
+   "banat",
+   "deutschland"
+  ],
+  "titel": "Große Ausreise",
+  "text": "Innerhalb weniger Jahre verlassen die meisten Banater Schwaben Rumänien. Am 3. Oktober wird Deutschland wiedervereinigt.",
+  "klang": "zug"
+ },
+ {
+  "jahr": 2007,
+  "regionen": [
+   "banat"
+  ],
+  "titel": "Rumänien in der EU",
+  "text": "Rumänien tritt der Europäischen Union bei."
+ }
+]
