@@ -7,7 +7,8 @@ const rnd = (a, b) => a + Math.random() * (b - a);
 
 export function bereit() {
   if (!ctx) {
-    ctx = new AudioContext();
+    // niedrige Abtastrate: Geräusche brauchen keine CD-Qualität, die dekodierten Aufnahmen aber nur halb so viel Speicher
+    try { ctx = new AudioContext({ sampleRate: 22050 }); } catch (e) { ctx = new AudioContext(); }
     master = ctx.createGain();
     master.gain.value = pegel;
     master.connect(ctx.destination);
@@ -17,12 +18,15 @@ export function bereit() {
     for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
   }
   if (ctx.state === 'suspended') ctx.resume();
-  dekodieren();
+  vorladen(['geburt', 'tod', 'hochzeit']);
   return ctx;
 }
 
 // --- Aufnahmen ----------------------------------------------------------------------------------------
-const DATEIEN = {}, PUFFER = {};
+// Sparsam, damit Tablets nicht abstürzen: anfangs nur die Liste; jede Aufnahme wird erst geholt, wenn ihr Ereignis naht,
+// als Mono dekodiert, auf MAX_SEK gekürzt, und nur die zuletzt benutzten MAX_PUFFER bleiben im Speicher.
+const LISTE = {}, PUFFER = new Map(), LAEDT = new Set();
+const MAX_PUFFER = 12, MAX_SEK = 60;
 // Ordnerinhalt lesen: liste.json, sonst das Verzeichnis-Listing des lokalen Servers; Name = Dateiname ohne Endung
 const LB = window.LEBENSBUEHNE || {};
 const klangUrl = datei => LB.klangDatei ? LB.klangDatei.replace('DATEI', encodeURIComponent(datei)) : 'media/klaenge/' + encodeURIComponent(datei);
@@ -40,25 +44,48 @@ async function ordnerListe() {
 }
 
 export async function ladeAufnahmen() {
-  try {
-    const liste = await ordnerListe();
-    await Promise.all(Object.entries(liste).map(async ([name, datei]) => {
-      try { DATEIEN[name] = await (await fetch(klangUrl(datei))).arrayBuffer(); } catch (e) { /* fehlt */ }
-    }));
-  } catch (e) { /* keine Aufnahmen: erzeugte Klänge */ }
-  if (ctx) await dekodieren();
-  return Object.keys(DATEIEN);
+  try { Object.assign(LISTE, await ordnerListe()); } catch (e) { /* keine Aufnahmen: erzeugte Klänge */ }
+  return Object.keys(LISTE);
 }
-async function dekodieren() {
-  for (const [n, b] of Object.entries(DATEIEN)) {
-    if (PUFFER[n]) continue;
-    try { PUFFER[n] = await ctx.decodeAudioData(b.slice(0)); } catch (e) { /* unlesbar */ }
+const varianten = name => Object.keys(LISTE).filter(x => x === name || x.startsWith(name + '_'));
+function lade(x) {
+  if (!ctx || PUFFER.has(x) || LAEDT.has(x)) return;
+  LAEDT.add(x);
+  fetch(klangUrl(LISTE[x])).then(r => r.arrayBuffer()).then(roh => ctx.decodeAudioData(roh)).then(b => {
+    PUFFER.set(x, verkleinere(b));
+    while (PUFFER.size > MAX_PUFFER) PUFFER.delete(PUFFER.keys().next().value);   // die am längsten unbenutzte zuerst
+  }).catch(() => { /* unlesbar */ }).finally(() => LAEDT.delete(x));
+}
+// Mono und höchstens MAX_SEK Sekunden; die volle Fassung gibt der Browser danach frei
+function verkleinere(b) {
+  const n = Math.min(b.length, Math.round(MAX_SEK * b.sampleRate)), m = ctx.createBuffer(1, n, b.sampleRate), d = m.getChannelData(0);
+  for (let c = 0; c < b.numberOfChannels; c++) {
+    const q = b.getChannelData(c);
+    for (let i = 0; i < n; i++) d[i] += q[i] / b.numberOfChannels;
   }
+  return m;
 }
-// zufällige Aufnahme einer Art: „kanone“, „kanone_2“, „kanone_3“ …
+// zufällige geladene Aufnahme einer Art („kanone“, „kanone_2“ …); fehlende werden nachgeladen, bis dahin gilt der erzeugte Klang
 function puffer(name) {
-  const k = Object.keys(PUFFER).filter(x => x === name || x.startsWith(name + '_'));
-  return k.length ? PUFFER[k[Math.floor(Math.random() * k.length)]] : null;
+  const k = varianten(name);
+  for (const x of k) lade(x);
+  const da = k.filter(x => PUFFER.has(x));
+  if (!da.length) return null;
+  const x = da[Math.floor(Math.random() * da.length)], b = PUFFER.get(x);
+  PUFFER.delete(x); PUFFER.set(x, b);   // zuletzt benutzt
+  return b;
+}
+// welche Aufnahmen eine Klangart braucht – werden vorab geholt, sobald das Ereignis näher rückt
+const BRAUCHT = {
+  geburt: ['geburt', 'glocke_hell'], tod: ['glocke_tief'], hochzeit: ['hochzeit', 'lachen'],
+  krieg: ['kanone', 'gewehr'], krieg1: ['artillerie', 'kanone', 'mg1', 'gewehr'], krieg2: ['mg2', 'artillerie', 'stuka', 'bombe'],
+  luftkrieg: ['luftkrieg', 'luftalarm', 'bombe', 'stuka'], gefecht: ['mg2', 'mg1', 'gewehr'], totenglocke: ['totenglocke'],
+  marsch: ['marsch'], not: ['klagen', 'wind'], kaelte: ['sturm', 'wind'], wasser: ['wasser'], flut: ['flut', 'wasser'],
+  zug: ['zug'], jubel: ['jubel'], unruhe: ['menge'], glocken: ['glocken'], strom: ['strom'],
+};
+export function vorladen(arten) {
+  if (!ctx) return;
+  for (const a of arten) for (const n of BRAUCHT[a] ?? [a]) for (const x of varianten(n)) lade(x);
 }
 // Einzelgeräusche aus langen Aufnahmen: Abschnittslänge und Vorlauf vor dem lauten Einsatz (Sekunden)
 const ABSCHNITT = {
@@ -565,6 +592,6 @@ export function stille() { stimmung({}); }
 
 // für die Fehlersuche in der Konsole
 export function zustand() {
-  const einsatz = Object.fromEntries(Object.entries(PUFFER).filter(([n]) => ABSCHNITT[n.replace(/_\d+$/, '')]).map(([n, b]) => [n, `${Math.round(b.duration)} s, ${einsaetze(b).length} Einsätze`]));
-  return { audio: ctx?.state ?? 'aus', atmosphaeren: [...aktiv.keys()], aufnahmen: Object.keys(PUFFER), einsatz };
+  const einsatz = Object.fromEntries([...PUFFER].filter(([n]) => ABSCHNITT[n.replace(/_\d+$/, '')]).map(([n, b]) => [n, `${Math.round(b.duration)} s, ${einsaetze(b).length} Einsätze`]));
+  return { audio: ctx?.state ?? 'aus', abtastrate: ctx?.sampleRate, atmosphaeren: [...aktiv.keys()], geladen: [...PUFFER.keys()], verfuegbar: Object.keys(LISTE).length, einsatz };
 }

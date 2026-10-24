@@ -21,7 +21,8 @@ const JAHR_MIN = Math.min(...personen.map(p => p.jahrE));
 
 // --- Szene ---------------------------------------------------------------------------------
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+// auf Touch-Geräten etwas gröber rendern: spart Grafikspeicher und Akku
+renderer.setPixelRatio(Math.min(devicePixelRatio, matchMedia('(pointer: coarse)').matches ? 1.5 : 2));
 renderer.setSize(innerWidth, innerHeight);
 document.getElementById('buehne').appendChild(renderer.domElement);
 const scene = new THREE.Scene();
@@ -35,15 +36,19 @@ controls.maxDistance = 260;
 
 // --- Porträtkarten ----------------------------------------------------------------------------
 const KW = 256, KH = 330;
-const bildLader = new Map();
+const bildLader = new Map();   // zuletzt benutzte Bilder; ältere fallen heraus und werden bei Bedarf neu geholt (Browser-Cache)
 function ladeBild(src) {
-  if (!bildLader.has(src)) bildLader.set(src, new Promise(ok => {
+  let p = bildLader.get(src);
+  if (p) bildLader.delete(src);
+  else p = new Promise(ok => {
     const img = new Image();
     img.onload = () => ok(img);
     img.onerror = () => ok(null);
     img.src = src;
-  }));
-  return bildLader.get(src);
+  });
+  bildLader.set(src, p);
+  while (bildLader.size > 60) bildLader.delete(bildLader.keys().next().value);
+  return p;
 }
 
 function zeichneKarte(p, img) {
@@ -650,6 +655,10 @@ function klingen(j) {
     for (const art of z.klang.split('+')) if (ton.arten[art]) ziele[art] = Math.max(ziele[art] ?? 0, st);
   }
   klang.stimmung(ziele);
+  // Aufnahmen für die Ereignisse der nächsten Jahrzehnte schon holen, damit sie beim Einsatz bereitliegen
+  const bald = new Set();
+  for (const z of daten.klangZeit) if (z.jahr > j && z.jahr <= j + 15) for (const art of z.klang.split('+')) if (ton.arten[art]) bald.add(art);
+  if (bald.size) klang.vorladen([...bald]);
   let n = 0;
   for (const p of imBild) {
     if (n > 3) break;
@@ -882,4 +891,4 @@ renderer.setAnimationLoop(now => {
   renderer.render(scene, camera);
 });
 document.body.classList.add('bereit');
-window.__lb = { camera, controls, fliege, THREE, zVon, daten, karten: () => karten, waehle: id => waehle(daten.byId.get(id)) };  // zum Ausprobieren in der Konsole
+window.__lb = { camera, controls, fliege, THREE, zVon, daten, karten: () => karten, waehle: id => waehle(daten.byId.get(id)), klang: () => klang.zustand() };  // zum Ausprobieren in der Konsole
