@@ -373,9 +373,21 @@ function setzeHauptperson(p) {
 }
 
 function setzeVersatz(px) {
-  if (px > 0 && innerWidth > 760) camera.setViewOffset(innerWidth, innerHeight, px / 2, 0, innerWidth, innerHeight);
+  merkeKopf();
+  const el = document.getElementById('panel');
+  const r = px > 0 && !el.hidden ? el.getBoundingClientRect() : null;
+  if (r && r.height > innerHeight * 0.6 && r.left > innerWidth * 0.3) camera.setViewOffset(innerWidth, innerHeight, r.width / 2, 0, innerWidth, innerHeight);
+  else if (r && r.width > innerWidth * 0.9 && r.top > innerHeight * 0.25) camera.setViewOffset(innerWidth, innerHeight, 0, (innerHeight - r.top) / 2, innerWidth, innerHeight);
   else camera.clearViewOffset();
 }
+// Höhe von Kopf- und Fußleiste als CSS-Variablen: Einblendungen und Zeitgeschehen richten sich danach
+const kopfleiste = document.querySelector('.leiste-oben'), fussleiste = document.querySelector('.leiste-unten');
+const merkeKopf = () => {
+  document.documentElement.style.setProperty('--oben', `${Math.round(kopfleiste.getBoundingClientRect().bottom + 6)}px`);
+  document.documentElement.style.setProperty('--leiste', `${Math.round(fussleiste.getBoundingClientRect().height)}px`);
+};
+merkeKopf();
+if (window.ResizeObserver) { const ro = new ResizeObserver(merkeKopf); ro.observe(kopfleiste); ro.observe(fussleiste); }
 
 // Zeitleiste unten: verändert nur Hervorhebung und Einblendungen, nie die Kamera
 const regler = document.getElementById('jahr');
@@ -843,6 +855,7 @@ addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
+  merkeKopf();
   setzeVersatz(panel.offen ? panel.breite() : 0);
 });
 
@@ -869,4 +882,4 @@ renderer.setAnimationLoop(now => {
   renderer.render(scene, camera);
 });
 document.body.classList.add('bereit');
-window.__lb = { camera, controls, fliege, THREE, zVon, daten, karten: () => karten };  // zum Ausprobieren in der Konsole
+window.__lb = { camera, controls, fliege, THREE, zVon, daten, karten: () => karten, waehle: id => waehle(daten.byId.get(id)) };  // zum Ausprobieren in der Konsole

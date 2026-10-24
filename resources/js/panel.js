@@ -18,6 +18,7 @@ export class Panel {
       const tab = ev.target.closest('[data-tab]');
       if (tab) this.tab(tab.dataset.tab);
       if (ev.target.closest('.schliessen')) this.schliesse();
+      if (ev.target.closest('.griff')) { this.el.classList.toggle('gross'); requestAnimationFrame(() => this.cb.breite(this.breite())); }
       const bild = ev.target.closest('[data-bild]');
       if (bild && +bild.dataset.bild >= 0) this.lightbox.zeige(this.p.bilder, +bild.dataset.bild);
     });
@@ -39,9 +40,10 @@ export class Panel {
     this.zrPerson = null;
     clearInterval(this.diashow);
     this.offen = true;
-    this.el.hidden = false;
+    this.modus('voll');
     const tabAlt = this.aktiverTab || 'geschichte';
     this.el.innerHTML = `
+      <button class="griff" aria-label="Einblendung größer oder kleiner"></button>
       <button class="schliessen" aria-label="Schließen">✕</button>
       ${this.kopf(p)}
       <nav class="tabs" role="tablist">
@@ -63,7 +65,7 @@ export class Panel {
       this.zrPerson = p;
       this.p = p;
       this.offen = true;
-      this.el.hidden = false;
+      this.modus('zeitreise');
       clearInterval(this.spielt); clearInterval(this.diashow);
       this.karte?.remove(); this.karte = null;
       // Fotos in Aufnahmefolge (datierte zuerst), dann Dokumente; in der Zeitreise nur, was bis zum Jahr schon aufgenommen war
@@ -134,10 +136,18 @@ export class Panel {
       </header>`;
   }
 
+  // voll = Lebensgeschichte, zeitreise = kleine Karte während der Zeitreise; die Seite richtet das Layout danach aus
+  modus(m) {
+    this.el.hidden = !m;
+    this.el.dataset.modus = m || '';
+    if (m !== 'voll') this.el.classList.remove('gross');
+    document.body.dataset.panel = m || '';
+  }
+
   schliesse() {
     if (!this.offen) return;
     this.offen = false;
-    this.el.hidden = true;
+    this.modus('');
     this.zrPerson = null;
     clearInterval(this.spielt); clearInterval(this.diashow);
     this.karte?.remove(); this.karte = null;
