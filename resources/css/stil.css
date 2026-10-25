@@ -455,3 +455,12 @@ body[data-panel="voll"] .leiste-oben { right: min(580px, 100vw); }   /* Kopfleis
 @media (max-width: 1199px), (max-height: 600px) {
   body.menue-offen .mehr .spende-knopf { text-align: center; }
 }
+/* im Netz gelten Vorfahren/Nachkommen/Partner nicht; ein Klick führt zurück in den Fächer */
+.im-netz { opacity: 0.55; }
+.legende-netz { display: none; }
+body.netz .legende:not(.legende-netz) { display: none; }
+body.netz .legende-netz { display: flex; }
+@media (max-width: 1199px) { body.netz .legende-netz { display: none; } }
+.legende .namen { background: conic-gradient(#e38f8f, #e3d38f, #8fe39b, #8fc8e3, #c08fe3, #e38f8f); }
+.legende .strich { width: 16px; height: 2px; border-radius: 0; background: #9fb2cc; vertical-align: 4px; }
+.legende .strich.gold { background: var(--zeit); }

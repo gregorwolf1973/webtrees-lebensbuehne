@@ -111,6 +111,47 @@ export function ansicht(daten, root, { vorfahren = true, nachkommen = false, par
   return liste;
 }
 
+// Netz (wie die Ansicht „Lineage“): alle Personen, die über Eltern, Kinder oder Partner mit der Hauptperson verbunden
+// sind. Vorfahren, Nachkommen und Partner behalten ihre Rollen aus der Fächeransicht, die übrigen heißen „verwandt“.
+export function netz(daten, root) {
+  const liste = ansicht(daten, root, { vorfahren: true, nachkommen: true, partner: true });
+  const drin = new Set(liste);
+  for (let i = 0; i < liste.length; i++) {
+    for (const y of [...liste[i].eltern, ...liste[i].kinderP, ...liste[i].partnerP]) {
+      if (drin.has(y)) continue;
+      drin.add(y);
+      Object.assign(y, { imBild: true, rolle: 'verwandt' });
+      liste.push(y);
+    }
+  }
+  return liste;
+}
+
+// Kölner Phonetik: gleich klingende Familiennamen („Thöresz“, „Theres“, „Tyres“) bekommen im Netz dieselbe Farbe
+export function phonetik(name) {
+  const s = name.toLowerCase().replace(/ä/g, 'a').replace(/ö/g, 'o').replace(/ü/g, 'u').replace(/ß/g, 's').replace(/[^a-z]/g, '');
+  let code = '';
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i], v = s[i - 1] || '', n = s[i + 1] || '';
+    let z = '';
+    if ('aeijouy'.includes(c)) z = '0';
+    else if (c === 'h') z = '';
+    else if (c === 'b') z = '1';
+    else if (c === 'p') z = n === 'h' ? '3' : '1';
+    else if ('dt'.includes(c)) z = 'csz'.includes(n) ? '8' : '2';
+    else if ('fvw'.includes(c)) z = '3';
+    else if ('gkq'.includes(c)) z = '4';
+    else if (c === 'c') z = i === 0 ? ('ahkloqrux'.includes(n) ? '4' : '8') : ('sz'.includes(v) || !'ahkoqux'.includes(n) ? '8' : '4');
+    else if (c === 'x') z = 'ckq'.includes(v) ? '8' : '48';
+    else if (c === 'l') z = '5';
+    else if ('mn'.includes(c)) z = '6';
+    else if (c === 'r') z = '7';
+    else if ('sz'.includes(c)) z = '8';
+    code += z;
+  }
+  return code.replace(/(.)\1+/g, '$1').replace(/(?!^)0/g, '');
+}
+
 // Regionen eines Orts aus seinem Namen samt Oberorten („Billed, Timiș, Rumänien“, „Geretsried, D“); deutsche, englische
 // und landessprachliche Namen. Die Schlüssel entsprechen den Regionen in zeitgeschehen.json.
 const REGIONEN = [

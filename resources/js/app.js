@@ -2,7 +2,7 @@
 // die Tiefe ist die Zeit.
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { ladeDaten, ansicht, jahreKurz, verwandtschaft, zeitFuerAnsicht, JETZT } from 'lb/daten.js';
+import { ladeDaten, ansicht, netz, phonetik, jahreKurz, verwandtschaft, zeitFuerAnsicht, JETZT } from 'lb/daten.js';
 import { t, EN as SPRACHE_EN } from 'lb/text.js';
 import { Panel } from 'lb/panel.js';
 import * as klang from 'lb/klang.js';
@@ -11,7 +11,19 @@ import { baueHimmel } from 'lb/himmel.js';
 const FARBE = { vater: '#d6a24e', mutter: '#62b6a9', start: '#f2ede4' };
 const ZWEIGE = ['#c99be0', '#86aee6', '#e39a8b', '#a5d388', '#e8c872', '#86d6cf'];   // Nachkommen: je Kind der Hauptperson eine Farbe
 const PARTNER = '#e396b8';   // Partner und dessen Vorfahren
-const farbe = p => p.rolle === 'nachkomme' ? ZWEIGE[(p.zweig ?? 0) % ZWEIGE.length] : p.partnerseite ? PARTNER : FARBE[p.seite] ?? FARBE.start;
+const farbeFaecher = p => p.rolle === 'nachkomme' ? ZWEIGE[(p.zweig ?? 0) % ZWEIGE.length] : p.partnerseite ? PARTNER : FARBE[p.seite] ?? FARBE.start;
+// im Netz wie bei „Lineage“: Farbe nach dem Klang des Familiennamens (Kölner Phonetik), Farbton im goldenen Winkel verteilt
+const nameFarben = new Map();
+function nameFarbe(p) {
+  const code = phonetik(p.name.nachname || '') || '?';
+  if (!nameFarben.has(code)) {
+    let h = 0;
+    for (const c of code) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+    nameFarben.set(code, `hsl(${Math.round((h * 137.508) % 360)}, 62%, 64%)`);
+  }
+  return nameFarben.get(code);
+}
+const farbe = p => modus.netz ? (p.rolle === 'start' ? FARBE.start : nameFarbe(p)) : farbeFaecher(p);
 const HINTERGRUND = 0x0c0f15;
 const JAHR_NULL = 1973, TIEFE_PRO_JAHR = 0.24, RING_ABSTAND = 3.2, WINKEL = Math.PI * 0.86, RING = 35;
 const FENSTER_ZEIT = 6, FENSTER_FAMILIE = 4;   // so viele Jahre vor und nach dem Regler werden Einträge eingeblendet
@@ -54,10 +66,11 @@ function ladeBild(src) {
   return p;
 }
 
-function zeichneKarte(p, img) {
+function zeichneKarte(p, img, s = 1) {
   const c = document.createElement('canvas');
-  c.width = KW; c.height = KH;
+  c.width = Math.round(KW * s); c.height = Math.round(KH * s);
   const g = c.getContext('2d');
+  g.scale(s, s);
   const f = farbe(p);
   g.fillStyle = 'rgba(18,22,30,0.94)';
   rundRechteck(g, 4, 4, KW - 8, KH - 8, 22); g.fill();
@@ -114,20 +127,22 @@ function textSprite(text, { groesse = 1, farbe = '#8b93a1', gewicht = 500 } = {}
   return s;
 }
 
+const kulisse = new THREE.Group();
+scene.add(kulisse);
 const ringMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.07 });
 const ringMat50 = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.14 });
 for (let j = Math.floor(JAHR_MIN / 50) * 50; j <= 2025; j += 25) {
   const pts = [];
   for (let i = 0; i <= 96; i++) { const w = i / 96 * Math.PI * 2; pts.push(new THREE.Vector3(Math.sin(w) * RING, Math.cos(w) * RING * 0.82, zVon(j))); }
-  scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), j % 50 ? ringMat : ringMat50));
+  kulisse.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), j % 50 ? ringMat : ringMat50));
   if (j % 50 === 0 && j <= 1950) {
     const t = textSprite(String(j), { groesse: 2.2, farbe: '#6f7786' });
     t.position.set(0, RING * 0.82 + 2, zVon(j));
-    scene.add(t);
+    kulisse.add(t);
   }
 }
 const BODEN = -RING * 0.82;
-scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, BODEN, zVon(JETZT)), new THREE.Vector3(0, BODEN, zVon(JAHR_MIN - 30))]),
+kulisse.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, BODEN, zVon(JETZT)), new THREE.Vector3(0, BODEN, zVon(JAHR_MIN - 30))]),
   new THREE.LineBasicMaterial({ color: 0xe8b04f, transparent: true, opacity: 0.5 })));
 
 // Marken des Zeitgeschehens am Boden: bei jedem Wechsel der Ansicht neu, passend zu deren Regionen
@@ -135,6 +150,7 @@ const zeitMarken = [];
 const rauteGeo = new THREE.OctahedronGeometry(0.7);
 function baueZeitMarken() {
   for (const m of zeitMarken.splice(0)) { scene.remove(m); m.material.dispose(); }
+  if (modus.netz) return;   // im Netz gibt es keine Zeitachse am Boden
   for (const z of zeitAnsicht) {
     const m = new THREE.Mesh(rauteGeo, new THREE.MeshBasicMaterial({ color: 0xe8b04f, transparent: true, opacity: 0.75 }));
     m.position.set(0, BODEN, zVon(z.jahr));
@@ -164,12 +180,12 @@ const hofTextur = (() => {
 // --- Familie der Hauptperson: wird bei jedem Wechsel neu aufgebaut ----------------------------------
 const gruppe = new THREE.Group();
 scene.add(gruppe);
-let root = daten.start, modus = { vorfahren: true, nachkommen: false, partner: false };
+let root = daten.start, modus = { vorfahren: true, nachkommen: false, partner: false, netz: false };
 let imBild = [], karten = [], linien = [];
 {
   const [id, m] = decodeURIComponent(location.hash.slice(1)).split('/');
   if (daten.byId.has(id)) root = daten.byId.get(id);
-  if (m) modus = { vorfahren: m.includes('v'), nachkommen: m.includes('n'), partner: m.includes('p') };
+  if (m) modus = { vorfahren: m.includes('v'), nachkommen: m.includes('n'), partner: m.includes('p'), netz: m.includes('x') };
 }
 
 function baue() {
@@ -179,7 +195,10 @@ function baue() {
     if (o.material?.map !== hofTextur) o.material?.map?.dispose();
     o.material?.dispose();
   }
-  imBild = ansicht(daten, root, modus);
+  sim = null; netzKanten = null; netzHell = null;
+  imBild = modus.netz ? netz(daten, root) : ansicht(daten, root, modus);
+  kulisse.visible = !modus.netz;
+  document.body.classList.toggle('netz', modus.netz);
   zeitAnsicht = zeitFuerAnsicht(imBild, zeit);
   klangAnsicht = zeitFuerAnsicht(imBild, daten.klangZeit);
   baueZeitMarken();
@@ -200,23 +219,27 @@ function baue() {
     return blaetterCache.get(key);
   };
   root.pos = new THREE.Vector3(0, 0, zVon(root.jahrE));
-  // mit Partner: eigene Vorfahren links, die des Partners rechts daneben
-  const partner = imBild.filter(p => p.rolle === 'partner');
-  if (modus.vorfahren) verteile(root, -WINKEL, partner.length ? -0.12 : WINKEL, elternIm);
-  partner.forEach((pa, i) => {
-    const breite = (WINKEL - 0.12) / partner.length;
-    verteile(pa, 0.12 + i * breite, 0.12 + (i + 1) * breite, elternIm, 0.7);
-  });
-  if (modus.nachkommen) verteile(root, -WINKEL, WINKEL, kinderIm);
+  if (modus.netz) netzStart();
+  else {
+    // mit Partner: eigene Vorfahren links, die des Partners rechts daneben
+    const partner = imBild.filter(p => p.rolle === 'partner');
+    if (modus.vorfahren) verteile(root, -WINKEL, partner.length ? -0.12 : WINKEL, elternIm);
+    partner.forEach((pa, i) => {
+      const breite = (WINKEL - 0.12) / partner.length;
+      verteile(pa, 0.12 + i * breite, 0.12 + (i + 1) * breite, elternIm, 0.7);
+    });
+    if (modus.nachkommen) verteile(root, -WINKEL, WINKEL, kinderIm);
+  }
 
+  const aufloesung = modus.netz ? (matchMedia('(pointer: coarse)').matches ? 0.38 : 0.5) : 1;   // im Netz viele Karten: kleinere Texturen
   karten = imBild.map(p => {
-    const tex = new THREE.CanvasTexture(zeichneKarte(p, null));
+    const tex = new THREE.CanvasTexture(zeichneKarte(p, null, aufloesung));
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.anisotropy = 4;
     const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true }));
     s.position.copy(p.pos);
-    const groesse = p.rolle === 'start' ? 1.35 : 1;
-    s.userData = { p, basis: new THREE.Vector2(2.3 * groesse, 2.96 * groesse), tex, gesichtSrc: p.gesicht };
+    const groesse = (p.rolle === 'start' ? 1.35 : 1) * (modus.netz ? 0.8 : 1);
+    s.userData = { p, basis: new THREE.Vector2(2.3 * groesse, 2.96 * groesse), tex, gesichtSrc: p.gesicht, aufloesung };
     s.scale.set(s.userData.basis.x, s.userData.basis.y, 1);
     gruppe.add(s);
     const hof = new THREE.Sprite(new THREE.SpriteMaterial({ map: hofTextur, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0 }));
@@ -226,12 +249,12 @@ function baue() {
     s.userData.hof = hof;
     if (p.gesicht) ladeBild(p.gesicht).then(img => {
       if (!img || !s.parent) return;
-      tex.image = zeichneKarte(p, img);
+      tex.image = zeichneKarte(p, img, aufloesung);
       tex.needsUpdate = true;
     });
     return s;
   });
-  linien = imBild.filter(p => p.zumStart).map(p => {
+  linien = modus.netz ? [] : imBild.filter(p => p.zumStart).map(p => {
     const a = p.zumStart.pos, b = p.pos;
     const mitte = a.clone().lerp(b, 0.5);
     mitte.add(new THREE.Vector3(mitte.x, mitte.y, 0).normalize().multiplyScalar(0.8));
@@ -243,8 +266,10 @@ function baue() {
     return rohr;
   });
 
-  const nachGeburt = [...imBild].sort((a, b) => (a.geburt ?? a.jahrE) - (b.geburt ?? b.jahrE) || b.mannesstamm - a.mannesstamm);
-  linienBasis = modus.vorfahren || modus.partner ? nachGeburt[0] : nachGeburt[nachGeburt.length - 1];
+  if (modus.netz) netzLinienBauen();
+  const nachGeburt = [...imBild].filter(p => !modus.netz || p.rolle === 'vorfahr' || p.rolle === 'start')
+    .sort((a, b) => (a.geburt ?? a.jahrE) - (b.geburt ?? b.jahrE) || b.mannesstamm - a.mannesstamm);
+  linienBasis = modus.vorfahren || modus.partner || modus.netz ? nachGeburt[0] : nachGeburt[nachGeburt.length - 1];
   const jahre = imBild.map(p => p.jahrE);
   document.getElementById('info-zahl').textContent =
     t(imBild.length === 1 ? '{n} Person · {von}–{bis} · {g} Gesichter' : '{n} Personen · {von}–{bis} · {g} Gesichter',
@@ -253,15 +278,181 @@ function baue() {
   document.getElementById('modus-vorfahren').setAttribute('aria-pressed', modus.vorfahren);
   document.getElementById('modus-nachkommen').setAttribute('aria-pressed', modus.nachkommen);
   document.getElementById('modus-partner').setAttribute('aria-pressed', modus.partner);
+  document.getElementById('modus-netz').setAttribute('aria-pressed', modus.netz);
+  for (const id of ['modus-vorfahren', 'modus-nachkommen', 'modus-partner']) document.getElementById(id).classList.toggle('im-netz', modus.netz);
   document.getElementById('modus-partner').disabled = !root.partnerP.length;
   document.getElementById('modus-partner').title = root.partnerP.length
     ? t(root.partnerP.length > 1 ? '{namen} und deren Vorfahren einblenden' : '{namen} und dessen Vorfahren einblenden', { namen: root.partnerP.map(x => x.name.voll).join(', ') })
     : t('Keine Partner im Stammbaum');
-  history.replaceState(null, '', `#${root.id}/${modus.vorfahren ? 'v' : ''}${modus.nachkommen ? 'n' : ''}${modus.partner ? 'p' : ''}`);
+  history.replaceState(null, '', `#${root.id}/${modus.vorfahren ? 'v' : ''}${modus.nachkommen ? 'n' : ''}${modus.partner ? 'p' : ''}${modus.netz ? 'x' : ''}`);
   gewaehlt = null;
   aktualisiereDarstellung();
   letztesJahr = null;
   if (zeitJahr != null) setzeJahr(zeitJahr);
+}
+
+
+// --- Netz: Kräftesimulation wie in der Ansicht „Lineage“ (D3-Force), in der Ebene; die Höhe folgt dem Geburtsjahr -------
+// Höhe je Jahr: Ältere oben, Jüngere unten; im Hochformat höher und schmaler, damit das Netz den Bildschirm füllt
+let netzJahr = 0.22, netzBreite = 1;
+const yVon = jahr => -(jahr - JAHR_NULL) * netzJahr;
+let sim = null, netzKanten = null, netzHell = null;
+
+function netzStart() {
+  const hoch = Math.min(1, camera.aspect);
+  netzJahr = 0.22 / hoch;
+  netzBreite = hoch;
+  const index = new Map(imBild.map((p, i) => [p, i]));
+  const kanten = [];
+  for (const p of imBild) {
+    for (const k of p.kinderP) if (index.has(k)) kanten.push({ a: p, b: k, lang: 4.2, stark: 0.25, art: 'kind' });
+    for (const x of p.partnerP) if (index.has(x) && index.get(x) > index.get(p)) kanten.push({ a: p, b: x, lang: 2.4, stark: 0.5, art: 'partner' });
+  }
+  // Startlage waagrecht wie im Fächer: väterliche Vorfahren links, mütterliche rechts, die des Partners ganz rechts,
+  // Nachkommen nach ihren Zweigen; alle übrigen neben ihren schon platzierten Angehörigen. Die Höhe ist das Geburtsjahr.
+  const lage = new Map(), merk = new Map();
+  const blaetter = (p, folge) => {
+    const key = p.id + folge.name;
+    if (!merk.has(key)) { const k = folge(p); merk.set(key, k.length ? k.reduce((s, x) => s + blaetter(x, folge), 0) : 1); }
+    return merk.get(key);
+  };
+  const verteile = (p, von, bis, folge) => {
+    lage.set(p, (von + bis) / 2);
+    const k = folge(p), e = k.map(x => blaetter(x, folge)), summe = e.reduce((a, b) => a + b, 0);
+    let a = von;
+    k.forEach((x, i) => { const b = a + (bis - von) * e[i] / summe; verteile(x, a, b, folge); a = b; });
+  };
+  const elternIm = function elternIm(p) { return p.eltern.filter(e => e.rolle === 'vorfahr' && e.zumStart === p); };
+  const kinderIm = function kinderIm(p) { return p.kinderP.filter(c => c.rolle === 'nachkomme' && c.zumStart === p); };
+  const partner = imBild.filter(p => p.rolle === 'partner');
+  verteile(root, -1, partner.length ? 0.25 : 1, elternIm);
+  partner.forEach((pa, i) => verteile(pa, 0.3 + i * 0.7 / partner.length, 0.3 + (i + 1) * 0.7 / partner.length, elternIm));
+  verteile(root, -0.6, 0.6, kinderIm);
+  lage.set(root, 0);
+  let saat = 7;
+  const zufall = () => (saat = (saat * 16807) % 2147483647) / 2147483647 - 0.5;   // fester Zufall: jeder Aufbau sieht gleich aus
+  for (let runde = 0; runde < 30 && lage.size < imBild.length; runde++)
+    for (const p of imBild) {
+      if (lage.has(p)) continue;
+      const nah = [...p.partnerP, ...p.eltern, ...p.kinderP].filter(x => lage.has(x));
+      if (nah.length) lage.set(p, nah.reduce((s, x) => s + lage.get(x), 0) / nah.length + zufall() * 0.04);
+    }
+  const breite = Math.sqrt(imBild.length) * 5 * netzBreite;
+  imBild.forEach((p, i) => {
+    p.pos = new THREE.Vector3((lage.get(p) ?? zufall()) * breite / 2, yVon(p.jahrE), (i % 10) * 0.03);   // leicht gestaffelt gegen Flackern
+    p.v = new THREE.Vector2();
+  });
+  root.pos.x = 0;
+  sim = { kanten, alpha: 1 };
+  for (let i = 0; i < 220; i++) simSchritt();   // vorrechnen, damit das Netz gleich geordnet erscheint
+}
+
+function simSchritt() {
+  if (!sim || sim.alpha < 0.004) return false;
+  const a = sim.alpha, R = 7, R2 = R * R;
+  // Abstoßung über ein Raster mit Zellgröße R: nur Nachbarn aus den neun Zellen ringsum
+  const zellen = new Map();
+  for (const p of imBild) {
+    const key = Math.floor(p.pos.x / R) * 100003 + Math.floor(p.pos.y / R);
+    let z = zellen.get(key);
+    if (!z) zellen.set(key, z = []);
+    z.push(p);
+  }
+  for (const p of imBild) {
+    const cx = Math.floor(p.pos.x / R), cy = Math.floor(p.pos.y / R);
+    for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
+      for (const q of zellen.get((cx + dx) * 100003 + cy + dy) || []) {
+        if (q === p) continue;
+        let x = p.pos.x - q.pos.x;
+        const y = p.pos.y - q.pos.y;
+        if (Math.abs(x) < 0.01) x = p.id < q.id ? -0.01 : 0.01;
+        const d2 = x * x + y * y;
+        if (d2 > R2) continue;
+        const f = 9 * a / Math.max(d2, 0.3);
+        p.v.x += x * f * netzBreite;
+        p.v.y += y * f * 0.3;   // senkrecht schwächer: die Höhe bestimmt das Geburtsjahr
+      }
+    }
+  }
+  for (const k of sim.kanten) {
+    const x = k.b.pos.x - k.a.pos.x, y = k.b.pos.y - k.a.pos.y, d = Math.max(0.01, Math.hypot(x, y));
+    const f = (d - k.lang) / d * k.stark * a;
+    k.a.v.x += x * f; k.b.v.x -= x * f;
+    if (k.art === 'partner') { k.a.v.y += y * f; k.b.v.y -= y * f; }   // Eltern und Kinder trennt ohnehin das Geburtsjahr
+  }
+  for (const p of imBild) {
+    p.v.x -= p.pos.x * 0.004 / netzBreite * a;          // sanft zur Mitte (im Hochformat stärker)
+    p.v.y += (yVon(p.jahrE) - p.pos.y) * 0.12 * a;      // Höhe nach Geburtsjahr
+    p.v.multiplyScalar(0.6);
+    p.pos.x += p.v.x;
+    p.pos.y += p.v.y;
+  }
+  root.pos.x = 0;
+  sim.alpha *= 0.985;
+  return true;
+}
+
+const kantenGeo = n => {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(Math.max(1, n) * 6), 3));
+  return g;
+};
+function netzLinienBauen() {
+  const kind = sim.kanten.filter(k => k.art === 'kind'), partner = sim.kanten.filter(k => k.art === 'partner');
+  netzKanten = [[kind, 0x9fb2cc, 0.32], [partner, 0xe8b04f, 0.6]].map(([liste, farbe, o]) => {
+    const l = new THREE.LineSegments(kantenGeo(liste.length), new THREE.LineBasicMaterial({ color: farbe, transparent: true, opacity: o, depthWrite: false }));
+    l.userData = { kanten: liste, basis: o };
+    l.renderOrder = -1;
+    gruppe.add(l);
+    return l;
+  });
+  netzHell = new THREE.LineSegments(kantenGeo(64), new THREE.LineBasicMaterial({ color: 0xf2ede4, transparent: true, opacity: 0.95, depthWrite: false }));
+  netzHell.userData = { kanten: [] };
+  gruppe.add(netzHell);
+  // Jahreszahlen am linken Rand, wie die Zeitringe im Fächer
+  const xs = imBild.map(p => p.pos.x), links = Math.min(...xs) - 6, rechts = Math.max(...xs) + 3;
+  const jahre = imBild.map(p => p.jahrE);
+  for (let j = Math.ceil(Math.min(...jahre) / 50) * 50; j <= Math.max(...jahre); j += 50) {
+    const t = textSprite(String(j), { groesse: 2.2, farbe: '#6f7786' });
+    t.position.set(links - 2, yVon(j), 0);
+    gruppe.add(t);
+    gruppe.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(links, yVon(j), -0.5), new THREE.Vector3(rechts, yVon(j), -0.5)]),
+      new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: j % 100 ? 0.07 : 0.14 })));
+  }
+  netzPositionen();
+}
+function linienSetzen(l) {
+  const a = l.geometry.attributes.position.array;
+  l.userData.kanten.forEach((k, i) => {
+    a[i * 6] = k.a.pos.x; a[i * 6 + 1] = k.a.pos.y; a[i * 6 + 2] = k.a.pos.z;
+    a[i * 6 + 3] = k.b.pos.x; a[i * 6 + 4] = k.b.pos.y; a[i * 6 + 5] = k.b.pos.z;
+  });
+  l.geometry.setDrawRange(0, l.userData.kanten.length * 2);
+  l.geometry.attributes.position.needsUpdate = true;
+  l.geometry.computeBoundingSphere();
+}
+function netzPositionen() {
+  for (const k of karten) { k.position.copy(k.userData.p.pos); k.userData.hof.position.copy(k.userData.p.pos); }
+  for (const l of netzKanten || []) linienSetzen(l);
+  if (netzHell) linienSetzen(netzHell);
+}
+// hervorgehobene Linien der gewählten Person (zu Eltern, Kindern und Partnern)
+function netzHellSetzen(p) {
+  netzHell.userData.kanten = p ? sim.kanten.filter(k => k.a === p || k.b === p).slice(0, 64) : [];
+  linienSetzen(netzHell);
+}
+const nachbarn = p => new Set([p, ...p.eltern, ...p.kinderP, ...p.partnerP].filter(x => x.imBild));
+
+function ueberblickNetz() {
+  const box = new THREE.Box3();
+  for (const p of imBild) box.expandByPoint(p.pos);
+  const mitte = box.getCenter(new THREE.Vector3()), groesse = box.getSize(new THREE.Vector3());
+  const frei = Math.max(0.4, 1 - (kopfleiste.getBoundingClientRect().bottom + fussleiste.getBoundingClientRect().height + 16) / innerHeight);
+  const tan = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  const d = Math.max((groesse.y / 2 + 3) / (tan * frei), (groesse.x / 2 + 8) / (tan * camera.aspect));
+  controls.maxDistance = Math.max(260, d * 1.5);
+  scene.fog.far = Math.max(190, d + 150);
+  fliege(mitte.clone().add(new THREE.Vector3(0, 0, d)), mitte);
 }
 
 // --- Kamera-Flüge ---------------------------------------------------------------------------------
@@ -272,6 +463,7 @@ function fliege(pos, ziel, dauer = 1300) {
 // Überblick: Blick schräg von vorn oben; der Abstand richtet sich nach der Bildschirmform, damit alle Karten
 // zwischen Kopf- und Fußleiste ganz zu sehen sind – auch im Hochformat, wo der Fächer breiter ist als der Bildschirm
 function ueberblick() {
+  if (modus.netz) return ueberblickNetz();
   const zs = imBild.map(p => p.pos.z);
   const zmax = Math.max(...zs), spanne = Math.max(20, zmax - Math.min(...zs));
   const H = innerHeight;
@@ -331,7 +523,7 @@ let linienBasis = null;
 const direkteLinie = () => linieZu(gewaehlt ?? linienBasis ?? root);
 
 function aktualisiereDarstellung() {
-  const pfad = gewaehlt ? linieZu(gewaehlt) : null;
+  const pfad = gewaehlt ? (modus.netz ? nachbarn(gewaehlt) : linieZu(gewaehlt)) : null;
   const direkt = !pfad || abspielen ? direkteLinie() : null;
   for (const k of karten) {
     const p = k.userData.p;
@@ -360,6 +552,11 @@ function aktualisiereDarstellung() {
     l.material.opacity = pfad && !abspielen ? (an ? 0.95 : 0.12)
       : direkt?.has(von) && direkt.has(zu) ? 0.95
       : zeitJahr != null ? 0.6 * Math.min(lebenslicht(von, zeitJahr).o, lebenslicht(zu, zeitJahr).o) : 0.45;
+  }
+  if (netzKanten) {
+    const leise = pfad && !abspielen;
+    for (const l of netzKanten) l.material.opacity = leise ? l.userData.basis * 0.35 : l.userData.basis;
+    netzHellSetzen(leise ? gewaehlt : null);
   }
   for (const m of zeitMarken) {
     const d = zeitJahr == null ? null : abstand(m.userData.zeit, zeitJahr);
@@ -395,7 +592,7 @@ function gesichterAnpassen(j) {
     k.userData.gesichtSrc = src;
     ladeBild(src).then(img => {
       if (!img || k.userData.gesichtSrc !== src || !k.parent) return;
-      k.userData.tex.image = zeichneKarte(p, img);
+      k.userData.tex.image = zeichneKarte(p, img, k.userData.aufloesung);
       k.userData.tex.needsUpdate = true;
     });
   }
@@ -419,7 +616,7 @@ function waehle(p, { panelOeffnen = true } = {}) {
   if (!p.imBild) return setzeHauptperson(p);
   gewaehlt = p;
   aktualisiereDarstellung();
-  const vorne = new THREE.Vector3(p.pos.x * 0.15, p.pos.y * 0.15 + 1.5, 15);
+  const vorne = modus.netz ? new THREE.Vector3(0, 0.6, 13) : new THREE.Vector3(p.pos.x * 0.15, p.pos.y * 0.15 + 1.5, 15);
   fliege(p.pos.clone().add(vorne), p.pos.clone());
   if (panelOeffnen) panel.zeige(p);
   document.getElementById('suche').value = '';
@@ -660,7 +857,7 @@ kameraKnopf.addEventListener('click', () => {
 function berechneFolgeZiel(j, aktuell) {
   let menge = imBild.filter(p => (p.geburt ?? p.jahrE) <= j + 1 && p.ende >= j);
   if (!menge.length) menge = imBild.filter(p => Math.abs(p.jahrE - j) < 30);
-  if (!menge.length) return { ziel: new THREE.Vector3(0, 0, zVon(j)), d: 30 };
+  if (!menge.length) return { ziel: modus.netz ? new THREE.Vector3(0, yVon(j), 0) : new THREE.Vector3(0, 0, zVon(j)), d: 30 };
   const ziel = new THREE.Vector3();
   for (const p of menge) ziel.add(p.pos);
   ziel.divideScalar(menge.length);
@@ -915,19 +1112,29 @@ document.getElementById('hauptperson').addEventListener('click', () => {
 suche.addEventListener('blur', () => setTimeout(() => { if (!suche.value) hpWahlEnde(); }, 300));
 suche.addEventListener('keydown', ev => { if (ev.key === 'Escape') { suche.value = ''; hpWahlEnde(); suche.blur(); } });
 document.getElementById('modus-partner').addEventListener('click', () => {
-  modus.partner = !modus.partner;
+  if (modus.netz) modus.netz = false; else modus.partner = !modus.partner;   // aus dem Netz zurück in den Fächer
   panel.schliesse();
   baue();
   ueberblick();
 });
 for (const [knopf, schluessel, anderer] of [['modus-vorfahren', 'vorfahren', 'nachkommen'], ['modus-nachkommen', 'nachkommen', 'vorfahren']])
   document.getElementById(knopf).addEventListener('click', () => {
-    modus[schluessel] = !modus[schluessel];
+    if (modus.netz) modus.netz = false;   // aus dem Netz zurück in den Fächer, mit der bisherigen Auswahl
+    else modus[schluessel] = !modus[schluessel];
     if (!modus.vorfahren && !modus.nachkommen) modus[anderer] = true;   // eine Richtung bleibt immer an
     panel.schliesse();
     baue();
     ueberblick();
   });
+
+// Netz: alle Verwandten frei angeordnet, Linien zu Eltern, Kindern und Partnern (wie die Ansicht „Lineage“)
+document.getElementById('modus-netz').addEventListener('click', () => {
+  stoppeAbspielen();
+  modus.netz = !modus.netz;
+  panel.schliesse();
+  baue();
+  ueberblick();
+});
 
 // Suche über den ganzen Stammbaum; wer nicht in der Ansicht ist, wird Hauptperson
 const liste = document.getElementById('namen');
@@ -1013,6 +1220,7 @@ renderer.setAnimationLoop(now => {
   const dt = Math.min(0.1, (now - (letzterRahmen ?? now)) / 1000);
   letzterRahmen = now;
   for (const m of zeitMarken) m.rotation.y += 0.01;
+  if (sim && simSchritt()) { simSchritt(); netzPositionen(); }   // Netz kommt sanft zur Ruhe
   kameraNachfuehren(dt);
   abspannRollen(dt);
   controls.update();
