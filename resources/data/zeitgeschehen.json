@@ -1,516 +1,159 @@
 [
- {
-  "jahr": 1618,
-  "bis": 1648,
-  "regionen": [
-   "westen"
-  ],
-  "titel": "Dreißigjähriger Krieg",
-  "text": "Der Krieg verwüstet Franken, die Pfalz und Lothringen. Vielerorts stirbt ein Drittel der Bevölkerung oder mehr, ganze Dörfer stehen leer.",
-  "klang": "krieg"
- },
- {
-  "jahr": 1683,
-  "regionen": [
-   "europa"
-  ],
-  "titel": "Die Osmanen vor Wien",
-  "text": "Die zweite Belagerung Wiens scheitert. Danach drängen die Habsburger die Osmanen Schritt für Schritt aus Ungarn zurück.",
-  "klang": "krieg"
- },
- {
-  "jahr": 1688,
-  "bis": 1697,
-  "regionen": [
-   "westen"
-  ],
-  "titel": "Pfälzischer Erbfolgekrieg",
-  "text": "Französische Truppen verwüsten 1689 planmäßig die Pfalz: Heidelberg, Speyer und Worms brennen.",
-  "klang": "krieg"
- },
- {
-  "jahr": 1699,
-  "regionen": [
-   "ungarn"
-  ],
-  "titel": "Friede von Karlowitz",
-  "text": "Fast ganz Ungarn kommt an die Habsburger. Nur das Banat um Temeswar bleibt noch osmanisch."
- },
- {
-  "jahr": 1709,
-  "regionen": [
-   "europa"
-  ],
-  "titel": "Der große Frost",
-  "text": "Der Winter 1708/09 ist einer der kältesten seit Menschengedenken. Es folgen Missernten und Hunger in ganz Europa.",
-  "klang": "kaelte"
- },
- {
-  "jahr": 1716,
-  "regionen": [
-   "banat"
-  ],
-  "titel": "Prinz Eugen erobert Temeswar",
-  "text": "Nach 164 Jahren osmanischer Herrschaft fällt die Festung Temeswar im Oktober 1716 an die Habsburger.",
-  "klang": "krieg"
- },
- {
-  "jahr": 1718,
-  "regionen": [
-   "banat"
-  ],
-  "titel": "Das Banat wird kaiserlich",
-  "text": "Mit dem Frieden von Passarowitz wird das Banat habsburgische Krondomäne und direkt von Wien aus verwaltet. Gouverneur Graf Mercy lässt Sümpfe trockenlegen und Dörfer planen."
- },
- {
-  "jahr": 1722,
-  "bis": 1726,
-  "regionen": [
-   "banat",
-   "westen"
-  ],
-  "titel": "Erster Schwabenzug",
-  "text": "Unter Karl VI. ziehen Siedler aus Lothringen, der Pfalz, dem Trierer Land und Franken auf der Donau, in den „Ulmer Schachteln“, ins Banat.",
-  "klang": "wasser"
- },
- {
-  "jahr": 1738,
-  "bis": 1739,
-  "regionen": [
-   "banat"
-  ],
-  "titel": "Türkenkrieg und Pest",
-  "text": "Krieg und Pest entvölkern viele der jungen Siedlerdörfer im Banat.",
-  "klang": "krieg+not"
- },
- {
-  "jahr": 1740,
-  "regionen": [
-   "europa"
-  ],
-  "titel": "Maria Theresia",
-  "text": "Maria Theresia übernimmt die Herrschaft. Unter ihr wird die Besiedlung des Banats zum großen Staatsprojekt."
- },
- {
-  "jahr": 1763,
-  "bis": 1773,
-  "regionen": [
-   "banat",
-   "westen"
-  ],
-  "titel": "Theresianischer Schwabenzug",
-  "text": "Die größte Ansiedlungswelle: Tausende Familien aus Lothringen, Luxemburg, der Pfalz und dem Trierer Land ziehen ins Banat. Ein Spruch der Siedler: „Den Ersten der Tod, den Zweiten die Not, den Dritten das Brot.“",
-  "klang": "wasser"
- },
- {
-  "jahr": 1765,
-  "regionen": [
-   "banat"
-  ],
-  "titel": "Billed wird gegründet",
-  "text": "Billed entsteht als planmäßig angelegtes Siedlerdorf mit geraden Gassen und gleich großen Hausplätzen.",
-  "klang": "glocken"
- },
- {
-  "jahr": 1766,
-  "regionen": [
-   "westen"
-  ],
-  "titel": "Lothringen wird französisch",
-  "text": "Nach dem Tod von Herzog Stanislaus fällt Lothringen an Frankreich. Viele deutschsprachige Lothringer suchen ihr Glück im Banat."
- },
- {
-  "jahr": 1771,
-  "regionen": [
-   "banat"
-  ],
-  "titel": "Eisenwerk Reschitza",
-  "text": "Im Banater Bergland wird in Reschitza das Eisenwerk gegründet. Bergleute und Hüttenarbeiter kommen aus der Steiermark, Böhmen und Tirol."
- },
- {
-  "jahr": 1772,
-  "regionen": [
-   "banat"
-  ],
-  "titel": "Triebswetter wird besiedelt",
-  "text": "Im Frühjahr 1772 werden Triebswetter, Gottlob und Ostern auf bisherigem Weideland angelegt. Der Name ehrt den kaiserlichen Landvermesser Anton Triebswetter.",
-  "klang": "glocken"
- },
- {
-  "jahr": 1778,
-  "regionen": [
-   "banat",
-   "ungarn"
-  ],
-  "titel": "Das Banat kommt zu Ungarn",
-  "text": "Das Banat wird dem Königreich Ungarn eingegliedert. Der Süden bleibt als Militärgrenze unter Wiener Verwaltung."
- },
- {
-  "jahr": 1782,
-  "bis": 1787,
-  "regionen": [
-   "banat",
-   "westen"
-  ],
-  "titel": "Josephinischer Schwabenzug",
-  "text": "Mit dem Ansiedlungspatent von 1782 wirbt Joseph II. neue Kolonisten an. Viele kommen 1784/85 aus Lothringen, dem Saarland, der Pfalz und dem Trierer Land.",
-  "klang": "wasser"
- },
- {
-  "jahr": 1788,
-  "bis": 1791,
-  "regionen": [
-   "banat"
-  ],
-  "titel": "Letzter Türkenkrieg",
-  "text": "Osmanische Truppen fallen 1788 ins Banat ein. Viele Dörfer werden geplündert, die Bewohner fliehen.",
-  "klang": "krieg"
- },
- {
-  "jahr": 1789,
-  "regionen": [
-   "europa"
-  ],
-  "titel": "Französische Revolution",
-  "text": "In Paris beginnt die Revolution. Die folgenden Kriege prägen Europa für ein Vierteljahrhundert.",
-  "klang": "unruhe"
- },
- {
-  "jahr": 1816,
-  "regionen": [
-   "europa"
-  ],
-  "titel": "Das Jahr ohne Sommer",
-  "text": "Nach dem Ausbruch des Vulkans Tambora bleibt der Sommer kalt und nass. Missernten und Hunger in ganz Mitteleuropa.",
-  "klang": "kaelte+not"
- },
- {
-  "jahr": 1817,
-  "regionen": [
-   "banat"
-  ],
-  "titel": "Theater in Oravitza",
-  "text": "Die Bergstadt Oravitza bekommt ein Theater, heute das älteste erhaltene Theatergebäude Rumäniens.",
-  "klang": "jubel"
- },
- {
-  "jahr": 1831,
-  "regionen": [
-   "ungarn",
-   "banat"
-  ],
-  "titel": "Cholera",
-  "text": "Die erste Cholerawelle erreicht Ungarn und das Banat. Tausende sterben.",
-  "klang": "not"
- },
- {
-  "jahr": 1848,
-  "bis": 1849,
-  "regionen": [
-   "ungarn",
-   "banat"
-  ],
-  "titel": "Revolution in Ungarn",
-  "text": "Die Bauern werden von Fron und Zehnt befreit. Im Freiheitskrieg hält die Festung Temeswar 1849 eine 107-tägige Belagerung durch ungarische Truppen aus.",
-  "klang": "krieg+unruhe"
- },
- {
-  "jahr": 1849,
-  "bis": 1860,
-  "regionen": [
-   "banat"
-  ],
-  "titel": "Kronland Serbische Woiwodschaft und Temescher Banat",
-  "text": "Für ein Jahrzehnt wird das Banat ein eigenes österreichisches Kronland mit der Hauptstadt Temeswar, danach wieder Teil Ungarns."
- },
- {
-  "jahr": 1857,
-  "regionen": [
-   "banat"
-  ],
-  "titel": "Die Eisenbahn kommt",
-  "text": "Die Bahnlinie Szegedin–Temeswar wird eröffnet. Getreide aus der Banater Heide erreicht nun schnell Wien und Budapest.",
-  "klang": "zug"
- },
- {
-  "jahr": 1863,
-  "regionen": [
-   "banat"
-  ],
-  "titel": "Gebirgsbahn Oravitza–Anina",
-  "text": "Die kühne Bergbahn von Oravitza nach Anina wird eröffnet, eine der ersten Gebirgsbahnen Europas.",
-  "klang": "zug"
- },
- {
-  "jahr": 1867,
-  "regionen": [
-   "ungarn",
-   "banat"
-  ],
-  "titel": "Ausgleich: Österreich-Ungarn",
-  "text": "Die Doppelmonarchie entsteht. In Ungarn beginnt eine starke Magyarisierung: Schulen, Ämter und oft auch Familiennamen werden ungarisch."
- },
- {
-  "jahr": 1872,
-  "regionen": [
-   "banat"
-  ],
-  "titel": "Ende der Militärgrenze",
-  "text": "Die Militärgrenze im Süden des Banats wird aufgelöst und zivil verwaltet."
- },
- {
-  "jahr": 1879,
-  "regionen": [
-   "ungarn"
-  ],
-  "titel": "Flut von Szegedin",
-  "text": "Die Theiß überflutet im März Szegedin, fast die ganze Stadt wird zerstört. Auch die Gegend um Hódmezővásárhely ist betroffen.",
-  "klang": "flut"
- },
- {
-  "jahr": 1884,
-  "regionen": [
-   "banat"
-  ],
-  "titel": "Elektrisches Licht in Temeswar",
-  "text": "Temeswar ist die erste Stadt Europas mit elektrischer Straßenbeleuchtung.",
-  "klang": "strom"
- },
- {
-  "jahr": 1890,
-  "bis": 1914,
-  "regionen": [
-   "banat"
-  ],
-  "titel": "Auswanderung nach Amerika",
-  "text": "Zehntausende Banater wandern in die USA aus, viele kehren mit Erspartem zurück und kaufen Land.",
-  "klang": "wasser"
- },
- {
-  "jahr": 1914,
-  "bis": 1918,
-  "regionen": [
-   "europa"
-  ],
-  "titel": "Erster Weltkrieg",
-  "text": "Die Banater Männer dienen in der k.u.k. Armee an der Ost- und der Italienfront. Viele kehren nicht zurück.",
-  "klang": "krieg1+totenglocke"
- },
- {
-  "jahr": 1918,
-  "regionen": [
-   "europa"
-  ],
-  "titel": "Ende der Donaumonarchie",
-  "text": "Im Herbst 1918 zerfällt Österreich-Ungarn. Neue Staaten entstehen.",
-  "klang": "glocken"
- },
- {
-  "jahr": 1920,
-  "regionen": [
-   "banat"
-  ],
-  "titel": "Vertrag von Trianon",
-  "text": "Das Banat wird geteilt: Der größte Teil mit Temeswar kommt an Rumänien, der Westen an das Königreich der Serben, Kroaten und Slowenen, ein kleiner Rest bleibt bei Ungarn."
- },
- {
-  "jahr": 1923,
-  "regionen": [
-   "deutschland"
-  ],
-  "titel": "Inflation",
-  "text": "In Deutschland wird das Geld wertlos, ein Brot kostet am Ende Milliarden Mark.",
-  "klang": "unruhe"
- },
- {
-  "jahr": 1929,
-  "regionen": [
-   "europa"
-  ],
-  "titel": "Weltwirtschaftskrise",
-  "text": "Der Börsenkrach in New York stürzt die Welt in eine Krise. Getreidepreise fallen, auch die Banater Bauern verarmen.",
-  "klang": "not"
- },
- {
-  "jahr": 1933,
-  "regionen": [
-   "deutschland"
-  ],
-  "titel": "NS-Diktatur",
-  "text": "Hitler kommt an die Macht. Die Diktatur führt in den Krieg und den Völkermord an den europäischen Juden.",
-  "klang": "marsch",
-  "klangBis": 1939
- },
- {
-  "jahr": 1939,
-  "bis": 1945,
-  "regionen": [
-   "europa"
-  ],
-  "titel": "Zweiter Weltkrieg",
-  "text": "Der Krieg kostet weltweit über 60 Millionen Menschen das Leben.",
-  "klang": "krieg2+totenglocke"
- },
- {
-  "jahr": 1943,
-  "bis": 1945,
-  "regionen": [
-   "europa"
-  ],
-  "titel": "Luftkrieg",
-  "klang": "luftkrieg",
-  "nurKlang": true,
-  "text": "Nur für die Geräusche: Luftalarm und Bombenangriffe der letzten Kriegsjahre."
- },
- {
-  "jahr": 1943,
-  "regionen": [
-   "banat"
-  ],
-  "titel": "Rumäniendeutsche in der Waffen-SS",
-  "text": "Durch ein Abkommen zwischen Rumänien und Deutschland werden die meisten wehrfähigen Banater Schwaben zur Waffen-SS eingezogen."
- },
- {
-  "jahr": 1944,
-  "regionen": [
-   "banat"
-  ],
-  "titel": "Rumänien wechselt die Seiten",
-  "text": "Am 23. August 1944 schließt Rumänien Waffenstillstand mit der Sowjetunion. Im Herbst fliehen viele Banater Schwaben mit der zurückweichenden Front nach Westen.",
-  "klang": "krieg2"
- },
- {
-  "jahr": 1945,
-  "regionen": [
-   "banat"
-  ],
-  "titel": "Deportation in die Sowjetunion",
-  "text": "Im Januar werden rund 70.000 Rumäniendeutsche, Männer von 17 bis 45 und Frauen von 18 bis 30 Jahren, zur Zwangsarbeit in die Sowjetunion verschleppt. Im März enteignet die Bodenreform die deutschen Bauern.",
-  "klang": "zug+not+kaelte"
- },
- {
-  "jahr": 1945,
-  "regionen": [
-   "deutschland"
-  ],
-  "titel": "Kriegsende",
-  "text": "Deutschland liegt in Trümmern. Millionen Flüchtlinge und Vertriebene suchen eine neue Heimat.",
-  "klang": "glocken"
- },
- {
-  "jahr": 1946,
-  "bis": 1970,
-  "regionen": [
-   "deutschland"
-  ],
-  "titel": "Geretsried entsteht",
-  "text": "Ab 1946 ziehen Heimatvertriebene in die Baracken und Bunker zweier ehemaliger Rüstungswerke im Wolfratshauser Forst. 1950 wird Geretsried eine eigene Gemeinde, 1970 Stadt."
- },
- {
-  "jahr": 1947,
-  "regionen": [
-   "banat"
-  ],
-  "titel": "Volksrepublik Rumänien",
-  "text": "Der König muss abdanken, die Kommunisten übernehmen die Macht. 1948 werden Fabriken, Banken und Läden verstaatlicht."
- },
- {
-  "jahr": 1949,
-  "regionen": [
-   "deutschland"
-  ],
-  "titel": "Bundesrepublik Deutschland",
-  "text": "Das Grundgesetz tritt in Kraft, die Bundesrepublik wird gegründet."
- },
- {
-  "jahr": 1949,
-  "bis": 1953,
-  "regionen": [
-   "banat"
-  ],
-  "titel": "Donau-Schwarzmeer-Kanal",
-  "text": "Das kommunistische Regime lässt den Kanal vor allem von politischen Häftlingen und Zwangsarbeitern bauen. Tausende sterben, 1953 wird der Bau eingestellt.",
-  "klang": "not"
- },
- {
-  "jahr": 1951,
-  "bis": 1956,
-  "regionen": [
-   "banat"
-  ],
-  "titel": "Deportation in den Bărăgan",
-  "text": "In der Nacht zum 18. Juni 1951 werden rund 40.000 Menschen aus einem 25 Kilometer breiten Streifen an der jugoslawischen Grenze in die Bărăgan-Steppe verschleppt. Sie müssen dort ihre Dörfer selbst bauen und dürfen erst ab 1956 heimkehren.",
-  "klang": "not+kaelte"
- },
- {
-  "jahr": 1956,
-  "regionen": [
-   "ungarn"
-  ],
-  "titel": "Ungarischer Volksaufstand",
-  "text": "Der Aufstand gegen die kommunistische Herrschaft wird von sowjetischen Panzern niedergeschlagen.",
-  "klang": "gefecht+unruhe"
- },
- {
-  "jahr": 1965,
-  "regionen": [
-   "banat"
-  ],
-  "titel": "Ceaușescu",
-  "text": "Nicolae Ceaușescu übernimmt die Führung Rumäniens. Seine Herrschaft wird immer repressiver."
- },
- {
-  "jahr": 1972,
-  "regionen": [
-   "deutschland"
-  ],
-  "titel": "Olympische Spiele in München",
-  "text": "München empfängt die Welt. Der Anschlag auf die israelische Mannschaft überschattet die Spiele.",
-  "klang": "jubel"
- },
- {
-  "jahr": 1978,
-  "regionen": [
-   "banat",
-   "deutschland"
-  ],
-  "titel": "Freikauf der Rumäniendeutschen",
-  "text": "Helmut Schmidt und Ceaușescu vereinbaren die Ausreise von jährlich rund 11.000 Rumäniendeutschen, die Bundesrepublik zahlt dafür ein Kopfgeld."
- },
- {
-  "jahr": 1989,
-  "regionen": [
-   "banat"
-  ],
-  "titel": "Revolution in Temeswar",
-  "text": "Am 16. Dezember beginnt in Temeswar der Aufstand, der Ceaușescu stürzt.",
-  "klang": "gefecht+unruhe"
- },
- {
-  "jahr": 1989,
-  "regionen": [
-   "deutschland"
-  ],
-  "titel": "Mauerfall",
-  "text": "Am 9. November öffnet die DDR die Grenze.",
-  "klang": "jubel"
- },
- {
-  "jahr": 1990,
-  "regionen": [
-   "banat",
-   "deutschland"
-  ],
-  "titel": "Große Ausreise",
-  "text": "Innerhalb weniger Jahre verlassen die meisten Banater Schwaben Rumänien. Am 3. Oktober wird Deutschland wiedervereinigt.",
-  "klang": "zug"
- },
- {
-  "jahr": 2007,
-  "regionen": [
-   "banat"
-  ],
-  "titel": "Rumänien in der EU",
-  "text": "Rumänien tritt der Europäischen Union bei."
- }
+{"jahr": 1618, "bis": 1648, "regionen": ["westen"], "gruppe": "dreissigjaehriger-krieg", "titel": "Dreißigjähriger Krieg", "text": "Der Krieg verwüstet Franken, die Pfalz und Lothringen. Vielerorts stirbt ein Drittel der Bevölkerung oder mehr, ganze Dörfer stehen leer.", "titel_en": "Thirty Years' War", "text_en": "The war devastates Franconia, the Palatinate and Lorraine. In many places a third of the population or more dies, and whole villages stand empty.", "klang": "krieg"},
+{"jahr": 1618, "bis": 1648, "regionen": ["europa"], "gruppe": "dreissigjaehriger-krieg", "titel": "Dreißigjähriger Krieg", "text": "Der Krieg zwischen katholischen und protestantischen Mächten verwüstet weite Teile Mitteleuropas. Im Reich stirbt vielerorts ein Drittel der Bevölkerung oder mehr.", "titel_en": "Thirty Years' War", "text_en": "The war between Catholic and Protestant powers devastates large parts of Central Europe. In many places in the Empire a third of the population or more dies.", "klang": "krieg"},
+{"jahr": 1620, "regionen": ["usa"], "titel": "Die Mayflower landet", "text": "Englische Glaubensflüchtlinge, die „Pilgerväter“, gründen im Dezember 1620 die Kolonie Plymouth im heutigen Massachusetts. Die Hälfte stirbt im ersten Winter.", "titel_en": "The Mayflower lands", "text_en": "English religious dissenters, the “Pilgrim Fathers”, found Plymouth Colony in present-day Massachusetts in December 1620. Half of them die in the first winter.", "klang": "wasser"},
+{"jahr": 1665, "bis": 1666, "regionen": ["grossbritannien"], "gruppe": "pest", "titel": "Pest und Großer Brand in London", "text": "Die Große Pest tötet 1665 rund 100.000 Londoner, fast ein Viertel der Einwohner. Im September 1666 zerstört der Große Brand weite Teile der Stadt.", "titel_en": "Plague and the Great Fire of London", "text_en": "The Great Plague of 1665 kills around 100,000 Londoners, almost a quarter of the population. In September 1666 the Great Fire destroys much of the city.", "klang": "totenglocke"},
+{"jahr": 1665, "bis": 1720, "regionen": ["europa"], "gruppe": "pest", "titel": "Die letzten Pestwellen", "text": "Immer wieder bricht die Pest aus, so 1665 in London, 1679 in Wien und 1708–1713 im Ostseeraum. 1720 wütet sie in Marseille zum letzten Mal in Westeuropa.", "titel_en": "The last plague waves", "text_en": "Plague breaks out again and again, as in London in 1665, Vienna in 1679 and the Baltic region in 1708–1713. In 1720 it strikes Western Europe for the last time, in Marseille.", "klang": "totenglocke"},
+{"jahr": 1683, "regionen": ["europa"], "titel": "Die Osmanen vor Wien", "text": "Die zweite Belagerung Wiens scheitert. Danach drängen die Habsburger die Osmanen Schritt für Schritt aus Ungarn zurück.", "titel_en": "The Ottomans at Vienna", "text_en": "The second siege of Vienna fails. Afterwards the Habsburgs push the Ottomans out of Hungary step by step.", "klang": "krieg"},
+{"jahr": 1686, "regionen": ["ungarn"], "titel": "Rückeroberung von Ofen", "text": "Nach 145 Jahren osmanischer Herrschaft erobern kaiserliche Truppen am 2. September 1686 Ofen (Buda) zurück. Ab 1689 werben die Habsburger Siedler für das verwüstete Land an.", "titel_en": "Recapture of Buda", "text_en": "After 145 years of Ottoman rule, imperial troops retake Buda on 2 September 1686. From 1689 the Habsburgs recruit settlers for the devastated land.", "klang": "krieg"},
+{"jahr": 1688, "bis": 1697, "regionen": ["westen"], "titel": "Pfälzischer Erbfolgekrieg", "text": "Französische Truppen verwüsten 1689 planmäßig die Pfalz: Heidelberg, Speyer und Worms brennen.", "titel_en": "War of the Palatine Succession", "text_en": "In 1689 French troops systematically lay waste to the Palatinate: Heidelberg, Speyer and Worms are burned.", "klang": "krieg"},
+{"jahr": 1699, "regionen": ["ungarn"], "titel": "Friede von Karlowitz", "text": "Fast ganz Ungarn kommt an die Habsburger. Nur das Banat um Temeswar bleibt noch osmanisch.", "titel_en": "Treaty of Karlowitz", "text_en": "Almost all of Hungary passes to the Habsburgs. Only the Banat around Timișoara (Temeswar) remains Ottoman for the time being."},
+{"jahr": 1709, "regionen": ["europa"], "titel": "Der große Frost", "text": "Der Winter 1708/09 ist einer der kältesten seit Menschengedenken. Es folgen Missernten und Hunger in ganz Europa.", "titel_en": "The Great Frost", "text_en": "The winter of 1708/09 is one of the coldest in living memory. Crop failures and famine follow across Europe.", "klang": "kaelte"},
+{"jahr": 1716, "regionen": ["banat"], "titel": "Prinz Eugen erobert Temeswar", "text": "Nach 164 Jahren osmanischer Herrschaft fällt die Festung Temeswar im Oktober 1716 an die Habsburger.", "titel_en": "Prince Eugene takes Timișoara", "text_en": "After 164 years of Ottoman rule, the fortress of Timișoara (Temeswar) falls to the Habsburgs in October 1716.", "klang": "krieg"},
+{"jahr": 1718, "regionen": ["banat"], "titel": "Das Banat wird kaiserlich", "text": "Mit dem Frieden von Passarowitz wird das Banat habsburgische Krondomäne und direkt von Wien aus verwaltet. Gouverneur Graf Mercy lässt Sümpfe trockenlegen und Dörfer planen.", "titel_en": "The Banat becomes imperial land", "text_en": "Under the Treaty of Passarowitz the Banat becomes a Habsburg crown domain governed directly from Vienna. Governor Count Mercy has marshes drained and villages planned."},
+{"jahr": 1720, "bis": 1722, "regionen": ["frankreich"], "gruppe": "pest", "titel": "Pest in Marseille", "text": "Ein Handelsschiff bringt 1720 die Pest nach Marseille. In der Stadt und in der Provence sterben rund 100.000 Menschen.", "titel_en": "Plague in Marseille", "text_en": "In 1720 a merchant ship brings the plague to Marseille. Around 100,000 people die in the city and in Provence.", "klang": "totenglocke"},
+{"jahr": 1722, "bis": 1726, "regionen": ["banat", "westen"], "titel": "Erster Schwabenzug", "text": "Unter Karl VI. ziehen Siedler aus Lothringen, der Pfalz, dem Trierer Land und Franken auf der Donau, in den „Ulmer Schachteln“, ins Banat.", "titel_en": "First Swabian migration", "text_en": "Under Charles VI, settlers from Lorraine, the Palatinate, the Trier region and Franconia travel down the Danube to the Banat in the boats known as “Ulm boxes”.", "klang": "wasser"},
+{"jahr": 1738, "bis": 1739, "regionen": ["banat"], "titel": "Türkenkrieg und Pest", "text": "Krieg und Pest entvölkern viele der jungen Siedlerdörfer im Banat.", "titel_en": "Ottoman war and plague", "text_en": "War and plague depopulate many of the young settler villages in the Banat.", "klang": "krieg+not"},
+{"jahr": 1740, "regionen": ["banat"], "gruppe": "maria-theresia", "titel": "Maria Theresia", "text": "Maria Theresia übernimmt die Herrschaft. Unter ihr wird die Besiedlung des Banats zum großen Staatsprojekt.", "titel_en": "Maria Theresa", "text_en": "Maria Theresa comes to power. Under her rule the settlement of the Banat becomes a major state project."},
+{"jahr": 1740, "bis": 1748, "regionen": ["europa"], "gruppe": "maria-theresia", "titel": "Maria Theresia und der Erbfolgekrieg", "text": "Maria Theresia erbt 1740 die habsburgischen Länder. Im Österreichischen Erbfolgekrieg behauptet sie sich bis 1748, verliert aber Schlesien an Preußen.", "titel_en": "Maria Theresa and the War of Succession", "text_en": "Maria Theresa inherits the Habsburg lands in 1740. In the War of the Austrian Succession she holds her ground until 1748 but loses Silesia to Prussia."},
+{"jahr": 1756, "bis": 1763, "regionen": ["europa"], "titel": "Siebenjähriger Krieg", "text": "Preußen und Großbritannien kämpfen gegen Österreich, Frankreich und Russland. Gekämpft wird in Europa, Nordamerika und Indien; Preußen behält Schlesien.", "titel_en": "Seven Years' War", "text_en": "Prussia and Great Britain fight Austria, France and Russia. The war is fought in Europe, North America and India; Prussia keeps Silesia.", "klang": "krieg"},
+{"jahr": 1763, "bis": 1773, "regionen": ["banat", "westen"], "titel": "Theresianischer Schwabenzug", "text": "Die größte Ansiedlungswelle: Tausende Familien aus Lothringen, Luxemburg, der Pfalz und dem Trierer Land ziehen ins Banat. Ein Spruch der Siedler: „Den Ersten der Tod, den Zweiten die Not, den Dritten das Brot.“", "titel_en": "Theresian Swabian migration", "text_en": "The largest wave of settlement: thousands of families from Lorraine, Luxembourg, the Palatinate and the Trier region move to the Banat. A settlers' saying: “Death for the first, need for the second, bread for the third.”", "klang": "wasser"},
+{"jahr": 1763, "regionen": ["russland"], "titel": "Deutsche Siedler an der Wolga", "text": "Mit ihrem Manifest von 1763 wirbt Zarin Katharina II. ausländische Siedler an. Bis 1767 entstehen an der unteren Wolga über 100 deutsche Kolonien.", "titel_en": "German settlers on the Volga", "text_en": "With her manifesto of 1763, Empress Catherine II invites foreign settlers. By 1767 more than 100 German colonies have been founded on the lower Volga."},
+{"jahr": 1766, "regionen": ["westen"], "titel": "Lothringen wird französisch", "text": "Nach dem Tod von Herzog Stanislaus fällt Lothringen an Frankreich. Viele deutschsprachige Lothringer suchen ihr Glück im Banat.", "titel_en": "Lorraine becomes French", "text_en": "After the death of Duke Stanislaus, Lorraine passes to France. Many German-speaking Lorrainers seek their fortune in the Banat."},
+{"jahr": 1771, "regionen": ["banat"], "titel": "Eisenwerk Reschitza", "text": "Im Banater Bergland wird in Reschitza das Eisenwerk gegründet. Bergleute und Hüttenarbeiter kommen aus der Steiermark, Böhmen und Tirol.", "titel_en": "Reșița ironworks", "text_en": "The ironworks at Reșița (Reschitza) is founded in the Banat highlands. Miners and smelters come from Styria, Bohemia and Tyrol."},
+{"jahr": 1772, "bis": 1795, "regionen": ["polen"], "titel": "Teilungen Polens", "text": "Russland, Preußen und Österreich teilen Polen 1772, 1793 und 1795 unter sich auf. Bis 1918 gibt es keinen unabhängigen polnischen Staat mehr.", "titel_en": "Partitions of Poland", "text_en": "Russia, Prussia and Austria divide Poland among themselves in 1772, 1793 and 1795. There is no independent Polish state again until 1918."},
+{"jahr": 1776, "bis": 1783, "regionen": ["usa"], "titel": "Unabhängigkeit der USA", "text": "Am 4. Juli 1776 erklären sich 13 britische Kolonien in Nordamerika für unabhängig. Nach dem Unabhängigkeitskrieg erkennt Großbritannien 1783 die USA an.", "titel_en": "American independence", "text_en": "On 4 July 1776 thirteen British colonies in North America declare their independence. After the War of Independence, Britain recognises the United States in 1783.", "klang": "krieg"},
+{"jahr": 1778, "regionen": ["banat", "ungarn"], "titel": "Das Banat kommt zu Ungarn", "text": "Das Banat wird dem Königreich Ungarn eingegliedert. Der Süden bleibt als Militärgrenze unter Wiener Verwaltung.", "titel_en": "The Banat passes to Hungary", "text_en": "The Banat is incorporated into the Kingdom of Hungary. The south remains a Military Frontier under Viennese administration."},
+{"jahr": 1782, "bis": 1787, "regionen": ["banat", "westen"], "titel": "Josephinischer Schwabenzug", "text": "Mit dem Ansiedlungspatent von 1782 wirbt Joseph II. neue Kolonisten an. Viele kommen 1784/85 aus Lothringen, dem Saarland, der Pfalz und dem Trierer Land.", "titel_en": "Josephine Swabian migration", "text_en": "With his settlement patent of 1782, Joseph II recruits new colonists. Many arrive in 1784/85 from Lorraine, the Saarland, the Palatinate and the Trier region.", "klang": "wasser"},
+{"jahr": 1788, "bis": 1791, "regionen": ["banat"], "titel": "Letzter Türkenkrieg", "text": "Osmanische Truppen fallen 1788 ins Banat ein. Viele Dörfer werden geplündert, die Bewohner fliehen.", "titel_en": "The last Ottoman war", "text_en": "Ottoman troops invade the Banat in 1788. Many villages are plundered and their inhabitants flee.", "klang": "krieg"},
+{"jahr": 1788, "regionen": ["australien"], "titel": "Die First Fleet in Sydney", "text": "Am 26. Januar 1788 gründen Briten mit über 700 Sträflingen die Kolonie New South Wales. Für die Aborigines beginnt der Verlust ihres Landes.", "titel_en": "The First Fleet at Sydney", "text_en": "On 26 January 1788 the British found the colony of New South Wales with more than 700 convicts. For Aboriginal people the loss of their land begins.", "klang": "wasser"},
+{"jahr": 1789, "regionen": ["europa"], "titel": "Französische Revolution", "text": "In Paris beginnt die Revolution. Die folgenden Kriege prägen Europa für ein Vierteljahrhundert.", "titel_en": "French Revolution", "text_en": "The revolution begins in Paris. The wars that follow shape Europe for a quarter of a century.", "klang": "unruhe"},
+{"jahr": 1801, "bis": 1814, "regionen": ["westen"], "titel": "Das linke Rheinufer wird französisch", "text": "Im Frieden von Lunéville 1801 fällt das linke Rheinufer mit der linksrheinischen Pfalz, Trier und dem Saarland an Frankreich. Bis 1814 gelten dort französisches Recht und die Wehrpflicht.", "titel_en": "The left bank of the Rhine becomes French", "text_en": "Under the Treaty of Lunéville in 1801 the left bank of the Rhine, with the western Palatinate, Trier and the Saar, passes to France. French law and conscription apply there until 1814."},
+{"jahr": 1803, "bis": 1815, "regionen": ["europa"], "titel": "Napoleonische Kriege", "text": "Napoleons Armeen ziehen durch ganz Europa, Millionen Männer werden eingezogen. 1815 ordnet der Wiener Kongress Europa neu, Napoleon wird bei Waterloo endgültig geschlagen.", "titel_en": "Napoleonic Wars", "text_en": "Napoleon's armies march across Europe and millions of men are conscripted. In 1815 the Congress of Vienna redraws the map of Europe, and Napoleon is finally defeated at Waterloo.", "klang": "krieg"},
+{"jahr": 1810, "bis": 1825, "regionen": ["lateinamerika"], "titel": "Unabhängigkeit Lateinamerikas", "text": "Zwischen 1810 und 1825 lösen sich die meisten spanischen Kolonien in Amerika vom Mutterland. Brasilien wird 1822 von Portugal unabhängig.", "titel_en": "Latin American independence", "text_en": "Between 1810 and 1825 most of Spain's American colonies break away from the mother country. Brazil becomes independent from Portugal in 1822.", "klang": "krieg"},
+{"jahr": 1816, "regionen": ["europa"], "titel": "Das Jahr ohne Sommer", "text": "Nach dem Ausbruch des Vulkans Tambora bleibt der Sommer kalt und nass. Missernten und Hunger in ganz Mitteleuropa.", "titel_en": "The Year Without a Summer", "text_en": "After the eruption of the Tambora volcano the summer stays cold and wet. Crop failures and hunger spread throughout Central Europe.", "klang": "kaelte+not"},
+{"jahr": 1831, "regionen": ["ungarn", "banat"], "gruppe": "cholera-1831", "titel": "Cholera", "text": "Die erste Cholerawelle erreicht Ungarn und das Banat. Tausende sterben.", "titel_en": "Cholera", "text_en": "The first cholera epidemic reaches Hungary and the Banat. Thousands die.", "klang": "not"},
+{"jahr": 1831, "bis": 1832, "regionen": ["europa"], "gruppe": "cholera-1831", "titel": "Die Cholera erreicht Europa", "text": "Die Cholera kommt aus Asien über Russland nach Europa. 1831/32 sterben in vielen Städten Tausende, die Ursache der Seuche ist noch unbekannt.", "titel_en": "Cholera reaches Europe", "text_en": "Cholera spreads from Asia via Russia to Europe. In 1831/32 thousands die in many cities; the cause of the disease is still unknown.", "klang": "not"},
+{"jahr": 1835, "regionen": ["deutschland"], "gruppe": "eisenbahn", "titel": "Die erste deutsche Eisenbahn", "text": "Am 7. Dezember 1835 fährt die Lokomotive „Adler“ von Nürnberg nach Fürth. Bald verbinden Bahnlinien die großen Städte.", "titel_en": "The first German railway", "text_en": "On 7 December 1835 the locomotive “Adler” runs from Nuremberg to Fürth. Railway lines soon link the major cities.", "klang": "zug"},
+{"jahr": 1840, "bis": 1914, "regionen": ["europa"], "titel": "Industrialisierung", "text": "Von England ausgehend verändern Dampfmaschinen, Fabriken und Eisenbahnen das Leben. Viele verlassen die Dörfer und arbeiten in den wachsenden Industriestädten.", "titel_en": "Industrialisation", "text_en": "Spreading from England, steam engines, factories and railways transform daily life. Many people leave their villages to work in the growing industrial cities."},
+{"jahr": 1845, "bis": 1849, "regionen": ["irland"], "gruppe": "hunger-1846", "titel": "Große Hungersnot in Irland", "text": "Die Kartoffelfäule vernichtet mehrere Ernten. Rund eine Million Menschen sterben, über eine Million wandern aus, vor allem nach Amerika.", "titel_en": "The Great Famine in Ireland", "text_en": "Potato blight destroys several harvests. Around one million people die and more than a million emigrate, most of them to America.", "klang": "not"},
+{"jahr": 1846, "bis": 1847, "regionen": ["europa"], "gruppe": "hunger-1846", "titel": "Hungerjahre 1846/47", "text": "Kartoffelfäule und Missernten lösen in weiten Teilen Europas Hunger und Teuerung aus. Die Not trägt zu den Revolutionen von 1848 bei.", "titel_en": "The hungry years of 1846/47", "text_en": "Potato blight and crop failures cause hunger and soaring prices across much of Europe. The hardship contributes to the revolutions of 1848.", "klang": "not"},
+{"jahr": 1846, "bis": 1893, "regionen": ["deutschland"], "gruppe": "auswanderung-amerika", "titel": "Auswanderung aus Deutschland", "text": "Im 19. Jahrhundert wandern rund fünf Millionen Deutsche nach Amerika aus, meist über Bremen und Hamburg. Höhepunkte sind die Jahre um 1854 und um 1882.", "titel_en": "Emigration from Germany", "text_en": "In the 19th century around five million Germans emigrate to America, mostly via Bremen and Hamburg. Emigration peaks around 1854 and again around 1882.", "klang": "wasser"},
+{"jahr": 1846, "bis": 1914, "regionen": ["europa"], "gruppe": "auswanderung-amerika", "titel": "Auswanderung nach Amerika", "text": "Armut, Hunger und Landmangel treiben Millionen Europäer über den Atlantik, zuerst vor allem Iren, Deutsche und Briten, ab etwa 1880 zunehmend Italiener und Osteuropäer.", "titel_en": "Emigration to America", "text_en": "Poverty, hunger and land shortage drive millions of Europeans across the Atlantic, at first mainly Irish, Germans and Britons, from about 1880 increasingly Italians and Eastern Europeans.", "klang": "wasser"},
+{"jahr": 1848, "bis": 1849, "regionen": ["ungarn", "banat"], "gruppe": "revolution-1848", "titel": "Revolution in Ungarn", "text": "Die Bauern werden von Fron und Zehnt befreit. Im Freiheitskrieg hält die Festung Temeswar 1849 eine 107-tägige Belagerung durch ungarische Truppen aus.", "titel_en": "Revolution in Hungary", "text_en": "Peasants are freed from labour dues and tithes. In the War of Independence the fortress of Timișoara withstands a 107-day siege by Hungarian troops in 1849.", "klang": "krieg+unruhe"},
+{"jahr": 1848, "bis": 1849, "regionen": ["deutschland"], "gruppe": "revolution-1848", "titel": "Märzrevolution und Paulskirche", "text": "Im März 1848 erzwingen Aufstände Pressefreiheit und liberale Regierungen. Die Nationalversammlung in der Frankfurter Paulskirche scheitert 1849.", "titel_en": "March Revolution and the Frankfurt Parliament", "text_en": "In March 1848 uprisings force press freedom and liberal governments. The National Assembly in Frankfurt's St Paul's Church fails in 1849.", "klang": "unruhe"},
+{"jahr": 1848, "regionen": ["oesterreich"], "gruppe": "revolution-1848", "titel": "Revolution in Wien", "text": "Im März 1848 muss Staatskanzler Metternich fliehen. Im September endet die Grundherrschaft, die Bauern sind frei von Robot und Zehnt. Der Wiener Oktoberaufstand wird niedergeschlagen.", "titel_en": "Revolution in Vienna", "text_en": "In March 1848 Chancellor Metternich has to flee. In September the manorial system ends and peasants are freed from labour dues and tithes. The Vienna October Uprising is crushed.", "klang": "unruhe"},
+{"jahr": 1848, "regionen": ["schweiz"], "gruppe": "revolution-1848", "titel": "Die Schweiz wird Bundesstaat", "text": "Nach dem kurzen Sonderbundskrieg von 1847 gibt sich die Schweiz 1848 eine Bundesverfassung. Aus dem Staatenbund wird ein Bundesstaat.", "titel_en": "Switzerland becomes a federal state", "text_en": "After the brief Sonderbund War of 1847, Switzerland adopts a federal constitution in 1848. The confederation of states becomes a federal state."},
+{"jahr": 1848, "bis": 1849, "regionen": ["europa"], "gruppe": "revolution-1848", "titel": "Revolutionen von 1848", "text": "In Paris, Wien, Berlin, Budapest und vielen anderen Städten kämpfen Menschen für Freiheitsrechte und Verfassungen. Bis 1849 werden die meisten Aufstände niedergeschlagen.", "titel_en": "Revolutions of 1848", "text_en": "In Paris, Vienna, Berlin, Budapest and many other cities people fight for civil liberties and constitutions. By 1849 most of the uprisings have been crushed.", "klang": "unruhe"},
+{"jahr": 1849, "bis": 1860, "regionen": ["banat"], "titel": "Kronland Serbische Woiwodschaft und Temescher Banat", "text": "Für ein Jahrzehnt wird das Banat ein eigenes österreichisches Kronland mit der Hauptstadt Temeswar, danach wieder Teil Ungarns.", "titel_en": "Voivodeship of Serbia and Banat of Temeschwar", "text_en": "For a decade the Banat is a separate Austrian crown land with Timișoara as its capital; afterwards it becomes part of Hungary again."},
+{"jahr": 1850, "bis": 1930, "regionen": ["skandinavien"], "gruppe": "auswanderung-amerika", "titel": "Auswanderung aus dem Norden", "text": "Missernten und Landnot treiben über eine Million Schweden und rund 800.000 Norweger nach Nordamerika, viele in den Mittleren Westen der USA.", "titel_en": "Emigration from Scandinavia", "text_en": "Crop failures and land shortage drive more than a million Swedes and around 800,000 Norwegians to North America, many of them to the American Midwest.", "klang": "wasser"},
+{"jahr": 1857, "regionen": ["banat"], "gruppe": "eisenbahn", "titel": "Die Eisenbahn kommt", "text": "Die Bahnlinie Szegedin–Temeswar wird eröffnet. Getreide aus der Banater Heide erreicht nun schnell Wien und Budapest.", "titel_en": "The railway arrives", "text_en": "The Szeged–Timișoara railway opens. Grain from the Banat plain now reaches Vienna and Budapest quickly.", "klang": "zug"},
+{"jahr": 1861, "bis": 1865, "regionen": ["usa"], "titel": "Amerikanischer Bürgerkrieg", "text": "Die Nordstaaten kämpfen gegen die abgespaltenen Südstaaten. Über 600.000 Soldaten sterben; nach dem Sieg des Nordens wird 1865 die Sklaverei abgeschafft.", "titel_en": "American Civil War", "text_en": "The Northern states fight the seceded Southern states. More than 600,000 soldiers die; after the Union victory slavery is abolished in 1865.", "klang": "krieg"},
+{"jahr": 1861, "regionen": ["italien"], "titel": "Einigung Italiens", "text": "Am 17. März 1861 wird das Königreich Italien ausgerufen. 1866 kommt Venetien hinzu, 1870 Rom, das 1871 Hauptstadt wird.", "titel_en": "Unification of Italy", "text_en": "On 17 March 1861 the Kingdom of Italy is proclaimed. Venetia is added in 1866 and Rome in 1870; it becomes the capital in 1871."},
+{"jahr": 1862, "regionen": ["usa"], "titel": "Homestead Act", "text": "Das Gesetz verspricht Siedlern 160 Acres (rund 65 Hektar) Land im Westen, wenn sie es fünf Jahre bewirtschaften. Viele Einwanderer werden so Farmer.", "titel_en": "Homestead Act", "text_en": "The law offers settlers 160 acres (about 65 hectares) of land in the West if they farm it for five years. Many immigrants become farmers this way."},
+{"jahr": 1866, "bis": 1868, "regionen": ["skandinavien"], "titel": "Hungerjahre im Norden", "text": "Nach Missernten sterben in Finnland 1866–1868 über 100.000 Menschen an Hunger und Seuchen. Auch in Nordschweden herrscht Hunger, die Auswanderung nimmt stark zu.", "titel_en": "Famine in the North", "text_en": "After crop failures more than 100,000 people in Finland die of hunger and disease in 1866–1868. Northern Sweden also suffers famine, and emigration rises sharply.", "klang": "not+kaelte"},
+{"jahr": 1867, "regionen": ["ungarn", "banat"], "titel": "Ausgleich: Österreich-Ungarn", "text": "Die Doppelmonarchie entsteht. In Ungarn beginnt eine starke Magyarisierung: Schulen, Ämter und oft auch Familiennamen werden ungarisch.", "titel_en": "The Compromise: Austria-Hungary", "text_en": "The Dual Monarchy is created. Hungary begins a strong policy of Magyarisation: schools, offices and often surnames become Hungarian."},
+{"jahr": 1867, "regionen": ["kanada"], "titel": "Kanada entsteht", "text": "Am 1. Juli 1867 schließen sich Ontario, Québec, Nova Scotia und New Brunswick zum Dominion Kanada zusammen. In den folgenden Jahrzehnten kommen weitere Provinzen hinzu.", "titel_en": "Canada is founded", "text_en": "On 1 July 1867 Ontario, Quebec, Nova Scotia and New Brunswick unite to form the Dominion of Canada. Further provinces join in the following decades."},
+{"jahr": 1870, "bis": 1871, "regionen": ["deutschland", "frankreich"], "titel": "Deutsch-Französischer Krieg", "text": "Preußen und die süddeutschen Staaten besiegen Frankreich. Am 18. Januar 1871 wird in Versailles das Deutsche Kaiserreich ausgerufen.", "titel_en": "Franco-Prussian War", "text_en": "Prussia and the southern German states defeat France. On 18 January 1871 the German Empire is proclaimed at Versailles.", "klang": "krieg"},
+{"jahr": 1871, "regionen": ["westen"], "titel": "Elsass-Lothringen wird deutsch", "text": "Nach dem Krieg von 1870/71 muss Frankreich das Elsass und Teile Lothringens an das Deutsche Reich abtreten. Zehntausende Bewohner ziehen nach Frankreich.", "titel_en": "Alsace-Lorraine becomes German", "text_en": "After the war of 1870/71 France must cede Alsace and part of Lorraine to the German Empire. Tens of thousands of inhabitants move to France."},
+{"jahr": 1872, "regionen": ["banat"], "titel": "Ende der Militärgrenze", "text": "Die Militärgrenze im Süden des Banats wird aufgelöst und zivil verwaltet.", "titel_en": "End of the Military Frontier", "text_en": "The Military Frontier in the southern Banat is dissolved and placed under civil administration."},
+{"jahr": 1879, "regionen": ["ungarn"], "titel": "Flut von Szegedin", "text": "Die Theiß überflutet im März Szegedin, fast die ganze Stadt wird zerstört. Auch die Gegend um Hódmezővásárhely ist betroffen.", "titel_en": "The Szeged flood", "text_en": "In March the Tisza floods Szeged and destroys almost the entire city. The area around Hódmezővásárhely is also affected.", "klang": "flut"},
+{"jahr": 1880, "bis": 1915, "regionen": ["italien"], "gruppe": "auswanderung-amerika", "titel": "Auswanderung aus Italien", "text": "Zwischen 1880 und 1915 verlassen Millionen Italiener, vor allem aus dem Süden, ihre Heimat. Ziele sind die USA, Argentinien, Brasilien und Nachbarländer in Europa.", "titel_en": "Emigration from Italy", "text_en": "Between 1880 and 1915 millions of Italians, especially from the south, leave their homeland for the USA, Argentina, Brazil and neighbouring European countries.", "klang": "wasser"},
+{"jahr": 1880, "bis": 1930, "regionen": ["lateinamerika"], "titel": "Einwanderung nach Südamerika", "text": "Millionen Europäer, vor allem Italiener und Spanier, aber auch Portugiesen und Deutsche, wandern nach Argentinien, Brasilien und Uruguay aus.", "titel_en": "Immigration to South America", "text_en": "Millions of Europeans, mainly Italians and Spaniards but also Portuguese and Germans, emigrate to Argentina, Brazil and Uruguay.", "klang": "wasser"},
+{"jahr": 1884, "regionen": ["banat"], "titel": "Elektrisches Licht in Temeswar", "text": "Temeswar ist die erste Stadt auf dem europäischen Festland mit elektrischer Straßenbeleuchtung.", "titel_en": "Electric light in Timișoara", "text_en": "Timișoara is the first city in mainland Europe with electric street lighting.", "klang": "strom"},
+{"jahr": 1890, "bis": 1914, "regionen": ["banat"], "gruppe": "auswanderung-amerika", "titel": "Auswanderung nach Amerika", "text": "Zehntausende Banater wandern in die USA aus, viele kehren mit Erspartem zurück und kaufen Land.", "titel_en": "Emigration to America", "text_en": "Tens of thousands of people from the Banat emigrate to the USA; many return with their savings and buy land.", "klang": "wasser"},
+{"jahr": 1892, "regionen": ["usa"], "titel": "Ellis Island", "text": "In New York öffnet die Einwandererstation Ellis Island. Bis 1954 werden hier rund zwölf Millionen Neuankömmlinge registriert und untersucht.", "titel_en": "Ellis Island", "text_en": "The immigration station on Ellis Island opens in New York. By 1954 around twelve million newcomers have been registered and examined here.", "klang": "wasser"},
+{"jahr": 1896, "bis": 1914, "regionen": ["kanada"], "titel": "Besiedlung der Prärie", "text": "Mit fast kostenlosem Land wirbt Kanada Siedler für die Prärie an. Hunderttausende kommen, viele aus Großbritannien, den USA und Osteuropa, etwa aus der Ukraine.", "titel_en": "Settling the Prairies", "text_en": "Offering almost free land, Canada recruits settlers for the Prairies. Hundreds of thousands come, many from Britain, the USA and Eastern Europe, including Ukraine."},
+{"jahr": 1901, "regionen": ["australien"], "titel": "Australischer Bundesstaat", "text": "Am 1. Januar 1901 schließen sich die sechs britischen Kolonien zum Commonwealth of Australia zusammen.", "titel_en": "Australian Federation", "text_en": "On 1 January 1901 the six British colonies unite to form the Commonwealth of Australia."},
+{"jahr": 1914, "bis": 1918, "regionen": ["banat"], "gruppe": "ww1", "titel": "Erster Weltkrieg", "text": "Die Banater Männer dienen in der k.u.k. Armee an der Ost- und der Italienfront. Viele kehren nicht zurück.", "titel_en": "First World War", "text_en": "Men from the Banat serve in the Austro-Hungarian army on the Eastern and Italian fronts. Many never return.", "klang": "krieg1+totenglocke"},
+{"jahr": 1914, "bis": 1918, "regionen": ["deutschland"], "gruppe": "ww1", "titel": "Erster Weltkrieg", "text": "Rund zwei Millionen deutsche Soldaten fallen. Wegen der Seeblockade hungert die Bevölkerung, besonders im „Steckrübenwinter“ 1916/17.", "titel_en": "First World War", "text_en": "Around two million German soldiers are killed. Because of the naval blockade the population goes hungry, especially in the “turnip winter” of 1916/17.", "klang": "krieg1+totenglocke"},
+{"jahr": 1914, "bis": 1918, "regionen": ["frankreich", "belgien"], "gruppe": "ww1", "titel": "Erster Weltkrieg an der Westfront", "text": "Im August 1914 marschiert das deutsche Heer durch das neutrale Belgien nach Frankreich. Dann erstarrt die Front von der Nordsee bis zur Schweiz; allein bei Verdun fallen 1916 rund 300.000 Soldaten.", "titel_en": "First World War on the Western Front", "text_en": "In August 1914 the German army marches through neutral Belgium into France. The front then freezes from the North Sea to Switzerland; at Verdun alone around 300,000 soldiers die in 1916.", "klang": "krieg1+totenglocke"},
+{"jahr": 1914, "bis": 1918, "regionen": ["serbien"], "gruppe": "ww1", "titel": "Erster Weltkrieg in Serbien", "text": "Österreich-Ungarn erklärt Serbien am 28. Juli 1914 den Krieg. Kämpfe, Fleckfieber und der Rückzug über Albanien im Winter 1915/16 kosten einen großen Teil der Bevölkerung das Leben.", "titel_en": "First World War in Serbia", "text_en": "Austria-Hungary declares war on Serbia on 28 July 1914. Fighting, typhus and the retreat through Albania in the winter of 1915/16 cost a large part of the population their lives.", "klang": "krieg1+totenglocke"},
+{"jahr": 1914, "bis": 1918, "regionen": ["europa"], "gruppe": "ww1", "titel": "Erster Weltkrieg", "text": "Nach dem Attentat von Sarajevo weitet sich ein Konflikt auf dem Balkan zum Weltkrieg aus. Rund zehn Millionen Soldaten fallen, dazu kommen Millionen zivile Opfer.", "titel_en": "First World War", "text_en": "After the assassination in Sarajevo a conflict in the Balkans escalates into a world war. Around ten million soldiers are killed, and millions of civilians also die.", "klang": "krieg1+totenglocke"},
+{"jahr": 1915, "regionen": ["australien"], "titel": "Gallipoli", "text": "Am 25. April 1915 landen australische und neuseeländische Truppen bei Gallipoli. Über 8.000 Australier fallen; der Tag wird als Anzac Day begangen.", "titel_en": "Gallipoli", "text_en": "On 25 April 1915 Australian and New Zealand troops land at Gallipoli. More than 8,000 Australians are killed; the day is commemorated as Anzac Day.", "klang": "krieg1"},
+{"jahr": 1917, "bis": 1922, "regionen": ["russland", "ukraine"], "titel": "Russische Revolution", "text": "1917 stürzt der Zar, im Oktober übernehmen die Bolschewiki unter Lenin die Macht. Im folgenden Bürgerkrieg sterben Millionen; 1922 entsteht die Sowjetunion.", "titel_en": "Russian Revolution", "text_en": "In 1917 the Tsar is overthrown, and in October the Bolsheviks under Lenin seize power. Millions die in the civil war that follows; in 1922 the Soviet Union is founded.", "klang": "unruhe+gefecht"},
+{"jahr": 1918, "regionen": ["deutschland"], "gruppe": "kriegsende-1918", "titel": "Novemberrevolution", "text": "Am 9. November 1918 wird die Republik ausgerufen, Kaiser Wilhelm II. geht ins Exil. Am 11. November endet der Krieg; im Januar 1919 wählen Frauen erstmals mit.", "titel_en": "November Revolution", "text_en": "On 9 November 1918 the republic is proclaimed and Kaiser Wilhelm II goes into exile. The war ends on 11 November; in January 1919 women vote for the first time.", "klang": "unruhe"},
+{"jahr": 1918, "regionen": ["oesterreich"], "gruppe": "kriegsende-1918", "titel": "Republik Deutschösterreich", "text": "Am 12. November 1918 wird in Wien die Republik ausgerufen. Der Vertrag von Saint-Germain verbietet 1919 den Anschluss an Deutschland, Südtirol kommt an Italien.", "titel_en": "Republic of German-Austria", "text_en": "On 12 November 1918 the republic is proclaimed in Vienna. In 1919 the Treaty of Saint-Germain forbids union with Germany, and South Tyrol goes to Italy.", "klang": "glocken"},
+{"jahr": 1918, "regionen": ["tschechien", "slowakei"], "gruppe": "kriegsende-1918", "titel": "Gründung der Tschechoslowakei", "text": "Am 28. Oktober 1918 wird in Prag die Tschechoslowakei ausgerufen. Zu ihr gehören auch rund drei Millionen Deutsche in Böhmen und Mähren.", "titel_en": "Czechoslovakia is founded", "text_en": "On 28 October 1918 Czechoslovakia is proclaimed in Prague. Around three million Germans in Bohemia and Moravia also become part of the new state.", "klang": "jubel"},
+{"jahr": 1918, "regionen": ["polen"], "gruppe": "kriegsende-1918", "titel": "Polen wird wieder unabhängig", "text": "Am 11. November 1918 übernimmt Józef Piłsudski in Warschau die Macht. Nach 123 Jahren gibt es wieder einen polnischen Staat.", "titel_en": "Poland regains independence", "text_en": "On 11 November 1918 Józef Piłsudski takes power in Warsaw. After 123 years there is once again a Polish state.", "klang": "jubel"},
+{"jahr": 1918, "regionen": ["europa"], "gruppe": "kriegsende-1918", "titel": "Ende der Donaumonarchie", "text": "Im Herbst 1918 zerfällt Österreich-Ungarn. Neue Staaten entstehen.", "titel_en": "End of the Danube Monarchy", "text_en": "In autumn 1918 Austria-Hungary collapses. New states emerge.", "klang": "glocken"},
+{"jahr": 1918, "regionen": ["rumaenien"], "titel": "Großrumänien", "text": "Am 1. Dezember 1918 beschließt eine Versammlung in Alba Iulia (Karlsburg) den Anschluss Siebenbürgens an Rumänien. Auch Bessarabien und die Bukowina kommen hinzu.", "titel_en": "Greater Romania", "text_en": "On 1 December 1918 an assembly in Alba Iulia votes for the union of Transylvania with Romania. Bessarabia and Bukovina also join.", "klang": "jubel"},
+{"jahr": 1918, "regionen": ["westen"], "titel": "Elsass-Lothringen wird wieder französisch", "text": "Nach dem Ersten Weltkrieg kommt Elsass-Lothringen an Frankreich zurück. Viele nach 1871 zugezogene Deutsche müssen das Land verlassen.", "titel_en": "Alsace-Lorraine becomes French again", "text_en": "After the First World War Alsace-Lorraine returns to France. Many Germans who moved there after 1871 have to leave."},
+{"jahr": 1918, "bis": 1920, "regionen": ["welt"], "titel": "Spanische Grippe", "text": "Eine Grippepandemie tötet weltweit mindestens 20 Millionen, nach manchen Schätzungen 50 Millionen Menschen. Besonders viele junge Erwachsene sterben.", "titel_en": "Spanish flu", "text_en": "An influenza pandemic kills at least 20 million people worldwide, by some estimates 50 million. An unusually large number of young adults die.", "klang": "totenglocke"},
+{"jahr": 1920, "regionen": ["banat"], "gruppe": "trianon", "titel": "Vertrag von Trianon", "text": "Das Banat wird geteilt: Der größte Teil mit Temeswar kommt an Rumänien, der Westen an das Königreich der Serben, Kroaten und Slowenen, ein kleiner Rest bleibt bei Ungarn.", "titel_en": "Treaty of Trianon", "text_en": "The Banat is divided: the largest part, including Timișoara, goes to Romania, the west to the Kingdom of Serbs, Croats and Slovenes, and a small remainder stays with Hungary."},
+{"jahr": 1920, "regionen": ["ungarn"], "gruppe": "trianon", "titel": "Vertrag von Trianon", "text": "Ungarn verliert rund zwei Drittel seines Gebiets an die Nachbarstaaten. Über drei Millionen Ungarn leben nun außerhalb der neuen Grenzen.", "titel_en": "Treaty of Trianon", "text_en": "Hungary loses around two thirds of its territory to neighbouring states. More than three million Hungarians now live outside the new borders."},
+{"jahr": 1922, "bis": 1923, "regionen": ["irland"], "titel": "Irischer Freistaat", "text": "Nach dem Unabhängigkeitskrieg entsteht im Dezember 1922 der Irische Freistaat, Nordirland bleibt beim Vereinigten Königreich. Über den Vertrag mit London kommt es 1922/23 zum Bürgerkrieg.", "titel_en": "Irish Free State", "text_en": "After the War of Independence the Irish Free State is established in December 1922; Northern Ireland remains part of the United Kingdom. The treaty with London leads to civil war in 1922/23."},
+{"jahr": 1922, "regionen": ["italien"], "titel": "Mussolini an der Macht", "text": "Nach dem „Marsch auf Rom“ im Oktober 1922 wird Benito Mussolini Ministerpräsident. Bis 1926 baut er eine faschistische Diktatur auf.", "titel_en": "Mussolini takes power", "text_en": "After the “March on Rome” in October 1922 Benito Mussolini becomes prime minister. By 1926 he has established a fascist dictatorship.", "klang": "marsch"},
+{"jahr": 1923, "regionen": ["deutschland"], "titel": "Inflation", "text": "In Deutschland wird das Geld wertlos, ein Brot kostet am Ende Milliarden Mark.", "titel_en": "Hyperinflation", "text_en": "In Germany money becomes worthless; in the end a loaf of bread costs billions of marks.", "klang": "unruhe"},
+{"jahr": 1929, "regionen": ["banat"], "gruppe": "weltwirtschaftskrise", "titel": "Weltwirtschaftskrise", "text": "Der Börsenkrach in New York stürzt die Welt in eine Krise. Getreidepreise fallen, auch die Banater Bauern verarmen.", "titel_en": "Great Depression", "text_en": "The stock market crash in New York plunges the world into crisis. Grain prices fall, and the farmers of the Banat grow poor as well.", "klang": "not"},
+{"jahr": 1929, "bis": 1933, "regionen": ["deutschland"], "gruppe": "weltwirtschaftskrise", "titel": "Weltwirtschaftskrise", "text": "Anfang 1932 sind in Deutschland rund sechs Millionen Menschen arbeitslos. Im Juli 1932 wird die NSDAP stärkste Partei im Reichstag.", "titel_en": "Great Depression", "text_en": "In early 1932 around six million people in Germany are unemployed. In July 1932 the Nazi Party becomes the largest party in the Reichstag.", "klang": "not"},
+{"jahr": 1929, "bis": 1939, "regionen": ["usa"], "gruppe": "weltwirtschaftskrise", "titel": "Große Depression", "text": "1933 ist etwa ein Viertel der Arbeitskräfte in den USA ohne Arbeit, Banken und Farmen gehen pleite. Präsident Roosevelt versucht, mit dem „New Deal“ die Not zu lindern.", "titel_en": "The Great Depression", "text_en": "In 1933 about a quarter of the American workforce is unemployed, and banks and farms go bankrupt. President Roosevelt tries to ease the hardship with the “New Deal”.", "klang": "not"},
+{"jahr": 1929, "bis": 1933, "regionen": ["welt"], "gruppe": "weltwirtschaftskrise", "titel": "Weltwirtschaftskrise", "text": "Nach dem Börsenkrach in New York im Oktober 1929 brechen Handel und Produktion weltweit ein. Millionen Menschen verlieren Arbeit und Ersparnisse.", "titel_en": "Great Depression", "text_en": "After the New York stock market crash of October 1929, trade and production collapse worldwide. Millions of people lose their jobs and savings.", "klang": "not"},
+{"jahr": 1932, "bis": 1933, "regionen": ["ukraine", "russland"], "titel": "Hungersnot in der Sowjetunion", "text": "Zwangskollektivierung und hohe Zwangsabgaben von Getreide lösen 1932/33 eine Hungersnot aus. Millionen sterben, besonders in der Ukraine (Holodomor) und in Kasachstan.", "titel_en": "Famine in the Soviet Union", "text_en": "Forced collectivisation and high compulsory grain requisitions cause a famine in 1932/33. Millions die, especially in Ukraine (the Holodomor) and Kazakhstan.", "klang": "not"},
+{"jahr": 1933, "regionen": ["deutschland"], "titel": "NS-Diktatur", "text": "Hitler kommt an die Macht. Die Diktatur führt in den Krieg und den Völkermord an den europäischen Juden.", "titel_en": "Nazi dictatorship", "text_en": "Hitler comes to power. The dictatorship leads to war and to the genocide of the European Jews.", "klang": "marsch", "klangBis": 1939},
+{"jahr": 1938, "regionen": ["oesterreich"], "titel": "Anschluss Österreichs", "text": "Am 12. März 1938 marschiert die Wehrmacht ein, Österreich wird Teil des Deutschen Reichs. Sofort beginnt die Verfolgung der Juden und politischer Gegner.", "titel_en": "Annexation of Austria", "text_en": "On 12 March 1938 the Wehrmacht marches in and Austria becomes part of the German Reich. The persecution of Jews and political opponents begins immediately.", "klang": "marsch"},
+{"jahr": 1938, "regionen": ["deutschland", "oesterreich"], "titel": "Novemberpogrome", "text": "In der Nacht zum 10. November 1938 brennen überall im Reich Synagogen, jüdische Geschäfte und Wohnungen werden verwüstet. Rund 30.000 jüdische Männer kommen in Konzentrationslager.", "titel_en": "November Pogroms", "text_en": "On the night of 9–10 November 1938 synagogues burn throughout the Reich, and Jewish shops and homes are wrecked. Around 30,000 Jewish men are sent to concentration camps."},
+{"jahr": 1938, "bis": 1939, "regionen": ["tschechien", "slowakei"], "titel": "Münchner Abkommen", "text": "Im Oktober 1938 muss die Tschechoslowakei das Sudetenland an Deutschland abtreten. Im März 1939 besetzt die Wehrmacht Prag, die Slowakei wird ein abhängiger Staat.", "titel_en": "Munich Agreement", "text_en": "In October 1938 Czechoslovakia must cede the Sudetenland to Germany. In March 1939 the Wehrmacht occupies Prague, and Slovakia becomes a dependent state."},
+{"jahr": 1939, "bis": 1945, "regionen": ["deutschland"], "gruppe": "ww2", "titel": "Zweiter Weltkrieg", "text": "Mit dem Überfall auf Polen beginnt Deutschland am 1. September 1939 den Krieg. Über fünf Millionen deutsche Soldaten sterben, Hunderttausende Menschen im Bombenkrieg.", "titel_en": "Second World War", "text_en": "Germany starts the war by invading Poland on 1 September 1939. More than five million German soldiers die, and hundreds of thousands of people are killed in the bombing.", "klang": "krieg2+totenglocke"},
+{"jahr": 1939, "bis": 1945, "regionen": ["polen"], "gruppe": "ww2", "titel": "Zweiter Weltkrieg in Polen", "text": "Am 1. September 1939 greift Deutschland Polen an, am 17. September die Sowjetunion. Rund sechs Millionen polnische Staatsbürger kommen ums Leben, etwa die Hälfte davon Juden.", "titel_en": "Second World War in Poland", "text_en": "Germany attacks Poland on 1 September 1939, and the Soviet Union follows on 17 September. Around six million Polish citizens die, about half of them Jews.", "klang": "krieg2+totenglocke"},
+{"jahr": 1939, "bis": 1945, "regionen": ["europa"], "gruppe": "ww2", "titel": "Zweiter Weltkrieg", "text": "Der Krieg kostet weltweit über 60 Millionen Menschen das Leben.", "titel_en": "Second World War", "text_en": "The war costs more than 60 million lives worldwide.", "klang": "krieg2+totenglocke"},
+{"jahr": 1940, "bis": 1945, "regionen": ["frankreich", "belgien", "niederlande", "luxemburg"], "gruppe": "ww2", "titel": "Besetzung im Westen", "text": "Im Mai 1940 überrennt die Wehrmacht die Niederlande, Belgien, Luxemburg und Frankreich. Die Besatzung dauert bis zur Befreiung 1944/45.", "titel_en": "Occupation in the West", "text_en": "In May 1940 the Wehrmacht overruns the Netherlands, Belgium, Luxembourg and France. The occupation lasts until liberation in 1944/45.", "klang": "krieg2"},
+{"jahr": 1940, "regionen": ["rumaenien"], "titel": "Rumänien verliert Gebiete", "text": "1940 muss Rumänien Bessarabien und die Nordbukowina an die Sowjetunion, Nordsiebenbürgen an Ungarn und die Süddobrudscha an Bulgarien abtreten. Die Deutschen aus Bessarabien und der Bukowina werden umgesiedelt.", "titel_en": "Romania loses territory", "text_en": "In 1940 Romania must cede Bessarabia and northern Bukovina to the Soviet Union, northern Transylvania to Hungary and southern Dobruja to Bulgaria. The Germans of Bessarabia and Bukovina are resettled."},
+{"jahr": 1940, "bis": 1941, "regionen": ["grossbritannien"], "titel": "Luftschlacht um England und „Blitz“", "text": "Ab Sommer 1940 greift die deutsche Luftwaffe Großbritannien an. Bei den Bombenangriffen auf London und andere Städte sterben bis Mai 1941 über 40.000 Zivilisten.", "titel_en": "Battle of Britain and the Blitz", "text_en": "From summer 1940 the German Luftwaffe attacks Britain. By May 1941 more than 40,000 civilians have died in bombing raids on London and other cities.", "klang": "luftkrieg"},
+{"jahr": 1940, "bis": 1944, "regionen": ["westen", "luxemburg"], "titel": "Elsass, Lothringen und Luxemburg annektiert", "text": "1940 werden das Elsass, das Moseldepartement und Luxemburg faktisch dem Reich angegliedert. Ab 1942 werden junge Männer zwangsweise zur Wehrmacht eingezogen.", "titel_en": "Alsace, Lorraine and Luxembourg annexed", "text_en": "In 1940 Alsace, the Moselle department and Luxembourg are de facto annexed to the Reich. From 1942 young men are forcibly conscripted into the Wehrmacht."},
+{"jahr": 1941, "bis": 1945, "regionen": ["russland", "ukraine"], "gruppe": "ww2", "titel": "Krieg in der Sowjetunion", "text": "Am 22. Juni 1941 überfällt Deutschland die Sowjetunion. Rund 27 Millionen Sowjetbürger kommen ums Leben, die Ukraine und Belarus werden schwer verwüstet.", "titel_en": "War in the Soviet Union", "text_en": "On 22 June 1941 Germany invades the Soviet Union. Around 27 million Soviet citizens die, and Ukraine and Belarus are devastated.", "klang": "krieg2+totenglocke"},
+{"jahr": 1941, "bis": 1945, "regionen": ["usa"], "gruppe": "ww2", "titel": "Die USA im Zweiten Weltkrieg", "text": "Nach dem japanischen Angriff auf Pearl Harbor am 7. Dezember 1941 treten die USA in den Krieg ein. Rund 16 Millionen Amerikaner dienen in den Streitkräften.", "titel_en": "The USA in the Second World War", "text_en": "After the Japanese attack on Pearl Harbor on 7 December 1941 the USA enters the war. Around 16 million Americans serve in the armed forces.", "klang": "krieg2"},
+{"jahr": 1941, "bis": 1945, "regionen": ["serbien", "kroatien"], "gruppe": "ww2", "titel": "Krieg in Jugoslawien", "text": "Im April 1941 besetzen Deutschland und seine Verbündeten Jugoslawien. Partisanenkrieg, Bürgerkrieg und die Verfolgung durch den kroatischen Ustascha-Staat fordern Hunderttausende Tote.", "titel_en": "War in Yugoslavia", "text_en": "In April 1941 Germany and its allies occupy Yugoslavia. Partisan war, civil war and persecution by the Croatian Ustaša state claim hundreds of thousands of lives.", "klang": "krieg2"},
+{"jahr": 1941, "regionen": ["russland"], "titel": "Deportation der Wolgadeutschen", "text": "Nach dem deutschen Angriff lässt Stalin im August und September 1941 die Wolgadeutschen nach Sibirien und Kasachstan deportieren. Viele müssen in der „Arbeitsarmee“ Zwangsarbeit leisten.", "titel_en": "Deportation of the Volga Germans", "text_en": "After the German invasion Stalin has the Volga Germans deported to Siberia and Kazakhstan in August and September 1941. Many are forced to work in the “labour army”.", "klang": "zug+kaelte"},
+{"jahr": 1941, "bis": 1945, "regionen": ["europa"], "titel": "Holocaust", "text": "Die Nationalsozialisten ermorden rund sechs Millionen europäische Juden, in Ghettos, bei Massenerschießungen und in Vernichtungslagern. Auch Hunderttausende Sinti und Roma werden ermordet.", "titel_en": "The Holocaust", "text_en": "The Nazis murder around six million European Jews in ghettos, mass shootings and extermination camps. Hundreds of thousands of Sinti and Roma are also murdered."},
+{"jahr": 1943, "bis": 1945, "regionen": ["europa"], "titel": "Luftkrieg", "text": "Nur für die Geräusche: Luftalarm und Bombenangriffe der letzten Kriegsjahre.", "titel_en": "Air war", "text_en": "For sounds only: air-raid sirens and bombing raids in the last years of the war.", "klang": "luftkrieg", "nurKlang": true},
+{"jahr": 1943, "regionen": ["banat"], "titel": "Rumäniendeutsche in der Waffen-SS", "text": "Durch ein Abkommen zwischen Rumänien und Deutschland werden die meisten wehrfähigen Banater Schwaben zur Waffen-SS eingezogen.", "titel_en": "Romanian Germans in the Waffen-SS", "text_en": "Under an agreement between Romania and Germany, most Banat Swabians fit for military service are conscripted into the Waffen-SS."},
+{"jahr": 1944, "regionen": ["banat"], "gruppe": "rumaenien-1944", "titel": "Rumänien wechselt die Seiten", "text": "Am 23. August 1944 schließt Rumänien Waffenstillstand mit der Sowjetunion. Im Herbst fliehen viele Banater Schwaben mit der zurückweichenden Front nach Westen.", "titel_en": "Romania changes sides", "text_en": "On 23 August 1944 Romania concludes an armistice with the Soviet Union. In the autumn many Banat Swabians flee west with the retreating front.", "klang": "krieg2"},
+{"jahr": 1944, "regionen": ["rumaenien"], "gruppe": "rumaenien-1944", "titel": "Umsturz in Bukarest", "text": "Am 23. August 1944 lässt König Michael I. den Diktator Antonescu verhaften. Rumänien wechselt auf die Seite der Alliierten, die Rote Armee rückt ins Land ein.", "titel_en": "Coup in Bucharest", "text_en": "On 23 August 1944 King Michael I has the dictator Antonescu arrested. Romania switches to the Allied side, and the Red Army advances into the country.", "klang": "krieg2"},
+{"jahr": 1944, "bis": 1948, "regionen": ["serbien", "kroatien"], "gruppe": "vertreibung", "titel": "Lager für die Donauschwaben", "text": "Ab Herbst 1944 werden die in Jugoslawien gebliebenen Deutschen enteignet und in Lager wie Rudolfsgnad und Gakowa gesperrt. Zehntausende sterben an Hunger und Seuchen.", "titel_en": "Camps for the Danube Swabians", "text_en": "From autumn 1944 the Germans who remained in Yugoslavia are dispossessed and held in camps such as Rudolfsgnad and Gakowa. Tens of thousands die of hunger and disease.", "klang": "not"},
+{"jahr": 1944, "bis": 1950, "regionen": ["deutschland", "oesterreich"], "gruppe": "vertreibung", "titel": "Flucht und Vertreibung", "text": "Ab Ende 1944 fliehen Millionen Deutsche vor der Roten Armee oder werden aus Ostmitteleuropa vertrieben. Rund zwölf Millionen kommen in Deutschland und Österreich an.", "titel_en": "Flight and expulsion", "text_en": "From late 1944 millions of Germans flee from the Red Army or are expelled from East Central Europe. Around twelve million arrive in Germany and Austria.", "klang": "not"},
+{"jahr": 1944, "bis": 1945, "regionen": ["niederlande"], "titel": "Hungerwinter in den Niederlanden", "text": "Im Winter 1944/45 sperren die Besatzer Lebensmitteltransporte in den Westen der Niederlande. Rund 20.000 Menschen verhungern oder erfrieren.", "titel_en": "The Dutch Hunger Winter", "text_en": "In the winter of 1944/45 the occupiers block food transports to the western Netherlands. Around 20,000 people die of hunger or cold.", "klang": "kaelte+not"},
+{"jahr": 1944, "bis": 1945, "regionen": ["luxemburg", "belgien"], "titel": "Ardennenoffensive", "text": "Im Dezember 1944 greift die Wehrmacht in den Ardennen ein letztes Mal im Westen an. Nordluxemburg und Ostbelgien werden schwer verwüstet.", "titel_en": "Battle of the Bulge", "text_en": "In December 1944 the Wehrmacht launches its last offensive in the West, in the Ardennes. Northern Luxembourg and eastern Belgium are badly devastated.", "klang": "krieg2+kaelte"},
+{"jahr": 1945, "regionen": ["banat", "rumaenien"], "titel": "Deportation in die Sowjetunion", "text": "Im Januar werden rund 70.000 Rumäniendeutsche, Männer von 17 bis 45 und Frauen von 18 bis 30 Jahren, zur Zwangsarbeit in die Sowjetunion verschleppt. Im März enteignet die Bodenreform die deutschen Bauern.", "titel_en": "Deportation to the Soviet Union", "text_en": "In January around 70,000 Romanian Germans, men aged 17 to 45 and women aged 18 to 30, are deported to the Soviet Union for forced labour. In March a land reform dispossesses the German farmers.", "klang": "zug+not+kaelte"},
+{"jahr": 1945, "regionen": ["deutschland"], "titel": "Kriegsende", "text": "Deutschland liegt in Trümmern. Millionen Flüchtlinge und Vertriebene suchen eine neue Heimat.", "titel_en": "End of the war", "text_en": "Germany lies in ruins. Millions of refugees and expellees search for a new home.", "klang": "glocken"},
+{"jahr": 1945, "bis": 1947, "regionen": ["polen"], "gruppe": "vertreibung", "titel": "Polen wird nach Westen verschoben", "text": "Polen verliert seine Ostgebiete an die Sowjetunion und erhält deutsche Gebiete bis zur Oder und Neiße. Die Deutschen werden vertrieben, Polen aus dem Osten dort angesiedelt.", "titel_en": "Poland is shifted west", "text_en": "Poland loses its eastern territories to the Soviet Union and receives German lands up to the Oder and Neisse. The Germans are expelled, and Poles from the east are resettled there."},
+{"jahr": 1945, "bis": 1946, "regionen": ["tschechien", "slowakei"], "gruppe": "vertreibung", "titel": "Vertreibung der Sudetendeutschen", "text": "Nach Kriegsende werden rund drei Millionen Deutsche aus der Tschechoslowakei vertrieben, ihr Besitz wird nach den Beneš-Dekreten enteignet.", "titel_en": "Expulsion of the Sudeten Germans", "text_en": "After the war around three million Germans are expelled from Czechoslovakia, and their property is confiscated under the Beneš decrees."},
+{"jahr": 1945, "bis": 1955, "regionen": ["oesterreich"], "titel": "Besatzung und Staatsvertrag", "text": "Österreich wird in vier Besatzungszonen geteilt. Mit dem Staatsvertrag vom 15. Mai 1955 wird es wieder frei, im Oktober erklärt es seine immerwährende Neutralität.", "titel_en": "Occupation and State Treaty", "text_en": "Austria is divided into four occupation zones. With the State Treaty of 15 May 1955 it regains full independence, and in October it declares its permanent neutrality."},
+{"jahr": 1946, "bis": 1948, "regionen": ["ungarn"], "gruppe": "vertreibung", "titel": "Vertreibung der Ungarndeutschen", "text": "Ab Januar 1946 wird etwa die Hälfte der Ungarndeutschen nach Deutschland ausgewiesen. Ihre Häuser und Höfe werden enteignet.", "titel_en": "Expulsion of the Hungarian Germans", "text_en": "From January 1946 about half of Hungary's Germans are expelled to Germany. Their houses and farms are confiscated."},
+{"jahr": 1946, "regionen": ["ungarn"], "titel": "Rekord-Inflation in Ungarn", "text": "Im Sommer 1946 verdoppeln sich die Preise etwa alle 15 Stunden, der Pengő wird wertlos. Am 1. August führt Ungarn den Forint ein.", "titel_en": "Record inflation in Hungary", "text_en": "In summer 1946 prices double roughly every 15 hours and the pengő becomes worthless. On 1 August Hungary introduces the forint.", "klang": "not"},
+{"jahr": 1946, "bis": 1947, "regionen": ["deutschland"], "titel": "Hungerwinter 1946/47", "text": "Der eisige Winter 1946/47 trifft das zerstörte Deutschland. Es fehlt an Kohle und Lebensmitteln, viele Menschen erfrieren oder verhungern.", "titel_en": "The hunger winter of 1946/47", "text_en": "The freezing winter of 1946/47 hits war-ravaged Germany. Coal and food are scarce, and many people freeze or starve to death.", "klang": "kaelte+not"},
+{"jahr": 1947, "regionen": ["banat", "rumaenien"], "titel": "Volksrepublik Rumänien", "text": "Der König muss abdanken, die Kommunisten übernehmen die Macht. 1948 werden Fabriken, Banken und Läden verstaatlicht.", "titel_en": "People's Republic of Romania", "text_en": "The king is forced to abdicate and the Communists take power. In 1948 factories, banks and shops are nationalised."},
+{"jahr": 1947, "bis": 1991, "regionen": ["welt"], "titel": "Kalter Krieg", "text": "Die USA und die Sowjetunion stehen sich mit ihren Bündnissen und Atomwaffen gegenüber. Ein „Eiserner Vorhang“ teilt Europa in Ost und West.", "titel_en": "Cold War", "text_en": "The USA and the Soviet Union face each other with their alliances and nuclear weapons. An “Iron Curtain” divides Europe into East and West."},
+{"jahr": 1948, "bis": 1949, "regionen": ["deutschland"], "titel": "Währungsreform und Berlin-Blockade", "text": "Am 20. Juni 1948 wird in den Westzonen die D-Mark eingeführt, die Läden füllen sich wieder. Die Sowjetunion blockiert West-Berlin, das fast ein Jahr aus der Luft versorgt wird.", "titel_en": "Currency reform and Berlin Blockade", "text_en": "On 20 June 1948 the Deutsche Mark is introduced in the western zones, and shops fill up again. The Soviet Union blockades West Berlin, which is supplied by air for almost a year."},
+{"jahr": 1949, "regionen": ["deutschland"], "titel": "Bundesrepublik Deutschland", "text": "Das Grundgesetz tritt in Kraft, die Bundesrepublik wird gegründet.", "titel_en": "Federal Republic of Germany", "text_en": "The Basic Law comes into force and the Federal Republic is founded."},
+{"jahr": 1949, "regionen": ["deutschland"], "titel": "Gründung der DDR", "text": "Am 7. Oktober 1949 wird in der sowjetischen Besatzungszone die Deutsche Demokratische Republik gegründet. Bis 1961 fliehen rund 2,7 Millionen Menschen in den Westen.", "titel_en": "Founding of the GDR", "text_en": "On 7 October 1949 the German Democratic Republic is founded in the Soviet occupation zone. By 1961 around 2.7 million people flee to the West."},
+{"jahr": 1949, "bis": 1953, "regionen": ["banat", "rumaenien"], "titel": "Donau-Schwarzmeer-Kanal", "text": "Das kommunistische Regime lässt den Kanal vor allem von politischen Häftlingen und Zwangsarbeitern bauen. Tausende sterben, 1953 wird der Bau eingestellt.", "titel_en": "Danube–Black Sea Canal", "text_en": "The Communist regime has the canal built mainly by political prisoners and forced labourers. Thousands die, and construction is halted in 1953.", "klang": "not"},
+{"jahr": 1951, "bis": 1956, "regionen": ["banat"], "titel": "Deportation in den Bărăgan", "text": "In der Nacht zum 18. Juni 1951 werden rund 40.000 Menschen aus einem 25 Kilometer breiten Streifen an der jugoslawischen Grenze in die Bărăgan-Steppe verschleppt. Sie müssen dort ihre Dörfer selbst bauen und dürfen erst ab 1956 heimkehren.", "titel_en": "Deportation to the Bărăgan", "text_en": "On the night of 17 to 18 June 1951 around 40,000 people from a 25-kilometre strip along the Yugoslav border are deported to the Bărăgan steppe. They must build their villages themselves and may not return until 1956.", "klang": "not+kaelte"},
+{"jahr": 1953, "regionen": ["niederlande"], "titel": "Sturmflut von 1953", "text": "In der Nacht zum 1. Februar 1953 brechen in Zeeland und Südholland die Deiche, 1.836 Menschen ertrinken. Danach werden die Deltawerke gebaut.", "titel_en": "The North Sea flood of 1953", "text_en": "On the night of 31 January to 1 February 1953 dykes break in Zeeland and South Holland, and 1,836 people drown. The Delta Works are built afterwards.", "klang": "flut"},
+{"jahr": 1956, "regionen": ["ungarn"], "titel": "Ungarischer Volksaufstand", "text": "Der Aufstand gegen die kommunistische Herrschaft wird von sowjetischen Panzern niedergeschlagen.", "titel_en": "Hungarian Uprising", "text_en": "The uprising against Communist rule is crushed by Soviet tanks.", "klang": "gefecht+unruhe"},
+{"jahr": 1961, "regionen": ["deutschland"], "titel": "Mauerbau", "text": "Am 13. August 1961 riegelt die DDR West-Berlin ab und baut die Mauer. Familien werden für Jahrzehnte getrennt, an der Grenze sterben Hunderte Menschen.", "titel_en": "The Berlin Wall is built", "text_en": "On 13 August 1961 East Germany seals off West Berlin and builds the Wall. Families are separated for decades, and hundreds of people die at the border."},
+{"jahr": 1965, "regionen": ["banat", "rumaenien"], "titel": "Ceaușescu", "text": "Nicolae Ceaușescu übernimmt die Führung Rumäniens. Seine Herrschaft wird immer repressiver.", "titel_en": "Ceaușescu", "text_en": "Nicolae Ceaușescu takes over the leadership of Romania. His rule becomes increasingly repressive."},
+{"jahr": 1968, "regionen": ["tschechien", "slowakei"], "titel": "Prager Frühling", "text": "Die Reformen unter Alexander Dubček enden am 21. August 1968, als Truppen des Warschauer Pakts einmarschieren. Zehntausende verlassen das Land.", "titel_en": "Prague Spring", "text_en": "The reforms under Alexander Dubček end on 21 August 1968 when Warsaw Pact troops invade. Tens of thousands leave the country.", "klang": "unruhe"},
+{"jahr": 1969, "regionen": ["welt"], "titel": "Mondlandung", "text": "Im Juli 1969 betreten Neil Armstrong und Buzz Aldrin als erste Menschen den Mond. Hunderte Millionen verfolgen es am Fernseher.", "titel_en": "Moon landing", "text_en": "In July 1969 Neil Armstrong and Buzz Aldrin become the first people to walk on the Moon. Hundreds of millions watch on television.", "klang": "jubel"},
+{"jahr": 1969, "bis": 1998, "regionen": ["irland", "grossbritannien"], "titel": "Nordirlandkonflikt", "text": "Ab Ende der 1960er-Jahre eskaliert in Nordirland die Gewalt zwischen Unionisten und Nationalisten. Rund 3.500 Menschen sterben, bis das Karfreitagsabkommen 1998 den Konflikt weitgehend beendet.", "titel_en": "The Troubles", "text_en": "From the late 1960s violence between unionists and nationalists escalates in Northern Ireland. Around 3,500 people die before the Good Friday Agreement of 1998 largely ends the conflict.", "klang": "unruhe"},
+{"jahr": 1971, "regionen": ["schweiz"], "titel": "Frauenstimmrecht in der Schweiz", "text": "Am 7. Februar 1971 stimmen die Schweizer Männer dem Frauenstimm- und -wahlrecht auf Bundesebene zu. Appenzell Innerrhoden folgt erst 1990.", "titel_en": "Women's suffrage in Switzerland", "text_en": "On 7 February 1971 Swiss men vote to give women the right to vote and stand for election at federal level. Appenzell Innerrhoden follows only in 1990."},
+{"jahr": 1972, "regionen": ["deutschland"], "titel": "Olympische Spiele in München", "text": "München empfängt die Welt. Der Anschlag auf die israelische Mannschaft überschattet die Spiele.", "titel_en": "Olympic Games in Munich", "text_en": "Munich welcomes the world. The attack on the Israeli team overshadows the Games.", "klang": "jubel"},
+{"jahr": 1978, "regionen": ["banat", "rumaenien"], "titel": "Freikauf der Rumäniendeutschen", "text": "Helmut Schmidt und Ceaușescu vereinbaren die Ausreise von jährlich rund 11.000 Rumäniendeutschen, die Bundesrepublik zahlt dafür ein Kopfgeld.", "titel_en": "Buying the freedom of Romanian Germans", "text_en": "Helmut Schmidt and Ceaușescu agree on the emigration of around 11,000 Romanian Germans a year, for which West Germany pays a fee per person."},
+{"jahr": 1980, "bis": 1989, "regionen": ["polen"], "gruppe": "wende-1989", "titel": "Solidarność", "text": "Streiks auf der Danziger Werft führen 1980 zur Gründung der Gewerkschaft Solidarność. Nach dem Kriegsrecht von 1981 gewinnt sie im Juni 1989 die ersten teilweise freien Wahlen.", "titel_en": "Solidarity", "text_en": "Strikes at the Gdańsk shipyard lead to the founding of the Solidarity trade union in 1980. After martial law in 1981 it wins the first partly free elections in June 1989.", "klang": "unruhe"},
+{"jahr": 1981, "bis": 1989, "regionen": ["rumaenien", "banat"], "titel": "Mangel unter Ceaușescu", "text": "Um die Auslandsschulden zu tilgen, lässt Ceaușescu Lebensmittel exportieren. Brot, Fleisch, Strom und Heizung werden rationiert, vor den Läden bilden sich lange Schlangen.", "titel_en": "Shortages under Ceaușescu", "text_en": "To pay off foreign debt, Ceaușescu has food exported. Bread, meat, electricity and heating are rationed, and long queues form outside the shops.", "klang": "kaelte+not"},
+{"jahr": 1989, "regionen": ["banat", "rumaenien"], "gruppe": "wende-1989", "titel": "Revolution in Temeswar", "text": "Am 16. Dezember beginnt in Temeswar der Aufstand, der Ceaușescu stürzt.", "titel_en": "Revolution in Timișoara", "text_en": "On 16 December the uprising that topples Ceaușescu begins in Timișoara.", "klang": "gefecht+unruhe"},
+{"jahr": 1989, "regionen": ["ungarn"], "gruppe": "wende-1989", "titel": "Ungarn öffnet die Grenze", "text": "Am 2. Mai 1989 beginnt Ungarn mit dem Abbau des Grenzzauns zu Österreich, im September dürfen DDR-Bürger ausreisen. Am 23. Oktober wird die Republik Ungarn ausgerufen.", "titel_en": "Hungary opens its border", "text_en": "On 2 May 1989 Hungary begins dismantling its border fence with Austria, and in September East Germans are allowed to leave. On 23 October the Republic of Hungary is proclaimed.", "klang": "jubel"},
+{"jahr": 1989, "regionen": ["tschechien", "slowakei"], "gruppe": "wende-1989", "titel": "Samtene Revolution", "text": "Nach Massenprotesten ab dem 17. November 1989 gibt die kommunistische Führung auf. Am 29. Dezember wird Václav Havel Präsident.", "titel_en": "Velvet Revolution", "text_en": "After mass protests beginning on 17 November 1989 the Communist leadership gives up power. On 29 December Václav Havel becomes president.", "klang": "jubel"},
+{"jahr": 1989, "regionen": ["deutschland"], "titel": "Mauerfall", "text": "Am 9. November öffnet die DDR die Grenze.", "titel_en": "Fall of the Berlin Wall", "text_en": "On 9 November East Germany opens its border.", "klang": "jubel"},
+{"jahr": 1989, "regionen": ["europa"], "gruppe": "wende-1989", "titel": "Fall des Eisernen Vorhangs", "text": "1989 stürzen in Osteuropa die kommunistischen Regierungen, meist ohne Blutvergießen. Im Mai beginnt Ungarn, den Grenzzaun zu Österreich abzubauen.", "titel_en": "Fall of the Iron Curtain", "text_en": "In 1989 the Communist governments of Eastern Europe fall, mostly without bloodshed. In May Hungary begins dismantling its border fence with Austria.", "klang": "jubel"},
+{"jahr": 1990, "regionen": ["banat"], "gruppe": "deutsche-einheit", "titel": "Große Ausreise", "text": "Innerhalb weniger Jahre verlassen die meisten Banater Schwaben Rumänien. Am 3. Oktober wird Deutschland wiedervereinigt.", "titel_en": "The great exodus", "text_en": "Within a few years most Banat Swabians leave Romania. On 3 October Germany is reunified.", "klang": "zug"},
+{"jahr": 1990, "regionen": ["deutschland"], "gruppe": "deutsche-einheit", "titel": "Deutsche Einheit", "text": "Am 1. Juli 1990 kommt die D-Mark in die DDR, am 3. Oktober tritt die DDR der Bundesrepublik bei. Deutschland ist wiedervereinigt.", "titel_en": "German reunification", "text_en": "On 1 July 1990 the Deutsche Mark is introduced in East Germany, and on 3 October the GDR joins the Federal Republic. Germany is reunified.", "klang": "jubel+glocken"},
+{"jahr": 1991, "regionen": ["russland", "ukraine"], "titel": "Ende der Sowjetunion", "text": "Nach einem gescheiterten Putsch im August 1991 erklären weitere Sowjetrepubliken ihre Unabhängigkeit, auch die Ukraine. Im Dezember löst sich die Sowjetunion auf.", "titel_en": "End of the Soviet Union", "text_en": "After a failed coup in August 1991 more Soviet republics declare independence, including Ukraine. In December the Soviet Union is dissolved."},
+{"jahr": 1991, "bis": 1995, "regionen": ["kroatien", "serbien"], "titel": "Zerfall Jugoslawiens", "text": "1991 erklären Slowenien und Kroatien ihre Unabhängigkeit. In den Kriegen in Kroatien und Bosnien bis 1995 sterben über 100.000 Menschen, Millionen werden vertrieben.", "titel_en": "Break-up of Yugoslavia", "text_en": "In 1991 Slovenia and Croatia declare independence. In the wars in Croatia and Bosnia up to 1995 more than 100,000 people die and millions are displaced.", "klang": "gefecht"},
+{"jahr": 1993, "regionen": ["tschechien", "slowakei"], "titel": "Teilung der Tschechoslowakei", "text": "Am 1. Januar 1993 teilt sich die Tschechoslowakei friedlich in Tschechien und die Slowakei.", "titel_en": "Division of Czechoslovakia", "text_en": "On 1 January 1993 Czechoslovakia peacefully splits into the Czech Republic and Slovakia."},
+{"jahr": 2002, "regionen": ["deutschland", "oesterreich", "frankreich", "belgien", "niederlande", "luxemburg", "italien", "irland", "westen"], "titel": "Der Euro kommt", "text": "Am 1. Januar 2002 lösen Euro-Münzen und -Scheine in zwölf Ländern der EU die alten Währungen ab, etwa D-Mark, Schilling, Franc und Lira.", "titel_en": "The euro arrives", "text_en": "On 1 January 2002 euro coins and notes replace the old currencies in twelve EU countries, among them the Deutsche Mark, schilling, franc and lira."},
+{"jahr": 2007, "regionen": ["banat", "rumaenien"], "titel": "Rumänien in der EU", "text": "Rumänien tritt der Europäischen Union bei.", "titel_en": "Romania joins the EU", "text_en": "Romania joins the European Union."},
+{"jahr": 2013, "regionen": ["kroatien"], "titel": "Kroatien in der EU", "text": "Am 1. Juli 2013 tritt Kroatien der Europäischen Union bei. 2023 führt es den Euro ein.", "titel_en": "Croatia joins the EU", "text_en": "On 1 July 2013 Croatia joins the European Union. In 2023 it adopts the euro."},
+{"jahr": 2020, "bis": 2023, "regionen": ["welt"], "titel": "Corona-Pandemie", "text": "Das Coronavirus SARS-CoV-2 verbreitet sich weltweit. Lockdowns, geschlossene Schulen und Abstandsregeln prägen den Alltag, Millionen Menschen sterben.", "titel_en": "COVID-19 pandemic", "text_en": "The SARS-CoV-2 coronavirus spreads around the world. Lockdowns, school closures and distancing rules shape daily life, and millions of people die."},
+{"jahr": 2022, "regionen": ["europa"], "titel": "Krieg gegen die Ukraine", "text": "Am 24. Februar 2022 greift Russland die Ukraine auf breiter Front an, nachdem es 2014 die Krim annektiert hat. Millionen Ukrainer fliehen, viele in die EU.", "titel_en": "War against Ukraine", "text_en": "On 24 February 2022 Russia launches a full-scale invasion of Ukraine, having annexed Crimea in 2014. Millions of Ukrainians flee, many of them to the EU."}
 ]

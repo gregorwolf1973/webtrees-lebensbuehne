@@ -2,7 +2,8 @@
 // die Tiefe ist die Zeit.
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { ladeDaten, ansicht, jahreKurz, verwandtschaft, JETZT } from 'lb/daten.js';
+import { ladeDaten, ansicht, jahreKurz, verwandtschaft, zeitFuerAnsicht, JETZT } from 'lb/daten.js';
+import { t, EN as SPRACHE_EN } from 'lb/text.js';
 import { Panel } from 'lb/panel.js';
 import * as klang from 'lb/klang.js';
 
@@ -17,6 +18,7 @@ const zVon = jahr => (jahr - JAHR_NULL) * TIEFE_PRO_JAHR;
 
 const daten = await ladeDaten();
 const { personen, zeit } = daten;
+let zeitAnsicht = zeit, klangAnsicht = daten.klangZeit;   // Zeitgeschehen, das zu den Regionen der Ansicht passt
 const JAHR_MIN = Math.min(...personen.map(p => p.jahrE));
 
 // --- Szene ---------------------------------------------------------------------------------
@@ -127,14 +129,18 @@ const BODEN = -RING * 0.82;
 scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, BODEN, zVon(JETZT)), new THREE.Vector3(0, BODEN, zVon(JAHR_MIN - 30))]),
   new THREE.LineBasicMaterial({ color: 0xe8b04f, transparent: true, opacity: 0.5 })));
 
+// Marken des Zeitgeschehens am Boden: bei jedem Wechsel der Ansicht neu, passend zu deren Regionen
 const zeitMarken = [];
 const rauteGeo = new THREE.OctahedronGeometry(0.7);
-for (const z of zeit) {
-  const m = new THREE.Mesh(rauteGeo, new THREE.MeshBasicMaterial({ color: 0xe8b04f, transparent: true, opacity: 0.75 }));
-  m.position.set(0, BODEN, zVon(z.jahr));
-  m.userData = { zeit: z };
-  scene.add(m);
-  zeitMarken.push(m);
+function baueZeitMarken() {
+  for (const m of zeitMarken.splice(0)) { scene.remove(m); m.material.dispose(); }
+  for (const z of zeitAnsicht) {
+    const m = new THREE.Mesh(rauteGeo, new THREE.MeshBasicMaterial({ color: 0xe8b04f, transparent: true, opacity: 0.75 }));
+    m.position.set(0, BODEN, zVon(z.jahr));
+    m.userData = { zeit: z };
+    scene.add(m);
+    zeitMarken.push(m);
+  }
 }
 {
   const n = 2200, pos = new Float32Array(n * 3);
@@ -181,6 +187,9 @@ function baue() {
     o.material?.dispose();
   }
   imBild = ansicht(daten, root, modus);
+  zeitAnsicht = zeitFuerAnsicht(imBild, zeit);
+  klangAnsicht = zeitFuerAnsicht(imBild, daten.klangZeit);
+  baueZeitMarken();
   // Fächer: jeder Zweig bekommt so viel Winkel, wie er Enden hat; Radius nach Generation, Tiefe nach Geburtsjahr
   const elternIm = p => p.eltern.filter(e => e.rolle === 'vorfahr' && e.zumStart === p);
   const kinderIm = p => p.kinderP.filter(c => c.rolle === 'nachkomme' && c.zumStart === p);
@@ -245,13 +254,16 @@ function baue() {
   linienBasis = modus.vorfahren || modus.partner ? nachGeburt[0] : nachGeburt[nachGeburt.length - 1];
   const jahre = imBild.map(p => p.jahrE);
   document.getElementById('info-zahl').textContent =
-    `${imBild.length} ${imBild.length === 1 ? 'Person' : 'Personen'} · ${Math.min(...jahre)}–${Math.max(...jahre)} · ${imBild.filter(p => p.gesicht).length} Gesichter`;
+    t(imBild.length === 1 ? '{n} Person · {von}–{bis} · {g} Gesichter' : '{n} Personen · {von}–{bis} · {g} Gesichter',
+      { n: imBild.length, von: Math.min(...jahre), bis: Math.max(...jahre), g: imBild.filter(p => p.gesicht).length });
   document.getElementById('hauptperson').textContent = root.name.voll;
   document.getElementById('modus-vorfahren').setAttribute('aria-pressed', modus.vorfahren);
   document.getElementById('modus-nachkommen').setAttribute('aria-pressed', modus.nachkommen);
   document.getElementById('modus-partner').setAttribute('aria-pressed', modus.partner);
   document.getElementById('modus-partner').disabled = !root.partnerP.length;
-  document.getElementById('modus-partner').title = root.partnerP.length ? `${root.partnerP.map(x => x.name.voll).join(', ')} und ${root.partnerP.length > 1 ? 'deren' : 'dessen'} Vorfahren einblenden` : 'Keine Partner im Stammbaum';
+  document.getElementById('modus-partner').title = root.partnerP.length
+    ? t(root.partnerP.length > 1 ? '{namen} und deren Vorfahren einblenden' : '{namen} und dessen Vorfahren einblenden', { namen: root.partnerP.map(x => x.name.voll).join(', ') })
+    : t('Keine Partner im Stammbaum');
   history.replaceState(null, '', `#${root.id}/${modus.vorfahren ? 'v' : ''}${modus.nachkommen ? 'n' : ''}${modus.partner ? 'p' : ''}`);
   gewaehlt = null;
   aktualisiereDarstellung();
@@ -544,7 +556,7 @@ function abspannRollen(dt) {
 }
 
 const deckkraft = (d, fenster) => d <= 1 ? 1 : Math.max(0.25, 1 - (d - 1) / fenster);
-const FAMILIE = { BIRT: 'Geburt', DEAT: 'Tod', MARR: 'Hochzeit', EMIG: 'Auswanderung', IMMI: 'Einwanderung' };
+const FAMILIE = { BIRT: t('Geburt'), DEAT: t('Tod'), MARR: t('Hochzeit'), EMIG: t('Auswanderung'), IMMI: t('Einwanderung') };
 
 function setzeJahr(jGenau) {
   zeitJahr = jGenau;
@@ -560,8 +572,8 @@ function setzeJahr(jGenau) {
   folgeZiel = berechneFolgeZiel(j, geboren[0]);
   gesichterAnpassen(j);
   const lebend = imBild.filter(p => p.jahrE <= j && p.ende >= j);
-  lebendAnzeige.textContent = `${lebend.length} ${lebend.length === 1 ? 'Person lebt' : 'Personen leben'} in diesem Jahr`;
-  const zg = zeit.map(z => ({ z, d: abstand(z, j) })).filter(x => x.d <= FENSTER_ZEIT)
+  lebendAnzeige.textContent = t(lebend.length === 1 ? '{n} Person lebt in diesem Jahr' : '{n} Personen leben in diesem Jahr', { n: lebend.length });
+  const zg = zeitAnsicht.map(z => ({ z, d: abstand(z, j) })).filter(x => x.d <= FENSTER_ZEIT)
     .sort((a, b) => a.d - b.d).slice(0, 3)
     .map(({ z, d }) => ({ key: 'z' + z.jahr + z.titel, jahr: z.jahr, klasse: 'zeitgeschehen', o: deckkraft(d, FENSTER_ZEIT),
       html: `<span class="zk-jahr">${z.bis ? `${z.jahr}–${z.bis}` : z.jahr}</span><b>${z.titel}</b><p>${z.text}</p>` }));
@@ -600,12 +612,12 @@ function stoppeAbspielen() {
   abspielen = null;
   musik.pause();
   klang.stille();
-  document.getElementById('abspielen').textContent = '▶ Zeitreise';
+  document.getElementById('abspielen').textContent = t('▶ Zeitreise');
 }
 document.getElementById('abspielen').addEventListener('click', async e => {
   if (abspielen) return stoppeAbspielen();
   if (geraeuscheAn) klang.bereit();
-  e.target.textContent = '❚❚ Anhalten';
+  e.target.textContent = t('❚❚ Anhalten');
   const geburten = imBild.map(p => p.geburt ?? p.jahrE);
   const mitLied = liedAn && musikQuelle;
   if (mitLied && !musik.duration) await new Promise(ok => musik.addEventListener('loadedmetadata', ok, { once: true }));
@@ -679,27 +691,27 @@ renderer.domElement.addEventListener('wheel', () => { zoomPause = performance.no
 
 // --- Ton: Einstellungen (Menü „♪ Ton“), im Browser gemerkt -------------------------------------------------------
 const ARTEN = [
-  ['geburt', 'Geburt (Babylachen)'], ['hochzeit', 'Hochzeit (Glocken, Lachen)'], ['tod', 'Tod (tiefe Glocke)'],
-  ['krieg', 'Krieg vor 1900 (Kanonen)'], ['krieg1', 'Erster Weltkrieg (MG)'], ['krieg2', 'Zweiter Weltkrieg (Stukas)'],
-  ['luftkrieg', 'Luftalarm, Bomben'], ['gefecht', 'Schießereien'], ['totenglocke', 'Totenglocken im Krieg'], ['marsch', 'Marschtritte'],
-  ['not', 'Hunger und Not'], ['kaelte', 'Kälte'], ['wasser', 'Wasser, Auswanderung'], ['flut', 'Flut'],
-  ['zug', 'Eisenbahn'], ['jubel', 'Jubel'], ['unruhe', 'Unruhe'], ['glocken', 'Glockengeläut'], ['strom', 'Strom'],
+  ['geburt', t('Geburt (Babylachen)')], ['hochzeit', t('Hochzeit (Glocken, Lachen)')], ['tod', t('Tod (tiefe Glocke)')],
+  ['krieg', t('Krieg vor 1900 (Kanonen)')], ['krieg1', t('Erster Weltkrieg (MG)')], ['krieg2', t('Zweiter Weltkrieg (Stukas)')],
+  ['luftkrieg', t('Luftalarm, Bomben')], ['gefecht', t('Schießereien')], ['totenglocke', t('Totenglocken im Krieg')], ['marsch', t('Marschtritte')],
+  ['not', t('Hunger und Not')], ['kaelte', t('Kälte')], ['wasser', t('Wasser, Auswanderung')], ['flut', t('Flut')],
+  ['zug', t('Eisenbahn')], ['jubel', t('Jubel')], ['unruhe', t('Unruhe')], ['glocken', t('Glockengeläut')], ['strom', t('Strom')],
 ];
 const ton = { lied: false, liedTempo: true, geraeusche: true, volLied: 85, volGeraeusche: 50, arten: Object.fromEntries(ARTEN.map(([k]) => [k, true])) };
 try {
-  const t = JSON.parse(localStorage.getItem('lb-ton') || '{}');
+  const gespeichert = JSON.parse(localStorage.getItem('lb-ton') || '{}');
   if (!localStorage.getItem('lb-ton')) {   // Einstellungen der ersten Fassung übernehmen
-    if (localStorage.getItem('lb-lied')) t.lied = localStorage.getItem('lb-lied') === '1';
-    if (localStorage.getItem('lb-geraeusche')) t.geraeusche = localStorage.getItem('lb-geraeusche') === '1';
+    if (localStorage.getItem('lb-lied')) gespeichert.lied = localStorage.getItem('lb-lied') === '1';
+    if (localStorage.getItem('lb-geraeusche')) gespeichert.geraeusche = localStorage.getItem('lb-geraeusche') === '1';
   }
-  Object.assign(ton, t, { arten: { ...ton.arten, ...(t.arten || {}) } });
+  Object.assign(ton, gespeichert, { arten: { ...ton.arten, ...(gespeichert.arten || {}) } });
 } catch (e) { /* Vorgaben */ }
 const tonSpeichern = () => { try { localStorage.setItem('lb-ton', JSON.stringify(ton)); } catch (e) { /* ohne Speicher */ } };
 let geraeuscheAn = ton.geraeusche, liedAn = ton.lied;
 
 function klingen(j) {
   const ziele = {};
-  for (const z of daten.klangZeit) {
+  for (const z of klangAnsicht) {
     const bis = (z.klangBis ?? z.bis ?? z.jahr) + 1;
     const st = j < z.jahr ? 1 - (z.jahr - j) / 1.5 : j > bis ? 1 - (j - bis) / 1.5 : 1;   // anderthalb Jahre ein- und ausblenden
     if (st <= 0) continue;
@@ -708,7 +720,7 @@ function klingen(j) {
   klang.stimmung(ziele);
   // Aufnahmen für die Ereignisse der nächsten Jahrzehnte schon holen, damit sie beim Einsatz bereitliegen
   const bald = new Set();
-  for (const z of daten.klangZeit) if (z.jahr > j && z.jahr <= j + 15) for (const art of z.klang.split('+')) if (ton.arten[art]) bald.add(art);
+  for (const z of klangAnsicht) if (z.jahr > j && z.jahr <= j + 15) for (const art of z.klang.split('+')) if (ton.arten[art]) bald.add(art);
   if (bald.size) klang.vorladen([...bald]);
   // Familienklänge nur aus der hervorgehobenen direkten Linie
   let n = 0, hochzeit = false;
@@ -751,12 +763,48 @@ async function liedLaden() {
   } catch (e) { /* ohne Speicher */ }
   return null;
 }
+// mitgelieferte freie Lieder (resources/musik/lieder.json: datei, titel, urheber, lizenz, lizenzUrl, quelle)
+async function liederLaden() {
+  const LB = window.LEBENSBUEHNE;
+  if (LB) return LB.lieder || [];
+  try {
+    const r = await fetch('musik/lieder.json', { cache: 'no-store' });
+    if (r.ok) return (await r.json()).map(l => ({ ...l, url: 'musik/' + encodeURIComponent(l.datei) }));
+  } catch (e) { /* keine */ }
+  return [];
+}
+let eigenesLied = null, liederMit = [];
+const liedTitel = l => (SPRACHE_EN && l.titel_en) || l.titel;
+const liedAuswahl = document.getElementById('lied-wahl');
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function baueLiedAuswahl() {
+  liedAuswahl.innerHTML = `<option value="eigen">${eigenesLied ? esc(t('Eigenes Lied: {name}', { name: eigenesLied.name })) : esc(t('Eigenes Lied (keins gewählt)'))}</option>`
+    + liederMit.map(l => `<option value="mit:${esc(l.datei)}">${esc(liedTitel(l))}</option>`).join('');
+  liedAuswahl.hidden = !liederMit.length;
+}
+// gewähltes Lied: eigenes, sonst das erste mitgelieferte
+function waehleLied() {
+  let wahl = ton.liedWahl;
+  if (!wahl || (wahl === 'eigen' && !eigenesLied) || (wahl.startsWith('mit:') && !liederMit.some(l => 'mit:' + l.datei === wahl)))
+    wahl = eigenesLied ? 'eigen' : liederMit.length ? 'mit:' + liederMit[0].datei : 'eigen';
+  liedAuswahl.value = wahl;
+  const mit = liederMit.find(l => 'mit:' + l.datei === wahl);
+  setzeLied(mit ? { url: mit.url, name: liedTitel(mit), lied: mit } : eigenesLied);
+}
 function setzeLied(q) {
   musikQuelle = q;
   if (q) musik.src = q.url;
-  document.getElementById('lied-name').textContent = q ? q.name : 'Kein Lied – eigene Datei über „Datei wählen …“ einbinden';
+  document.getElementById('lied-name').textContent = q ? (q.lied ? '' : q.name) : t('Kein Lied – eigene Datei über „Datei wählen …“ einbinden');
+  const l = q?.lied;
+  document.getElementById('lied-quelle').innerHTML = l
+    ? `${esc(l.urheber)} · <a href="${esc(l.lizenzUrl)}" target="_blank" rel="noopener">${esc((SPRACHE_EN && l.lizenz_en) || l.lizenz)}</a> · <a href="${esc(l.quelle)}" target="_blank" rel="noopener">${esc(t('Quelle'))}</a>` : '';
   zeigeTon();
 }
+liedAuswahl.addEventListener('change', () => {
+  ton.liedWahl = liedAuswahl.value; tonSpeichern();
+  if (abspielen) stoppeAbspielen();
+  waehleLied();
+});
 dateiWahl.addEventListener('change', async () => {
   const datei = dateiWahl.files[0];
   if (!datei) return;
@@ -764,9 +812,12 @@ dateiWahl.addEventListener('change', async () => {
     const db = await speicher();
     db.transaction('dateien', 'readwrite').objectStore('dateien').put(datei, 'lied');
   } catch (e) { /* dann nur für diese Sitzung */ }
-  liedAn = ton.lied = true; tonSpeichern();
-  setzeLied({ url: URL.createObjectURL(datei), name: datei.name });
+  liedAn = ton.lied = true;
+  ton.liedWahl = 'eigen'; tonSpeichern();
+  eigenesLied = { url: URL.createObjectURL(datei), name: datei.name };
   if (abspielen) stoppeAbspielen();
+  baueLiedAuswahl();
+  waehleLied();
 });
 
 // Menü aufbauen und bedienen
@@ -817,7 +868,12 @@ document.getElementById('klang-arten').addEventListener('change', ev => {
   klang.probe(ev.target.dataset.art);
 });
 zeigeTon();
-liedLaden().then(setzeLied);
+Promise.all([liedLaden(), liederLaden()]).then(([eigen, mit]) => {
+  eigenesLied = eigen;
+  liederMit = mit;
+  baueLiedAuswahl();
+  waehleLied();
+});
 klang.ladeAufnahmen();
 
 // Menü (☰) auf kleinen Bildschirmen: Suche, Überblick und Ansicht; schließt nach jeder Wahl
@@ -842,12 +898,12 @@ document.getElementById('ansicht-ueberblick').addEventListener('click', () => {
 // Klick auf den Namen der Hauptperson: die Suche wählt dann eine neue Hauptperson
 const suche = document.getElementById('suche');
 let hpWahl = false;
-function hpWahlEnde() { hpWahl = false; suche.placeholder = 'Person suchen …'; suche.classList.remove('hp-wahl'); }
+function hpWahlEnde() { hpWahl = false; suche.placeholder = t('Person suchen …'); suche.classList.remove('hp-wahl'); }
 document.getElementById('hauptperson').addEventListener('click', () => {
   hpWahl = true;
   if (kompakt.matches) menue(true);   // die Suche steckt dann im Menü
   suche.value = '';
-  suche.placeholder = 'Neue Hauptperson: Namen eingeben …';
+  suche.placeholder = t('Neue Hauptperson: Namen eingeben …');
   suche.classList.add('hp-wahl');
   suche.focus();
 });
@@ -894,8 +950,8 @@ let runter = null;
 function treffer(ev) {
   maus.set(ev.clientX / innerWidth * 2 - 1, -(ev.clientY / innerHeight) * 2 + 1);
   ray.setFromCamera(maus, camera);
-  const t = ray.intersectObjects([...karten, ...zeitMarken], false).find(h => h.object.userData.p || h.object.material.opacity > 0.2);
-  return t ? t.object : null;
+  const hit = ray.intersectObjects([...karten, ...zeitMarken], false).find(h => h.object.userData.p || h.object.material.opacity > 0.2);
+  return hit ? hit.object : null;
 }
 
 renderer.domElement.addEventListener('pointermove', ev => {
@@ -907,7 +963,7 @@ renderer.domElement.addEventListener('pointermove', ev => {
   if (!o) { tip.hidden = true; return; }
   const p = o.userData.p, z = o.userData.zeit;
   tip.innerHTML = p ? `<b>${p.name.voll}</b><span>${jahreKurz(p)} · ${verwandtschaft(p)}</span>`
-    : `<b>${z.titel}</b><span>${z.bis ? `${z.jahr}–${z.bis}` : z.jahr} · Zeitgeschehen</span>`;
+    : `<b>${z.titel}</b><span>${z.bis ? `${z.jahr}–${z.bis}` : z.jahr} · ${t('Zeitgeschehen')}</span>`;
   tip.style.left = Math.min(ev.clientX + 16, innerWidth - 300) + 'px';
   tip.style.top = ev.clientY + 14 + 'px';
   tip.hidden = false;

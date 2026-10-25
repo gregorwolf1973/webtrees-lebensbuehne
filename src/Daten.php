@@ -67,6 +67,16 @@ final class Daten
 
     private const array MON_DE = ['Jan.', 'Feb.', 'März', 'Apr.', 'Mai', 'Juni', 'Juli', 'Aug.', 'Sep.', 'Okt.', 'Nov.', 'Dez.'];
 
+    private const array MON_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    private const array FAKTEN_EN = [
+        'BIRT' => 'Birth', 'CHR' => 'Baptism', 'BAPM' => 'Baptism', 'DEAT' => 'Death', 'BURI' => 'Burial',
+        'CREM' => 'Cremation', 'RESI' => 'Residence', 'OCCU' => 'Occupation', 'EMIG' => 'Emigration',
+        'IMMI' => 'Immigration', 'EDUC' => 'Education', 'GRAD' => 'Graduation', 'RELI' => 'Religion',
+        'EVEN' => 'Event', 'FACT' => 'Fact', 'NATU' => 'Naturalisation', 'CENS' => 'Census',
+        'CONF' => 'Confirmation', 'MARR' => 'Marriage', 'DIV' => 'Divorce', 'ENGA' => 'Engagement',
+    ];
+
     private const array FAKTEN = [
         'BIRT' => 'Geburt', 'CHR' => 'Taufe', 'BAPM' => 'Taufe', 'DEAT' => 'Tod', 'BURI' => 'Begräbnis',
         'CREM' => 'Einäscherung', 'RESI' => 'Wohnort', 'OCCU' => 'Beruf', 'EMIG' => 'Auswanderung',
@@ -100,7 +110,14 @@ final class Daten
         private readonly Tree $tree,
         private readonly int $stufe,
         private readonly string $gesichtRoute,
+        private readonly string $sprache = 'de',
     ) {
+    }
+
+    // Name eines Fakts in der Sprache der Oberfläche
+    private function faktName(string $tag): string
+    {
+        return $this->sprache === 'de' ? self::FAKTEN[$tag] : self::FAKTEN_EN[$tag];
     }
 
     /**
@@ -262,7 +279,7 @@ final class Daten
             $alle  = array_values(array_filter($this->texte($b, 'NOTE'), static fn (string $n): bool => !str_starts_with($n, '@')));
             $p['ereignisse'][] = [
                 'art'     => $tag,
-                'titel'   => self::FAKTEN[$tag],
+                'titel'   => $this->faktName($tag),
                 'jahr'    => $j,
                 'datum'   => $text,
                 'genau'   => $genau,
@@ -294,7 +311,7 @@ final class Daten
                 [$j, $text, $genau] = $this->datum($this->unter($b, 'DATE')[0] ?? '');
                 $notiz = array_filter($this->texte($b, 'NOTE'), fn (string $n): bool => !str_starts_with($n, '@') && !$this->istQuelle($n));
                 $p['ereignisse'][] = [
-                    'art' => $tag, 'titel' => self::FAKTEN[$tag], 'jahr' => $j, 'datum' => $text, 'genau' => $genau,
+                    'art' => $tag, 'titel' => $this->faktName($tag), 'jahr' => $j, 'datum' => $text, 'genau' => $genau,
                     'ort' => $this->ort($this->unter($b, 'PLAC')[0] ?? null), 'wert' => $pname, 'ursache' => '',
                     'notiz' => mb_substr(implode(' ', $notiz), 0, 600), 'quelle' => '',
                 ];
@@ -516,18 +533,22 @@ final class Daten
         }
         $j    = preg_match('/\b(\d{3,4})\b/', $t, $m) ? (int) $m[1] : null;
         $text = $t;
-        foreach (['ABT' => 'um ', 'EST' => 'ca. ', 'CAL' => 'ca. ', 'BEF' => 'vor ', 'AFT' => 'nach ', 'BET' => 'zwischen ', 'FROM' => 'von '] as $k => $v) {
+        $de   = $this->sprache === 'de';
+        $vor  = $de ? ['ABT' => 'um ', 'EST' => 'ca. ', 'CAL' => 'ca. ', 'BEF' => 'vor ', 'AFT' => 'nach ', 'BET' => 'zwischen ', 'FROM' => 'von ']
+            : ['ABT' => 'about ', 'EST' => 'est. ', 'CAL' => 'calc. ', 'BEF' => 'before ', 'AFT' => 'after ', 'BET' => 'between ', 'FROM' => 'from '];
+        foreach ($vor as $k => $v) {
             $text = (string) preg_replace('/^' . $k . '\b\s*/', $v, $text);
         }
-        $text = str_replace([' AND ', ' TO '], [' und ', ' bis '], $text);
-        $text = (string) preg_replace_callback(
+        $text = str_replace([' AND ', ' TO '], $de ? [' und ', ' bis '] : [' and ', ' to '], $text);
+        $monate = $de ? self::MON_DE : self::MON_EN;
+        $text   = (string) preg_replace_callback(
             '/\b(\d{1,2}) ([A-Z]{3}) (\d{3,4})\b/',
-            static fn (array $m): string => isset(self::MON[$m[2]]) ? ((int) $m[1]) . '. ' . self::MON_DE[self::MON[$m[2]] - 1] . ' ' . $m[3] : $m[0],
+            static fn (array $m): string => isset(self::MON[$m[2]]) ? ((int) $m[1]) . ($de ? '. ' : ' ') . $monate[self::MON[$m[2]] - 1] . ' ' . $m[3] : $m[0],
             $text
         );
         $text = (string) preg_replace_callback(
             '/\b([A-Z]{3}) (\d{3,4})\b/',
-            static fn (array $m): string => isset(self::MON[$m[1]]) ? self::MON_DE[self::MON[$m[1]] - 1] . ' ' . $m[2] : $m[0],
+            static fn (array $m): string => isset(self::MON[$m[1]]) ? $monate[self::MON[$m[1]] - 1] . ' ' . $m[2] : $m[0],
             $text
         );
 

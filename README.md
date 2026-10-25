@@ -8,7 +8,7 @@ lassen die Generationen aufleuchten und wieder verblassen. Dazu kommen Lebensges
 Lebenswegs und das Zeitgeschehen der jeweiligen Region.
 
 *English: “Lebensbühne” (stage of life) is a webtrees custom module that shows a family tree as a 3D time
-tunnel with a time travel, life stories, photos, maps and historical events. The user interface is German.*
+tunnel with a time travel, life stories, photos, maps and historical events. The user interface is available in German and English.*
 
 ## Funktionen
 
@@ -19,7 +19,7 @@ tunnel with a time travel, life stories, photos, maps and historical events. The
 - **Erzählung:** eine ausformulierte Lebensgeschichte je Person, auf Wunsch vom Browser vorgelesen. Dazu die Texte aus dem webtrees-Modul „Geschichten“, wenn es aktiv ist.
 - **Historische Grenzen:** Auf der Karte des Lebenswegs erscheinen die Staatsgrenzen zur Zeit der jeweiligen Station, von 1700 bis heute.
 - **2,5D-Porträts:** Das Gesicht auf der ersten Seite der Bildgeschichte wird zu einem räumlichen Porträt, das sich sanft bewegt und Maus oder Finger folgt.
-- **Ton:** künstlich erzeugte Geräusche passend zur Epoche, auf Wunsch eigene Aufnahmen. Dazu ein eigenes Lied, an dessen Länge sich das Tempo der Zeitreise anpassen lässt. Geburt, Hochzeit und Tod erklingen nur in der hervorgehobenen direkten Linie: von der angeklickten Person zur Hauptperson, ohne Auswahl von der ältesten Person aus.
+- **Ton:** frei lizenzierte Geräusche passend zur Epoche (sonst im Browser erzeugt), auf Wunsch eigene Aufnahmen. Dazu drei mitgelieferte Lieder oder ein eigenes, an dessen Länge sich das Tempo der Zeitreise anpassen lässt. Geburt, Hochzeit und Tod erklingen nur in der hervorgehobenen direkten Linie: von der angeklickten Person zur Hauptperson, ohne Auswahl von der ältesten Person aus.
 - **Handy und Tablet:** Suche und Ansichten liegen dort im Menü ☰. Der Überblick passt sich der Bildschirmform an, damit der ganze Stammbaum zu sehen ist.
 - **Bilder nur aus webtrees:** Die Fotos kommen aus der Medienverwaltung. Gesichter werden aus den Markierungen des Moduls [webtrees-faces](https://github.com/UksusoFF/webtrees-faces) ausgeschnitten, falls es installiert ist.
 
@@ -40,7 +40,7 @@ Nur **angemeldete Mitglieder** des jeweiligen Stammbaums. Gäste werden zur Anme
 
 Die Daten stellt webtrees für den jeweiligen Betrachter zusammen. Dabei gelten die Datenschutz-Einstellungen des Baums: Was ein Mitglied in webtrees nicht sehen darf, erscheint auch nicht in der Lebensbühne.
 
-Die Seite lädt keine Skripte von fremden Servern, three.js, Leaflet und die Grenzdaten liegen im Modul. Nur die Kartenkacheln kommen von OpenStreetMap. Das Vorlesen übernimmt die Sprachausgabe des Browsers; je nach Browser und Gerät kann sie den Text an einen Sprachdienst des Herstellers schicken.
+Die Seite lädt keine Skripte von fremden Servern, three.js, Leaflet, die Grenzdaten, Klänge und Lieder liegen im Modul. Nur die Kartenkacheln kommen von OpenStreetMap. Das Vorlesen übernimmt die Sprachausgabe des Browsers; je nach Browser und Gerät kann sie den Text an einen Sprachdienst des Herstellers schicken.
 
 ## Erzählungen
 
@@ -71,22 +71,24 @@ Das Skript nimmt die Gesichtsausschnitte, die das Modul beim Ansehen im Zwischen
 
 Die Grenzen stammen aus [historical-basemaps](https://github.com/aourednik/historical-basemaps) von André Ourednik (GPL-3.0). Mitgeliefert ist ein vereinfachter Europa-Ausschnitt für 15 Stichjahre zwischen 1700 und 2010 in `resources/data/grenzen/`. Erzeugt wird er mit `tools/grenzen.py`. Die Karte zeigt jeweils den letzten Stand vor dem Jahr der Station, also für 1905 die Grenzen von 1900. Die Daten sind für große Maßstäbe gedacht und an Grenzflüssen ungenau.
 
-## Eigene Klänge und ein eigenes Lied
+## Klänge und Lieder
 
-Das Modul bringt keine Tonaufnahmen mit, alle Geräusche werden im Browser erzeugt. Eigene Aufnahmen kommen in den
-Datenordner von webtrees. Dieser Ordner ist nicht öffentlich, die Dateien liefert das Modul nur an Mitglieder aus:
+**Mitgeliefert** sind 47 frei lizenzierte Geräusche (Glocken, Babylachen, Kanonen, Sirenen, Dampflok, Wind, Wasser, Marschtritte …) und drei Lieder, alle mit Urheber und Lizenz in [`resources/klaenge/QUELLEN.md`](resources/klaenge/QUELLEN.md):
+
+- **Johann Strauss: „An der schönen blauen Donau“**, United States Marine Band (gemeinfrei) – die Donau als Weg der Auswanderer
+- **Bedřich Smetana: „Die Moldau“**, Musopen Symphony Orchestra (CC0) – von der Quelle zum großen Strom
+- **Kevin MacLeod: „Eternal Hope“** (CC BY 4.0) – ruhiger Aufbau zu einem hoffnungsvollen Höhepunkt
+
+Das Lied wählt jedes Mitglied im Ton-Menü; das Tempo der Zeitreise passt sich auf Wunsch der Länge an. Fehlt eine Aufnahme, erzeugt der Browser das Geräusch selbst.
+
+**Eigene Aufnahmen** kommen in den Datenordner von webtrees. Dieser Ordner ist nicht öffentlich, die Dateien liefert das Modul nur an Mitglieder aus. Eigene Aufnahmen einer Art ersetzen die mitgelieferten dieser Art ganz:
 
 ```
-data/lebensbuehne/musik.mp3              Lied zur Zeitreise (auch .m4a, .ogg, .opus, .wav)
+data/lebensbuehne/musik.mp3              Lied der Familie (auch .m4a, .ogg, .opus, .wav)
 data/lebensbuehne/klaenge/<name>.mp3     Geräusche (auch .ogg, .wav, .flac, .m4a, .opus)
 ```
 
-Jedes Mitglied kann außerdem im Ton-Menü über „Datei wählen …“ ein eigenes Lied einbinden. Es bleibt nur im eigenen Browser gespeichert.
-
-**Empfohlene Musik.** Das Modul liefert kein Lied mit, die Datei bringt jeder selbst mit:
-
-- **„Time“ von Hans Zimmer** (Filmmusik zu „Inception“, 2010): ruhiger Aufbau, großer Höhepunkt. Das Tempo der Zeitreise passt sich der Länge an.
-- **„Ein Licht geht an“**, das Lied zur Lebensbühne (ca. 17 Minuten, mit Suno komponiert), ein Weg von der Auswanderung ins Banat bis heute: [anhören auf Suno](https://suno.com/song/a7b9fe0a-e52c-4c97-b7ea-6142434f33cc)
+Jedes Mitglied kann außerdem im Ton-Menü über „Datei wählen …“ ein eigenes Lied einbinden. Es bleibt nur im eigenen Browser gespeichert. Empfehlungen: **„Time“ von Hans Zimmer** (Filmmusik zu „Inception“) oder **„Ein Licht geht an“**, das Lied zur Lebensbühne (ca. 17 Minuten, mit Suno komponiert): [anhören auf Suno](https://suno.com/song/a7b9fe0a-e52c-4c97-b7ea-6142434f33cc).
 
 Der Dateiname bestimmt den Einsatz. Varianten heißen `kanone_2.mp3`, `kanone_3.mp3` usw.
 
@@ -101,14 +103,33 @@ Der Dateiname bestimmt den Einsatz. Varianten heißen `kanone_2.mp3`, `kanone_3.
 
 Achte bei fremden Aufnahmen und Liedern auf die Lizenz.
 
-## Zeitgeschehen anpassen
+## Zeitgeschehen
 
-Die Ereignisse stehen in `resources/data/zeitgeschehen.json`. Mitgeliefert ist eine Auswahl für das Banat, Ungarn, Westdeutschland und Deutschland. Felder eines Eintrags:
+Mitgeliefert sind Ereignisse für Europa und die Welt sowie für viele Länder und Regionen, zweisprachig, in `resources/data/zeitgeschehen.json`. Welche eine Person sieht, richtet sich nach den Orten ihres Lebens: Die Lebensbühne erkennt Land und Region am Ortsnamen samt Oberorten (deutsch, englisch oder landessprachlich, z. B. „Billed, Timiș, Rumänien“, „Geretsried, D“, „Chicago, Illinois, USA“). Ereignisse für Europa und die Welt sehen alle.
+
+**Eigene Ereignisse** kommen in den Datenordner und bleiben bei Updates erhalten:
+
+```
+data/lebensbuehne/zeitgeschehen.json
+```
+
+Das Format ist dasselbe wie in der mitgelieferten Datei, eine Liste von Einträgen:
+
+```json
+[{ "jahr": 1910, "bis": 1912, "regionen": ["deutschland"], "titel": "Dorfbrand", "text": "…", "titel_en": "Village fire", "text_en": "…", "klang": "glocken" }]
+```
 
 - `jahr`, `bis`: Zeitraum
-- `regionen`: `banat`, `ungarn`, `westen`, `deutschland` oder `europa`
-- `titel`, `text`: Anzeige
+- `regionen`: `welt`, `europa`, `deutschland`, `oesterreich`, `schweiz`, `ungarn`, `rumaenien`, `serbien`, `banat`, `westen` (Lothringen, Luxemburg, Pfalz, Saarland, Elsass), `frankreich`, `luxemburg`, `belgien`, `niederlande`, `italien`, `polen`, `tschechien`, `slowakei`, `kroatien`, `russland`, `ukraine`, `grossbritannien`, `irland`, `skandinavien`, `usa`, `kanada`, `lateinamerika`, `australien`
+- `titel`, `text` (deutsch), `titel_en`, `text_en` (englisch)
+- `gruppe`: dasselbe Ereignis in mehreren Fassungen (allgemein und regional); gezeigt wird je Gruppe nur die passendste, eigene Einträge gehen vor
 - `klang`: Geräusche, mehrere mit `+` verbunden, z. B. `krieg2+totenglocke`
+
+## Sprachen
+
+Die Oberfläche folgt der Sprache, die in webtrees eingestellt ist: Deutsch oder Englisch, jede andere Sprache bekommt Englisch. Weitere Sprachen lassen sich ergänzen: `resources/lang/en.json` kopieren (z. B. als `fr.json`) und die Werte übersetzen; die Schlüssel sind die deutschen Texte. Erzählungen in einer anderen Sprache kommen als `data/lebensbuehne/geschichten/<Baumname>.<sprache>.json` dazu, sonst wird die deutsche gezeigt.
+
+*English: the interface follows the webtrees language (German or English; other languages fall back to English). Translations live in `resources/lang/<language>.json`, keyed by the German text.*
 
 ## Lizenz
 

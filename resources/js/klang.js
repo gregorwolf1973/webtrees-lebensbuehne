@@ -1,5 +1,5 @@
-// Geräusche zur Zeitreise: echte Aufnahmen aus media/klaenge/ (Dateiname = Art, z. B. kanone.mp3, kanone_2.ogg),
-// sonst im Browser erzeugt (Web Audio).
+// Geräusche zur Zeitreise: eigene Aufnahmen (Dateiname = Art, z. B. kanone.mp3, kanone_2.ogg), sonst die mitgelieferten
+// freien Aufnahmen des Moduls, sonst im Browser erzeugt (Web Audio).
 // Atmosphären laufen, solange ein Ereignis andauert, und werden weich ein- und ausgeblendet.
 
 let ctx = null, master = null, rauschen = null, pegel = 0.5;
@@ -43,15 +43,31 @@ async function ordnerListe() {
   return liste;
 }
 
+// mitgelieferte freie Aufnahmen des Moduls (resources/klaenge, Quellen in QUELLEN.md); lokal über klaenge/liste.json
+async function mitgelieferte() {
+  if (LB.klaengeMit) return LB.klaengeMit;
+  if (window.LEBENSBUEHNE) return {};
+  const r = await fetch('klaenge/liste.json', { cache: 'no-store' });
+  if (!r.ok) return {};
+  return Object.fromEntries(Object.entries(await r.json()).map(([k, datei]) => [k, 'klaenge/' + encodeURIComponent(datei)]));
+}
+
+// Liste: Name → Adresse. Eigene Aufnahmen einer Art ersetzen die mitgelieferten dieser Art ganz.
 export async function ladeAufnahmen() {
-  try { Object.assign(LISTE, await ordnerListe()); } catch (e) { /* keine Aufnahmen: erzeugte Klänge */ }
+  let eigene = {}, mit = {};
+  try { eigene = await ordnerListe(); } catch (e) { /* keine eigenen Aufnahmen */ }
+  try { mit = await mitgelieferte(); } catch (e) { /* keine mitgelieferten */ }
+  const art = name => name.replace(/_\d+$/, '');
+  const eigeneArten = new Set(Object.keys(eigene).map(art));
+  for (const [k, url] of Object.entries(mit)) if (!eigeneArten.has(art(k))) LISTE[k] = url;
+  for (const [k, datei] of Object.entries(eigene)) LISTE[k] = klangUrl(datei);
   return Object.keys(LISTE);
 }
 const varianten = name => Object.keys(LISTE).filter(x => x === name || x.startsWith(name + '_'));
 function lade(x) {
   if (!ctx || PUFFER.has(x) || LAEDT.has(x)) return;
   LAEDT.add(x);
-  fetch(klangUrl(LISTE[x])).then(r => r.arrayBuffer()).then(roh => ctx.decodeAudioData(roh)).then(b => {
+  fetch(LISTE[x]).then(r => r.arrayBuffer()).then(roh => ctx.decodeAudioData(roh)).then(b => {
     PUFFER.set(x, verkleinere(b));
     while (PUFFER.size > MAX_PUFFER) PUFFER.delete(PUFFER.keys().next().value);   // die am längsten unbenutzte zuerst
   }).catch(() => { /* unlesbar */ }).finally(() => LAEDT.delete(x));

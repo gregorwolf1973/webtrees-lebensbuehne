@@ -5,6 +5,8 @@ declare(strict_types=1);
 /**
  * Vollbildseite der Lebensbühne (eigenes Layout, ohne die webtrees-Menüs).
  *
+ * @var Closure(string):string $t        Übersetzung (deutscher Text als Schlüssel)
+ * @var string               $sprache
  * @var string               $titel
  * @var string               $baum
  * @var string               $zurueck
@@ -19,7 +21,7 @@ declare(strict_types=1);
 $json = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT;
 ?>
 <!doctype html>
-<html lang="de">
+<html lang="<?= e($sprache) ?>">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -36,58 +38,60 @@ $json = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HE
 
   <header class="leiste-oben">
     <div class="titel">
-      <a class="zurueck" href="<?= e($zurueck) ?>" title="Zurück zu webtrees">← <?= e($baum) ?></a>
+      <a class="zurueck" href="<?= e($zurueck) ?>" title="<?= e($t('Zurück zu webtrees')) ?>">← <?= e($baum) ?></a>
       <h1>Lebensbühne</h1>
-      <p id="info-zahl">Lade Stammbaum …</p>
+      <p id="info-zahl"><?= e($t('Lade Stammbaum …')) ?></p>
     </div>
     <div class="werkzeuge">
-      <span class="hp-label">Hauptperson</span>
-      <button id="hauptperson" class="hp" title="Klicken, um eine andere Hauptperson zu wählen">…</button>
-      <button id="menue" class="menue-knopf" aria-expanded="false" aria-controls="mehr" title="Suche und Ansicht">☰</button>
+      <span class="hp-label"><?= e($t('Hauptperson')) ?></span>
+      <button id="hauptperson" class="hp" title="<?= e($t('Klicken, um eine andere Hauptperson zu wählen')) ?>">…</button>
+      <button id="menue" class="menue-knopf" aria-expanded="false" aria-controls="mehr" title="<?= e($t('Suche und Ansicht')) ?>">☰</button>
       <div id="mehr" class="mehr">
-        <input id="suche" list="namen" placeholder="Person suchen …" autocomplete="off">
+        <input id="suche" list="namen" placeholder="<?= e($t('Person suchen …')) ?>" autocomplete="off">
         <datalist id="namen"></datalist>
-        <button id="ansicht-ueberblick">Überblick</button>
-        <span class="umschalter" role="group" aria-label="Ansicht">
-          <button id="modus-vorfahren" aria-pressed="true">Vorfahren</button>
-          <button id="modus-nachkommen" aria-pressed="false">Nachkommen</button>
-          <button id="modus-partner" aria-pressed="false">Partner</button>
+        <button id="ansicht-ueberblick"><?= e($t('Überblick')) ?></button>
+        <span class="umschalter" role="group" aria-label="<?= e($t('Ansicht')) ?>">
+          <button id="modus-vorfahren" aria-pressed="true"><?= e($t('Vorfahren')) ?></button>
+          <button id="modus-nachkommen" aria-pressed="false"><?= e($t('Nachkommen')) ?></button>
+          <button id="modus-partner" aria-pressed="false"><?= e($t('Partner')) ?></button>
         </span>
       </div>
     </div>
     <ul class="legende">
-      <li><i class="vater"></i>väterlicherseits</li>
-      <li><i class="mutter"></i>mütterlicherseits</li>
-      <li><i class="nachkommen"></i>Nachkommen</li>
-      <li><i class="partner"></i>Partnerseite</li>
-      <li><i class="raute"></i>Zeitgeschehen</li>
+      <li><i class="vater"></i><?= e($t('väterlicherseits')) ?></li>
+      <li><i class="mutter"></i><?= e($t('mütterlicherseits')) ?></li>
+      <li><i class="nachkommen"></i><?= e($t('Nachkommen')) ?></li>
+      <li><i class="partner"></i><?= e($t('Partnerseite')) ?></li>
+      <li><i class="raute"></i><?= e($t('Zeitgeschehen')) ?></li>
     </ul>
   </header>
 
   <footer class="leiste-unten">
-    <button id="abspielen">▶ Zeitreise</button>
-    <label class="tempo" title="Geschwindigkeit der Zeitreise"><span class="lang">Tempo</span> <input id="tempo" type="number" min="5" max="1200" step="5" value="60"> <span class="lang">Jahre/min</span><span class="kurz">J./min</span></label>
-    <button id="kamera" class="schalter" aria-pressed="false" title="Während der Zeitreise geht die Kamera mit und zeigt die gerade lebenden Personen"><span class="lang">Kamera folgt</span><span class="kurz">Kamera</span></button>
+    <button id="abspielen"><?= e($t('▶ Zeitreise')) ?></button>
+    <label class="tempo" title="<?= e($t('Geschwindigkeit der Zeitreise')) ?>"><span class="lang"><?= e($t('Tempo')) ?></span> <input id="tempo" type="number" min="5" max="1200" step="5" value="60"> <span class="lang"><?= e($t('Jahre/min')) ?></span><span class="kurz"><?= e($t('J./min')) ?></span></label>
+    <button id="kamera" class="schalter" aria-pressed="false" title="<?= e($t('Während der Zeitreise geht die Kamera mit und zeigt die gerade lebenden Personen')) ?>"><span class="lang"><?= e($t('Kamera folgt')) ?></span><span class="kurz"><?= e($t('Kamera')) ?></span></button>
     <div class="ton-box">
-      <button id="ton" class="schalter" aria-expanded="false" aria-controls="ton-menue" title="Lied und Geräusche einstellen">♪ Ton</button>
+      <button id="ton" class="schalter" aria-expanded="false" aria-controls="ton-menue" title="<?= e($t('Lied und Geräusche einstellen')) ?>"><?= e($t('♪ Ton')) ?></button>
       <div id="ton-menue" class="ton-menue" hidden>
-        <h3>Lied</h3>
-        <label class="haken"><input type="checkbox" id="lied-an"> abspielen</label>
+        <h3><?= e($t('Lied')) ?></h3>
+        <label class="haken"><input type="checkbox" id="lied-an"> <?= e($t('abspielen')) ?></label>
+        <select id="lied-wahl" class="lied-wahl" aria-label="<?= e($t('Lied auswählen')) ?>" hidden></select>
         <p id="lied-name" class="lied-name"></p>
-        <button id="lied-waehlen" class="klein">Datei wählen …</button>
-        <p class="lied-tipp">Empfehlung: „Time“ von Hans Zimmer (aus „Inception“) oder <a href="https://suno.com/song/a7b9fe0a-e52c-4c97-b7ea-6142434f33cc" target="_blank" rel="noopener">„Ein Licht geht an“</a>, das Lied zur Lebensbühne. Die Datei bringt jeder selbst mit.</p>
-        <label class="haken"><input type="checkbox" id="lied-tempo"> Tempo ans Lied anpassen</label>
-        <label class="laut">Lautstärke <input type="range" id="vol-lied" min="0" max="100"></label>
-        <h3>Geräusche</h3>
-        <label class="haken"><input type="checkbox" id="geraeusche-an"> abspielen</label>
-        <label class="laut">Lautstärke <input type="range" id="vol-geraeusche" min="0" max="100"></label>
-        <p class="lied-tipp">Geburt, Hochzeit und Tod erklingen nur in der hervorgehobenen Linie: von der angeklickten Person zur Hauptperson, ohne Auswahl von der ältesten Person aus.</p>
+        <p id="lied-quelle" class="lied-tipp"></p>
+        <button id="lied-waehlen" class="klein"><?= e($t('Datei wählen …')) ?></button>
+        <p class="lied-tipp"><?= strtr(e($t('Mitgeliefert sind frei lizenzierte Aufnahmen. Ein eigenes Lied, etwa „Time“ von Hans Zimmer oder {lied}, bindet „Datei wählen …“ ein.')), ['{lied}' => '<a href="https://suno.com/song/a7b9fe0a-e52c-4c97-b7ea-6142434f33cc" target="_blank" rel="noopener">„Ein Licht geht an“</a>']) ?></p>
+        <label class="haken"><input type="checkbox" id="lied-tempo"> <?= e($t('Tempo ans Lied anpassen')) ?></label>
+        <label class="laut"><?= e($t('Lautstärke')) ?> <input type="range" id="vol-lied" min="0" max="100"></label>
+        <h3><?= e($t('Geräusche')) ?></h3>
+        <label class="haken"><input type="checkbox" id="geraeusche-an"> <?= e($t('abspielen')) ?></label>
+        <label class="laut"><?= e($t('Lautstärke')) ?> <input type="range" id="vol-geraeusche" min="0" max="100"></label>
+        <p class="lied-tipp"><?= e($t('Geburt, Hochzeit und Tod erklingen nur in der hervorgehobenen Linie: von der angeklickten Person zur Hauptperson, ohne Auswahl von der ältesten Person aus.')) ?></p>
         <fieldset id="klang-arten" class="arten"></fieldset>
         <input id="lied-datei" type="file" accept="audio/*" hidden>
       </div>
     </div>
     <div class="regler">
-      <input id="jahr" type="range" min="1650" max="2026" step="1" value="1650" aria-label="Jahr">
+      <input id="jahr" type="range" min="1650" max="2026" step="1" value="1650" aria-label="<?= e($t('Jahr')) ?>">
       <div class="skala"><span>1650</span><span>1700</span><span>1750</span><span>1800</span><span>1850</span><span>1900</span><span>1950</span><span>2000</span></div>
     </div>
     <div class="jahrbox"><span id="jahr-anzeige">–</span><small id="lebend"></small></div>
@@ -96,7 +100,7 @@ $json = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HE
 
   <aside id="panel" hidden></aside>
   <div id="tip" hidden></div>
-  <p class="hilfe">Ziehen: drehen · Rechte Maustaste: verschieben · Mausrad: zoomen · Klick auf ein Gesicht: Lebensgeschichte · Doppelklick: als Hauptperson</p>
+  <p class="hilfe"><?= e($t('Ziehen: drehen · Rechte Maustaste: verschieben · Mausrad: zoomen · Klick auf ein Gesicht: Lebensgeschichte · Doppelklick: als Hauptperson')) ?></p>
 
   <script type="module" src="<?= e($appJs) ?>"></script>
 </body>

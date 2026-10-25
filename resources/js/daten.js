@@ -1,14 +1,19 @@
 // Daten laden und aufbereiten: geschätzte Jahre, Regionen, Verwandtschaft, Texte für Lebenslauf und Bildgeschichte.
+import { t, EN } from 'lb/text.js';
 
 export const JETZT = new Date().getFullYear();
 // Im webtrees-Modul setzt die Seite die Adressen (window.LEBENSBUEHNE), lokal gelten die Dateien in data/ und media/
 export const LB = window.LEBENSBUEHNE || {};
 
 export async function ladeDaten() {
-  const [roh, zeit] = await Promise.all([
+  const [roh, zeitMit] = await Promise.all([
     fetch(LB.daten || 'data/personen.json').then(r => { if (!r.ok) throw new Error('Daten: ' + r.status); return r.json(); }),
     fetch(LB.zeitgeschehen || 'data/zeitgeschehen.json').then(r => r.json()),
   ]);
+  // eigene Ereignisse der Installation (data/lebensbuehne/zeitgeschehen.json) kommen dazu und gehen in ihrer Gruppe vor
+  const zeit = [...zeitMit, ...(LB.zeitgeschehenEigen || []).map(z => ({ ...z, eigen: true }))]
+    .map(z => EN ? { ...z, titel: z.titel_en || z.titel, text: z.text_en || z.text } : z)
+    .sort((a, b) => a.jahr - b.jahr);
   const personen = roh.personen;
   const byId = new Map(personen.map(p => [p.id, p]));
 
@@ -105,40 +110,101 @@ export function ansicht(daten, root, { vorfahren = true, nachkommen = false, par
   return liste;
 }
 
+// Regionen eines Orts aus seinem Namen samt Oberorten („Billed, Timiș, Rumänien“, „Geretsried, D“); deutsche, englische
+// und landessprachliche Namen. Die Schlüssel entsprechen den Regionen in zeitgeschehen.json.
+const REGIONEN = [
+  ['banat', /banat|temes|timi[sș]|torontál|torontal|krass[oó]|cara[sș]|werschetz|vr[sš]ac|zrenjanin|betschkerek|kikinda|hatzfeld|jimbolia|lugosch|lugoj|reschitz|re[sș]i[tț]a/],
+  ['westen', /lothring|lorraine|luxemb|pfalz|palatin|saar|elsass|elsaß|alsace|trier/],
+  ['deutschland', /deutschland|germany|(^|, )d$|bayern|bavaria|baden|württemberg|hessen|sachsen|thüringen|westfalen|rheinland|niedersachsen|brandenburg|mecklenburg|holstein|preußen|preussen|prussia|franken|schwaben|pfalz|saarland|berlin|hamburg|bremen|münchen|munich|köln|cologne|frankfurt|stuttgart/],
+  ['oesterreich', /österreich|oesterreich|austria|steiermark|styria|kärnten|carinthia|tirol|salzburg|wien|vienna|burgenland|vorarlberg|(^|, )a$/],
+  ['schweiz', /schweiz|switzerland|suisse|svizzera|(^|, )ch$/],
+  ['ungarn', /ungarn|hungary|magyarorsz|budapest|szeged|debrecen|pécs|fünfkirchen|batschka|bácska|baranya|tolna|(^|, )h$/],
+  ['rumaenien', /rumänien|romania|românia|siebenbürgen|transylvania|ardeal|bukarest|bucure[sș]ti|sathmar|satu mare|maramure|moldau|(^|, )ro$/],
+  ['serbien', /serbien|serbia|srbija|vojvodina|woiwodina|belgrad|beograd|batschka|(^|, )srb?$/],
+  ['frankreich', /frankreich|france|lothring|lorraine|elsass|elsaß|alsace|paris|(^|, )f$/],
+  ['luxemburg', /luxemb/],
+  ['belgien', /belgien|belgium|belgique|belgië/],
+  ['niederlande', /niederlande|netherlands|holland|nederland/],
+  ['italien', /italien|italy|italia|südtirol|south tyrol/],
+  ['polen', /polen|poland|polska|schlesien|silesia|pommern|pomerania|ostpreußen|westpreußen|danzig|gdańsk|posen|poznań|galizien|galicia/],
+  ['tschechien', /tschech|czech|böhmen|bohemia|mähren|moravia|sudeten|prag|praha/],
+  ['slowakei', /slowakei|slovakia|slovensko|pressburg|bratislava|zips/],
+  ['kroatien', /kroatien|croatia|hrvatska|slawonien|slavonia|syrmien|srijem/],
+  ['russland', /russland|russia|wolga|volga|sibirien|siberia|sowjet|soviet|udssr|ussr/],
+  ['ukraine', /ukraine|donbas|stalino|donezk|donetsk|bessarabien|bessarabia|odessa|galizien|galicia|wolhynien|volhynia/],
+  ['grossbritannien', /england|great britain|united kingdom|großbritannien|schottland|scotland|wales|london/],
+  ['irland', /irland|ireland|éire/],
+  ['skandinavien', /schweden|sweden|norwegen|norway|dänemark|denmark|finnland|finland/],
+  ['usa', /\busa\b|vereinigte staaten|united states|new york|pennsylvania|ohio|illinois|wisconsin|texas|california|michigan|minnesota|chicago|(^|, )us$/],
+  ['kanada', /kanada|canada|ontario|québec|quebec|saskatchewan|alberta/],
+  ['lateinamerika', /brasil|brazil|argentin|mexiko|mexico|chile|paraguay|uruguay|venezuela/],
+  ['australien', /australien|australia|neuseeland|new zealand/],
+];
 export function regionenVonOrt(name) {
   const n = name.toLowerCase();
-  const r = [];
-  if (/banat|temeswar|timi|rum[äa]nien|siebenb|bukarest|constan/.test(n)) r.push('banat');
-  if (/ungarn|budapest|szeged|mak[óo]|h[óo]dmez/.test(n)) r.push('ungarn');
-  if (/lothringen|luxemburg|belgien|trier|pfalz|saar|elsass|albertshausen|flandern|höllingen|heling/.test(n)) r.push('westen');
-  if (/(^|, )d$|deutschland|bayern|münchen|westfalen|baden|geretsried|wolfratshausen/.test(n)) r.push('deutschland');
-  return r;
+  return REGIONEN.filter(([, muster]) => muster.test(n)).map(([r]) => r);
 }
 
+// Passt eine Region eines Eintrags zur Person? Das Banat gehörte bis 1920 zu Ungarn, danach größtenteils zu Rumänien
+function passtRegion(r, z, p) {
+  return p.regionen.has(r) || (r === 'ungarn' && p.regionen.has('banat') && z.jahr < 1920) ||
+    (r === 'rumaenien' && p.regionen.has('banat') && (z.bis ?? z.jahr) >= 1919);
+}
+
+// Gehört ein Eintrag zu einer Person? Welt und Europa immer, sonst über die Regionen ihrer Orte
 export function passtZeitgeschehen(z, p) {
-  return z.regionen.some(r => r === 'europa' || p.regionen.has(r) ||
-    (r === 'ungarn' && p.regionen.has('banat') && z.jahr < 1920));
+  return z.regionen.some(r => r === 'welt' || r === 'europa' || passtRegion(r, z, p));
+}
+
+// Je Gruppe (dasselbe Ereignis in mehreren Fassungen) nur die passendste: die Fassung, deren Regionen auf die meisten
+// der Personen zutreffen, die damals lebten; eigene Einträge gehen immer vor, allgemeine (Europa, Welt) kommen zuletzt
+function besteJeGruppe(liste, personen) {
+  const wert = z => {
+    const damals = personen.filter(p => (z.bis ?? z.jahr) >= p.jahrE && z.jahr <= p.ende);
+    const regional = (damals.length ? damals : personen)
+      .filter(p => z.regionen.some(r => r !== 'welt' && r !== 'europa' && passtRegion(r, z, p))).length;
+    return (z.eigen ? 1e6 : 0) + regional * 10 + (z.regionen.includes('europa') ? 1 : 0);
+  };
+  const beste = new Map();
+  for (const z of liste) if (z.gruppe && (!beste.has(z.gruppe) || wert(z) > wert(beste.get(z.gruppe)))) beste.set(z.gruppe, z);
+  return liste.filter(z => !z.gruppe || beste.get(z.gruppe) === z);
 }
 
 export function zeitgeschehenFuer(p, alle) {
   const von = p.jahrE, bis = p.ende;
-  return alle.filter(z => passtZeitgeschehen(z, p) && (z.bis ?? z.jahr) >= von && z.jahr <= bis);
+  return besteJeGruppe(alle.filter(z => passtZeitgeschehen(z, p) && (z.bis ?? z.jahr) >= von && z.jahr <= bis), [p]);
+}
+
+// Zeitgeschehen für alle Personen einer Ansicht (Abspann, Marken am Boden, Geräusche)
+export function zeitFuerAnsicht(personen, alle) {
+  return besteJeGruppe(alle.filter(z => personen.some(p => passtZeitgeschehen(z, p))), personen);
 }
 
 export function verwandtschaft(p) {
-  if (p.rolle === 'partner') return p.geschlecht === 'F' ? 'Partnerin' : p.geschlecht === 'M' ? 'Partner' : 'Partner/in';
+  if (p.rolle === 'partner') return EN ? 'Partner' : p.geschlecht === 'F' ? 'Partnerin' : p.geschlecht === 'M' ? 'Partner' : 'Partner/in';
   if (p.bezug) {   // Vorfahren des Partners: von ihm aus gezählt
     const wort = verwandtschaftEigen(p);
-    return `${wort} von ${p.bezug.rufname}`;
+    return EN ? `${wort} of ${p.bezug.rufname}` : `${wort} von ${p.bezug.rufname}`;
   }
   return verwandtschaftEigen(p);
 }
 
 function verwandtschaftEigen(p) {
   const g = p.generation;
-  if (p.rolle === 'start') return 'Hauptperson';
+  if (p.rolle === 'start') return t('Hauptperson');
   if (!p.rolle) return '';
   const m = p.geschlecht === 'M', w = p.geschlecht === 'F';
+  if (EN) {
+    const great = n => n <= 0 ? '' : n === 1 ? 'great-' : n === 2 ? 'great-great-' : `${n}× great-`;
+    const gross = s => s[0].toUpperCase() + s.slice(1);
+    if (p.rolle === 'nachkomme') {
+      if (g === 1) return m ? 'Son' : w ? 'Daughter' : 'Child';
+      return gross(great(g - 2) + (m ? 'grandson' : w ? 'granddaughter' : 'grandchild'));
+    }
+    if (g === 1) return m ? 'Father' : w ? 'Mother' : 'Parent';
+    const wort = great(g - 2) + (m ? 'grandfather' : w ? 'grandmother' : 'grandparent');
+    return `${p.seite === 'vater' ? 'Paternal' : 'Maternal'} ${wort}`;
+  }
   const ur = n => n <= 0 ? '' : n === 1 ? 'Ur' : n === 2 ? 'Urur' : `${n}× Ur`;
   if (p.rolle === 'nachkomme') {
     if (g === 1) return m ? 'Sohn' : w ? 'Tochter' : 'Kind';
@@ -163,7 +229,7 @@ export function jahreKurz(p) {
   if (p.geburt && p.tod) return `${p.geburt} – ${p.tod}`;
   if (p.geburt) return `* ${p.geburt}`;
   if (p.tod) return `† ${p.tod}`;
-  return `um ${Math.round(p.jahrE / 5) * 5}`;
+  return `${EN ? 'c.' : 'um'} ${Math.round(p.jahrE / 5) * 5}`;
 }
 
 export function ortKurz(o) {
@@ -178,13 +244,18 @@ export function trenneNotiz(text) {
   if (/^(Angelegt|Geändert|Datum korrigiert|Korrigiert|Ergänzt|Übernommen|Abgleich|Hinweis)/.test(text) || /Gregor bestätigt|\(Claude, \d/.test(text) && !/ [–-] (Gelesen|Online gefunden|Gefunden)/.test(text))
     return { text: '', quelle: text };
   const m = text.match(/\s+[–-]\s+(Gelesen|Online gefunden|Gefunden|Laut )/);
-  const t = m ? text.slice(0, m.index) : text;
-  return { text: t.replace(/\s*\(Claude[^)]*\)/g, '').trim(), quelle: m ? text.slice(m.index).replace(/^\s+[–-]\s+/, '') : '' };
+  const t0 = m ? text.slice(0, m.index) : text;
+  return { text: t0.replace(/\s*\(Claude[^)]*\)/g, '').trim(), quelle: m ? text.slice(m.index).replace(/^\s+[–-]\s+/, '') : '' };
 }
 
 function zeitAngabe(e) {
   const d = e.datum;
   if (!d) return '';
+  if (EN) {   // „10 Jan 1901“, „Jan 1901“, „1901“ bekommen eine Präposition; „about 1850“, „between …“ stehen für sich
+    if (/^\d{1,2} [A-Z][a-z]{2} \d{3,4}$/.test(d)) return `on ${d}`;
+    if (/^([A-Z][a-z]{2} )?\d{3,4}$/.test(d)) return `in ${d}`;
+    return d;
+  }
   if (/^\d{1,2}\. /.test(d)) return `Am ${d}`;
   if (/^(vor|nach) \d{1,2}\. /.test(d)) return d[0].toUpperCase() + d.slice(1).replace(/^(or|ach) /, '$1 dem ');
   if (/^(um|ca\.|vor|nach|zwischen|von) /.test(d)) return d[0].toUpperCase() + d.slice(1);
@@ -197,11 +268,34 @@ function satz(zeit, subjekt, verb, rest) {
   return s.replace(/\s+/g, ' ').trim() + '.';
 }
 
+// englischer Satz: Subjekt, Aussage, Ort, Zeit („Michael is born in Billed on 10 Jan 1901.“)
+function satzEn(subjekt, aussage, ort, zeit) {
+  return [subjekt, aussage, ort ? `in ${ort}` : '', zeit].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim() + '.';
+}
+
 export function erzaehle(e, p) {
   e = { ...e, wert: (e.wert || '').replace(/\s*\?$/, '') };  // „Elisabeth ?“ → „Elisabeth“
   const n = p.rufname, z = zeitAngabe(e), o = ortKurz(e.ort);
-  const inOrt = o ? `in ${o}` : '';
   const alter = e.jahr && p.geburt && e.jahr > p.geburt ? e.jahr - p.geburt : null;
+  if (EN) {
+    switch (e.art) {
+      case 'BIRT': return satzEn(n, 'is born', o, z);
+      case 'CHR': case 'BAPM': return satzEn(n, 'is baptised', o, z);
+      case 'MARR': return satzEn(n, `marries${e.wert ? ' ' + e.wert : ''}`, o, z);
+      case 'ENGA': return satzEn(n, `gets engaged${e.wert ? ' to ' + e.wert : ''}`, o, z);
+      case 'DIV': return satzEn('The marriage', `${e.wert ? 'to ' + e.wert + ' ' : ''}ends in divorce`, '', z);
+      case 'DEAT': return satzEn(n, 'dies', o, z).replace(/\.$/, alter ? `, aged ${alter}.` : '.') + (e.ursache ? ` Cause: ${e.ursache}.` : '');
+      case 'BURI': return satzEn(n, 'is buried', o, z);
+      case 'CREM': return satzEn(n, 'is cremated', o, z);
+      case 'OCCU': return satzEn(n, `works as ${e.wert || '…'}`, o, z);
+      case 'RESI': return o ? satzEn(n, 'lives', o, z) : satzEn(n, `lives${e.wert ? ': ' + e.wert : ''}`, '', z);
+      case 'EMIG': return satzEn(n, `emigrates${o ? ' from ' + o : ''}`, '', z);
+      case 'IMMI': return satzEn(n, `immigrates${o ? ' to ' + o : ''}`, '', z);
+      case 'RELI': return `Religion: ${e.wert || '–'}.`;
+      default: return `${z ? z[0].toUpperCase() + z.slice(1) + ': ' : ''}${e.wert || e.titel}${o ? ' in ' + o : ''}.`;
+    }
+  }
+  const inOrt = o ? `in ${o}` : '';
   switch (e.art) {
     case 'BIRT': return satz(z, n, 'kommt', `${inOrt} zur Welt`);
     case 'CHR': case 'BAPM': return satz(z, n, 'wird', `${inOrt} getauft`);
@@ -222,9 +316,11 @@ export function erzaehle(e, p) {
 
 // Kapitel der Bildgeschichte: Vorstellung, Lebensereignisse, Zeitgeschehen dazwischen, Ausklang
 export function kapitel(p, alleZeit) {
+  const name = p.name.rufname ? `${p.name.vorname} „${p.name.rufname}“` : p.rufname;
   const k = [{
     typ: 'intro', jahr: p.jahrE, titel: p.name.voll,
-    text: `${p.name.rufname ? `${p.name.vorname} „${p.name.rufname}“` : p.rufname} ist ${rolle(p)}. ${lebensdaten(p) || 'Über die Lebensdaten ist wenig bekannt.'}`,
+    text: EN ? `${name} is ${rolle(p)}. ${lebensdaten(p) || 'Little is known about the dates of this life.'}`
+      : `${name} ist ${rolle(p)}. ${lebensdaten(p) || 'Über die Lebensdaten ist wenig bekannt.'}`,
     bild: p.gesicht || p.bilder.find(b => b.art === 'foto')?.src || null, rund: !!p.gesicht,
   }];
   // leere Einträge (ohne Datum, Ort, Wert und Notiz) erzählen nichts – außer dem Tod
@@ -233,7 +329,7 @@ export function kapitel(p, alleZeit) {
   for (let i = 0; i < evs.length; i++) {
     const e = evs[i];
     const { text: notiz } = trenneNotiz(e.notiz);
-    let text = erzaehle(e, p) + (notiz ? ' ' + notiz : '');
+    const text = erzaehle(e, p) + (notiz ? ' ' + notiz : '');
     // Taufe zur Geburt und Begräbnis zum Tod ziehen
     const vorher = k[k.length - 1];
     if (((e.art === 'CHR' || e.art === 'BAPM') && vorher.art === 'BIRT') || (e.art === 'BURI' && vorher.art === 'DEAT')) {
@@ -244,30 +340,41 @@ export function kapitel(p, alleZeit) {
   }
   // Zeitgeschehen: regionale Ereignisse vorziehen, höchstens acht
   let zg = zeitgeschehenFuer(p, alleZeit);
-  if (zg.length > 8) zg = [...zg].sort((a, b) => (a.regionen.includes('europa') ? 1 : 0) - (b.regionen.includes('europa') ? 1 : 0)).slice(0, 8);
+  const allgemein = z => z.regionen.includes('europa') || z.regionen.includes('welt') ? 1 : 0;
+  if (zg.length > 8) zg = [...zg].sort((a, b) => allgemein(a) - allgemein(b)).slice(0, 8);
   for (const z of zg) {
     const j = Math.max(z.jahr, p.jahrE);
     let zusatz = '';
-    if (p.geburt && z.jahr < p.geburt) zusatz = `${p.rufname} kommt in dieser Zeit zur Welt.`;
-    else if (p.geburt) zusatz = z.jahr === p.geburt ? `${p.rufname} wird in diesem Jahr geboren.` : `${p.rufname} ist damals ${z.jahr - p.geburt} Jahre alt.`;
+    if (p.geburt && z.jahr < p.geburt) zusatz = EN ? `${p.rufname} is born around this time.` : `${p.rufname} kommt in dieser Zeit zur Welt.`;
+    else if (p.geburt) zusatz = z.jahr === p.geburt ? (EN ? `${p.rufname} is born this year.` : `${p.rufname} wird in diesem Jahr geboren.`)
+      : (EN ? `${p.rufname} is ${z.jahr - p.geburt} years old at the time.` : `${p.rufname} ist damals ${z.jahr - p.geburt} Jahre alt.`);
     k.push({ typ: 'zeit', jahr: j, titel: z.titel, datum: z.bis ? `${z.jahr}–${z.bis}` : `${z.jahr}`, text: z.text, zusatz });
   }
   k.sort((a, b) => (a.typ === 'intro' ? -1e9 : sortJahr(a, p)) - (b.typ === 'intro' ? -1e9 : sortJahr(b, p)));
   // Fotos lassen sich keinem Ereignis sicher zuordnen (Dateinamen tragen kein Aufnahmedatum): eigene Albumseiten
   const nummern = art => p.bilder.map((b, n) => b.art === art ? n : -1).filter(n => n >= 0);
   const fotoNr = nummern('foto'), dokNr = [...nummern('urkunde'), ...nummern('grab')];
-  if (fotoNr.length) k.push({ typ: 'album', titel: 'Aus dem Familienalbum', bilder: fotoNr.slice(0, 6),
-    text: `${fotoNr.length === 1 ? 'Ein Foto' : fotoNr.length + ' Fotos'} von ${p.rufname} ${fotoNr.length === 1 ? 'ist' : 'sind'} in webtrees verknüpft. Ein Klick öffnet ein Bild groß.` });
-  if (dokNr.length) k.push({ typ: 'album', titel: 'Dokumente', bilder: dokNr.slice(0, 6),
-    text: dokNr.length === 1 ? `Ein Dokument zu ${p.rufname}.` : `${dokNr.length} Dokumente zu ${p.rufname}: Urkunden, Ahnentafeln, Grabbilder.` });
-  const erhalten = p.bilder.length > 1 ? ` Von ${p.rufname} sind ${p.bilder.length} Bilder und Dokumente erhalten.` : p.bilder.length ? ` Von ${p.rufname} ist ein Bild erhalten.` : '';
+  const r = p.rufname, nf = fotoNr.length, nd = dokNr.length;
+  if (nf) k.push({ typ: 'album', titel: t('Aus dem Familienalbum'), bilder: fotoNr.slice(0, 6),
+    text: EN ? `${nf === 1 ? 'One photo' : nf + ' photos'} of ${r} ${nf === 1 ? 'is' : 'are'} linked in webtrees. Click a picture to enlarge it.`
+      : `${nf === 1 ? 'Ein Foto' : nf + ' Fotos'} von ${r} ${nf === 1 ? 'ist' : 'sind'} in webtrees verknüpft. Ein Klick öffnet ein Bild groß.` });
+  if (nd) k.push({ typ: 'album', titel: t('Dokumente'), bilder: dokNr.slice(0, 6),
+    text: EN ? (nd === 1 ? `One document about ${r}.` : `${nd} documents about ${r}: certificates, pedigree charts, grave photos.`)
+      : (nd === 1 ? `Ein Dokument zu ${r}.` : `${nd} Dokumente zu ${r}: Urkunden, Ahnentafeln, Grabbilder.`) });
+  const nb = p.bilder.length;
+  const erhalten = EN ? (nb > 1 ? ` ${nb} pictures and documents of ${r} have been preserved.` : nb ? ` One picture of ${r} has been preserved.` : '')
+    : (nb > 1 ? ` Von ${r} sind ${nb} Bilder und Dokumente erhalten.` : nb ? ` Von ${r} ist ein Bild erhalten.` : '');
   const hp = hauptperson?.name.voll ?? '';
-  if (p.rolle === 'vorfahr') k.push({ typ: 'ausklang', jahr: null, titel: 'Was bleibt', bild: null, weiterId: p.zumStart.id,
-    text: `${p.rufname} ist ${p.geschlecht === 'F' ? 'die Mutter' : p.geschlecht === 'M' ? 'der Vater' : 'ein Elternteil'} von ${p.zumStart.name.voll} – so führt die Linie weiter bis zu ${hp}.` + erhalten });
-  else if (p.rolle === 'nachkomme') k.push({ typ: 'ausklang', jahr: null, titel: 'Was bleibt', bild: null, weiterId: p.zumStart.id,
-    text: `${p.rufname} ist ${p.geschlecht === 'F' ? 'die Tochter' : p.geschlecht === 'M' ? 'der Sohn' : 'ein Kind'} von ${p.zumStart.name.voll} – so führt die Linie zurück zu ${hp}.` + erhalten });
-  else if (p.kinderP.length) k.push({ typ: 'ausklang', jahr: null, titel: 'Was bleibt', bild: null,
-    text: `${p.rufname} hat ${p.kinderP.length === 1 ? 'ein Kind' : p.kinderP.length + ' Kinder'}: ${p.kinderP.map(c => c.rufname).join(', ')}.` + erhalten });
+  const f = p.geschlecht === 'F', m = p.geschlecht === 'M';
+  if (p.rolle === 'vorfahr') k.push({ typ: 'ausklang', jahr: null, titel: t('Was bleibt'), bild: null, weiterId: p.zumStart.id,
+    text: (EN ? `${r} is the ${f ? 'mother' : m ? 'father' : 'parent'} of ${p.zumStart.name.voll} – this is how the line continues down to ${hp}.`
+      : `${r} ist ${f ? 'die Mutter' : m ? 'der Vater' : 'ein Elternteil'} von ${p.zumStart.name.voll} – so führt die Linie weiter bis zu ${hp}.`) + erhalten });
+  else if (p.rolle === 'nachkomme') k.push({ typ: 'ausklang', jahr: null, titel: t('Was bleibt'), bild: null, weiterId: p.zumStart.id,
+    text: (EN ? `${r} is the ${f ? 'daughter' : m ? 'son' : 'child'} of ${p.zumStart.name.voll} – this is how the line leads back to ${hp}.`
+      : `${r} ist ${f ? 'die Tochter' : m ? 'der Sohn' : 'ein Kind'} von ${p.zumStart.name.voll} – so führt die Linie zurück zu ${hp}.`) + erhalten });
+  else if (p.kinderP.length) k.push({ typ: 'ausklang', jahr: null, titel: t('Was bleibt'), bild: null,
+    text: (EN ? `${r} has ${p.kinderP.length === 1 ? 'one child' : p.kinderP.length + ' children'}: ${p.kinderP.map(c => c.rufname).join(', ')}.`
+      : `${r} hat ${p.kinderP.length === 1 ? 'ein Kind' : p.kinderP.length + ' Kinder'}: ${p.kinderP.map(c => c.rufname).join(', ')}.`) + erhalten });
   return k;
 }
 
@@ -284,9 +391,16 @@ export function sortJahr(x, p) {
 }
 
 function rolle(p) {
-  if (p.rolle === 'start' || !p.rolle) return 'der Ausgangspunkt dieser Geschichte';
+  if (p.rolle === 'start' || !p.rolle) return EN ? 'the starting point of this story' : 'der Ausgangspunkt dieser Geschichte';
   const hp = hauptperson.rufname;
-  if (p.geschlecht === 'U') return `in der Familie von ${hp} (${verwandtschaft(p)})`;
-  if (p.bezug) return `${p.geschlecht === 'F' ? 'die' : 'der'} ${verwandtschaft(p)}, ${p.bezug.geschlecht === 'F' ? 'der Partnerin' : 'des Partners'} von ${hp}`;
-  return `${p.geschlecht === 'F' ? 'die' : 'der'} ${verwandtschaft(p)} von ${hp}`;
+  const v = verwandtschaft(p);
+  if (EN) {
+    const klein = v[0].toLowerCase() + v.slice(1);
+    if (p.geschlecht === 'U') return `in the family of ${hp} (${klein})`;
+    if (p.bezug) return `the ${klein}, the partner of ${hp}`;
+    return `the ${klein} of ${hp}`;
+  }
+  if (p.geschlecht === 'U') return `in der Familie von ${hp} (${v})`;
+  if (p.bezug) return `${p.geschlecht === 'F' ? 'die' : 'der'} ${v}, ${p.bezug.geschlecht === 'F' ? 'der Partnerin' : 'des Partners'} von ${hp}`;
+  return `${p.geschlecht === 'F' ? 'die' : 'der'} ${v} von ${hp}`;
 }

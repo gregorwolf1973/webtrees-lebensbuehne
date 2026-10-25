@@ -16,6 +16,7 @@ use Fisharebest\Webtrees\DB;
 use Fisharebest\Webtrees\Http\Exceptions\HttpAccessDeniedException;
 use Fisharebest\Webtrees\Http\Exceptions\HttpNotFoundException;
 use Fisharebest\Webtrees\Http\RequestHandlers\LoginPage;
+use Fisharebest\Webtrees\I18N;
 use Fisharebest\Webtrees\Individual;
 use Fisharebest\Webtrees\Menu;
 use Fisharebest\Webtrees\Module\AbstractModule;
@@ -40,7 +41,9 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use Throwable;
 
+use function array_filter;
 use function array_keys;
+use function array_values;
 use function basename;
 use function class_exists;
 use function extension_loaded;
@@ -78,9 +81,11 @@ use function redirect;
 use function rename;
 use function response;
 use function route;
+use function str_starts_with;
 use function strip_tags;
 use function strlen;
 use function strtolower;
+use function substr;
 use function view;
 
 /**
@@ -93,7 +98,7 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
     use ModuleCustomTrait;
     use ModuleChartTrait;
 
-    public const string VERSION = '1.1.1';
+    public const string VERSION = '1.2.0';
 
     private const string ROUTE_SEITE   = 'lebensbuehne-seite';
     private const string ROUTE_DATEN   = 'lebensbuehne-daten';
@@ -212,7 +217,7 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
             'three'                                  => $this->assetUrl('vendor/three/three.module.min.js'),
             'three/addons/controls/OrbitControls.js' => $this->assetUrl('vendor/three/OrbitControls.js'),
         ];
-        foreach (['app', 'daten', 'panel', 'klang', 'tiefe'] as $datei) {
+        foreach (['app', 'daten', 'panel', 'klang', 'tiefe', 'text'] as $datei) {
             $importe['lb/' . $datei . '.js'] = $this->assetUrl('js/' . $datei . '.js');
         }
 
@@ -222,8 +227,34 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
             $grenzen[basename($pfad, '.json')] = $this->assetUrl('data/grenzen/' . basename($pfad));
         }
 
-        $musik = $this->musikDatei();
-        $config = [
+        // mitgelieferte freie Klänge (resources/klaenge) und Lieder (resources/musik/lieder.json); eigene Dateien gehen vor
+        $klangUrl   = fn (string $datei): string => route(self::ROUTE_KLANG, ['tree' => $tree->name(), 'datei' => 'mit-' . $datei]);
+        $klaengeMit = [];
+        foreach (glob($this->resourcesFolder() . 'klaenge/*') ?: [] as $pfad) {
+            if (preg_match(self::AUDIO, basename($pfad))) {
+                $klaengeMit[strtolower((string) pathinfo($pfad, PATHINFO_FILENAME))] = $klangUrl(basename($pfad));
+            }
+        }
+        $lieder = [];
+        $liste  = is_file($this->resourcesFolder() . 'musik/lieder.json') ? json_decode((string) file_get_contents($this->resourcesFolder() . 'musik/lieder.json'), true) : [];
+        foreach (is_array($liste) ? $liste : [] as $lied) {
+            if (is_array($lied) && is_string($lied['datei'] ?? null) && preg_match(self::AUDIO, $lied['datei']) && is_file($this->resourcesFolder() . 'musik/' . $lied['datei'])) {
+                $lieder[] = $lied + ['url' => $klangUrl($lied['datei'])];
+            }
+        }
+
+        // eigenes Zeitgeschehen der Installation (data/lebensbuehne/zeitgeschehen.json, Format wie resources/data/zeitgeschehen.json)
+        $eigenePfad = Webtrees::DATA_DIR . 'lebensbuehne/zeitgeschehen.json';
+        $eigene     = is_file($eigenePfad) ? json_decode((string) file_get_contents($eigenePfad), true) : [];
+
+        $sprache = $this->sprache();
+        $musik   = $this->musikDatei();
+        $config  = [
+            'sprache'       => $sprache,
+            'texte'         => (object) $this->texte($sprache),
+            'zeitgeschehenEigen' => is_array($eigene) ? array_values(array_filter($eigene, 'is_array')) : [],
+            'klaengeMit'    => (object) $klaengeMit,
+            'lieder'        => $lieder,
             'daten'         => route(self::ROUTE_DATEN, ['tree' => $tree->name()]),
             'geschichte'    => route(self::ROUTE_GESCHICHTE, ['tree' => $tree->name(), 'xref' => 'XREF']),
             'grenzen'       => (object) $grenzen,
@@ -231,11 +262,15 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
             'klaenge'       => route(self::ROUTE_KLANG, ['tree' => $tree->name(), 'datei' => 'liste.json']),
             'klangDatei'    => route(self::ROUTE_KLANG, ['tree' => $tree->name(), 'datei' => 'DATEI']),
             'musik'         => $musik !== null ? route(self::ROUTE_KLANG, ['tree' => $tree->name(), 'datei' => basename($musik)]) : null,
-            'musikName'     => 'Lied der Familie',
+            'musikName'     => $sprache === 'de' ? 'Lied der Familie' : 'Family song',
             'start'         => $individual->xref(),
         ];
 
+        $texte = $this->texte($sprache);
+
         return response(view($this->name() . '::seite', [
+            't'          => static fn (string $de): string => $texte[$de] ?? $de,
+            'sprache'    => $sprache,
             'titel'      => 'Lebensbühne – ' . $tree->title(),
             'baum'       => $tree->title(),
             'zurueck'    => $individual->url(),
@@ -259,11 +294,12 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
         // Personen mit Erzählung oder webtrees-Geschichte bekommen den Reiter „Erzählung“; neue Tiefenkarten erneuern ihn auch
         $mitGeschichte = $this->geschichtenXrefs($tree, $user);
         $tiefen        = Webtrees::DATA_DIR . 'lebensbuehne/tiefen';
-        $schluessel    = 'lebensbuehne-' . $tree->id() . '-' . $stufe . '-' . ($stand->m ?? 0) . '-' . ($stand->a ?? 0) . '-' . self::VERSION
+        $sprache       = $this->sprache();
+        $schluessel    = 'lebensbuehne-' . $tree->id() . '-' . $stufe . '-' . $sprache . '-' . ($stand->m ?? 0) . '-' . ($stand->a ?? 0) . '-' . self::VERSION
             . '-' . md5(implode(',', array_keys($mitGeschichte)) . '|' . (is_dir($tiefen) ? (string) filemtime($tiefen) : ''));
 
-        $json = Registry::cache()->file()->remember($schluessel, function () use ($tree, $stufe, $mitGeschichte): string {
-            $alle = (new Daten($tree, $stufe, self::ROUTE_GESICHT))->alle();
+        $json = Registry::cache()->file()->remember($schluessel, function () use ($tree, $stufe, $mitGeschichte, $sprache): string {
+            $alle = (new Daten($tree, $stufe, self::ROUTE_GESICHT, $sprache))->alle();
             foreach ($alle['personen'] as &$p) {
                 if (isset($mitGeschichte[$p['id']])) {
                     $p['geschichte'] = true;
@@ -402,6 +438,20 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
             return response((string) json_encode((object) $liste, JSON_UNESCAPED_UNICODE), 200, ['content-type' => 'application/json', 'cache-control' => 'private, no-cache']);
         }
 
+        // mitgelieferte Aufnahmen aus dem Modul („mit-<Datei>“)
+        if (str_starts_with($datei, 'mit-')) {
+            $name = substr($datei, 4);
+            if (!preg_match(self::AUDIO, $name)) {
+                throw new HttpNotFoundException();
+            }
+            foreach (['klaenge/', 'musik/'] as $unter) {
+                if (is_file($this->resourcesFolder() . $unter . $name)) {
+                    return $this->dateiAntwort($request, $this->resourcesFolder() . $unter . $name);
+                }
+            }
+            throw new HttpNotFoundException();
+        }
+
         if (!preg_match(self::AUDIO, $datei)) {
             throw new HttpNotFoundException();
         }
@@ -421,9 +471,14 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
         if ($person === null || !$person->canShow()) {
             throw new HttpNotFoundException();
         }
-        $erzaehlungen = $this->erzaehlungen($tree);
+        // Erzählung in der Sprache der Oberfläche, wenn es sie gibt (<Baum>.en.json), sonst die deutsche
+        $sprache      = $this->sprache();
+        $uebersetzt   = $sprache !== 'de' ? $this->erzaehlungen($tree, $sprache) : [];
+        $eigeneSprache = is_string($uebersetzt[$xref] ?? null);
+        $erzaehlungen = $eigeneSprache ? $uebersetzt : $this->erzaehlungen($tree);
         $antwort      = [
             'erzaehlung'  => is_string($erzaehlungen[$xref] ?? null) ? $erzaehlungen[$xref] : null,
+            'sprache'     => $eigeneSprache ? $sprache : 'de',
             'stand'       => is_string($erzaehlungen['_stand'] ?? null) ? $erzaehlungen['_stand'] : '',
             'geschichten' => $this->webtreesGeschichten($tree, $user, $xref),
         ];
@@ -432,13 +487,13 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
     }
 
     /**
-     * Erzählte Lebensgeschichten eines Baums: {"_stand": "…", "X123": "Absatz\n\nAbsatz", …}
+     * Erzählte Lebensgeschichten eines Baums: {"_stand": "…", "X123": "Absatz\n\nAbsatz", …}; Übersetzungen in <Baum>.<sprache>.json
      *
      * @return array<string,mixed>
      */
-    private function erzaehlungen(Tree $tree): array
+    private function erzaehlungen(Tree $tree, string $sprache = 'de'): array
     {
-        $pfad = Webtrees::DATA_DIR . 'lebensbuehne/geschichten/' . $tree->name() . '.json';
+        $pfad = Webtrees::DATA_DIR . 'lebensbuehne/geschichten/' . $tree->name() . ($sprache === 'de' ? '' : '.' . $sprache) . '.json';
         if (!is_file($pfad)) {
             return [];
         }
@@ -559,6 +614,33 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
         }
 
         return $ergebnis;
+    }
+
+    // Sprache der Oberfläche: Deutsch, wenn webtrees deutsch spricht, sonst Englisch (weitere Sprachen über resources/lang/<sprache>.json)
+    private function sprache(): string
+    {
+        $tag = strtolower(substr(I18N::languageTag(), 0, 2));
+        if ($tag === 'de') {
+            return 'de';
+        }
+
+        return is_file($this->resourcesFolder() . 'lang/' . $tag . '.json') ? $tag : 'en';
+    }
+
+    /**
+     * Übersetzungen der Oberfläche (deutscher Text => Übersetzung)
+     *
+     * @return array<string,string>
+     */
+    private function texte(string $sprache): array
+    {
+        $pfad = $this->resourcesFolder() . 'lang/' . $sprache . '.json';
+        if ($sprache === 'de' || !is_file($pfad)) {
+            return [];
+        }
+        $texte = json_decode((string) file_get_contents($pfad), true);
+
+        return is_array($texte) ? array_filter($texte, 'is_string') : [];
     }
 
     private function musikDatei(): ?string

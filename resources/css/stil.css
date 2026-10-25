@@ -250,6 +250,9 @@ body:not(.bereit) #buehne::after { content: "Stammbaum wird geladen …"; positi
 .ton-menue .laut input { flex: 1; accent-color: var(--zeit); }
 .ton-menue input[type=checkbox] { accent-color: var(--vater); width: 16px; height: 16px; }
 .lied-name { margin: 4px 0 6px; font-size: 12.5px; color: var(--text-3); word-break: break-word; }
+.lied-name:empty { display: none; }
+.lied-wahl { width: 100%; margin: 4px 0 2px; background: var(--flaeche); border: 1px solid var(--linie); border-radius: 6px; color: var(--text); padding: 5px 8px; font: inherit; font-size: 13px; }
+#lied-quelle:empty { display: none; }
 .lied-tipp { margin: 6px 0 8px; font-size: 12px; line-height: 1.4; color: var(--text-3); }
 .ton-menue .klein { background: var(--flaeche); border: 1px solid var(--linie); border-radius: 6px; padding: 4px 10px; font-size: 13px; }
 .arten { border: 0; margin: 10px 0 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; }

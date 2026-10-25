@@ -1,0 +1,32 @@
+[
+ {
+  "datei": "musik_donau.m4a",
+  "titel": "Strauss: An der schönen blauen Donau",
+  "titel_en": "Strauss: The Blue Danube",
+  "urheber": "United States Marine Band, Albert F. Schoepper",
+  "lizenz": "gemeinfrei",
+  "lizenz_en": "public domain",
+  "lizenzUrl": "https://commons.wikimedia.org/wiki/Template:PD-USGov-Military-Marines",
+  "quelle": "https://commons.wikimedia.org/wiki/File:%22An_der_sch%C3%B6nen,_blauen_Donau%22_performed_by_the_U.S._Marine_Band.mp3"
+ },
+ {
+  "datei": "musik_moldau.m4a",
+  "titel": "Smetana: Die Moldau",
+  "titel_en": "Smetana: Vltava (The Moldau)",
+  "urheber": "Musopen Symphony Orchestra",
+  "lizenz": "CC0",
+  "lizenz_en": "CC0",
+  "lizenzUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "quelle": "https://commons.wikimedia.org/wiki/File:Smetana,_M%C3%A1_vlast_-_Vltava_-_The_Moldau.ogg"
+ },
+ {
+  "datei": "musik_eternal_hope.m4a",
+  "titel": "Kevin MacLeod: Eternal Hope",
+  "titel_en": "Kevin MacLeod: Eternal Hope",
+  "urheber": "Kevin MacLeod (incompetech.com)",
+  "lizenz": "CC BY 4.0",
+  "lizenz_en": "CC BY 4.0",
+  "lizenzUrl": "https://creativecommons.org/licenses/by/4.0/",
+  "quelle": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100238"
+ }
+]
