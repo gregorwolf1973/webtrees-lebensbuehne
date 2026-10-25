@@ -6,3 +6,6 @@
 *.opus
 *.flac
 .DS_Store
+# Ausnahme: die mitgelieferten freien Aufnahmen (Quellen in resources/klaenge/QUELLEN.md)
+!resources/klaenge/*.mp3
+!resources/musik/*.m4a
