@@ -48,6 +48,7 @@ const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.08;
 controls.maxDistance = 260;
+controls.autoRotateSpeed = 0.45;
 
 // --- Porträtkarten ----------------------------------------------------------------------------
 const KW = 256, KH = 330;
@@ -192,10 +193,11 @@ function baue() {
   for (const o of [...gruppe.children]) {
     gruppe.remove(o);
     o.geometry?.dispose?.();
-    if (o.material?.map !== hofTextur) o.material?.map?.dispose();
+    if (o.material?.map !== hofTextur && o.material?.map !== sternTextur) o.material?.map?.dispose();
     o.material?.dispose();
   }
-  sim = null; netzKanten = null; netzHell = null;
+  sim = null; netzKanten = null; netzHell = null; netzSterne = null;
+  controls.autoRotate = false;
   imBild = modus.netz ? netz(daten, root) : ansicht(daten, root, modus);
   kulisse.visible = !modus.netz;
   document.body.classList.toggle('netz', modus.netz);
@@ -292,103 +294,104 @@ function baue() {
 }
 
 
-// --- Netz: Kräftesimulation wie in der Ansicht „Lineage“ (D3-Force), in der Ebene; die Höhe folgt dem Geburtsjahr -------
-// Höhe je Jahr: Ältere oben, Jüngere unten; im Hochformat höher und schmaler, damit das Netz den Bildschirm füllt
-let netzJahr = 0.22, netzBreite = 1;
-const yVon = jahr => -(jahr - JAHR_NULL) * netzJahr;
-let sim = null, netzKanten = null, netzHell = null;
+// --- Netz: alle Verwandten als räumliches Sternennetz (wie „Lineage“, aber in 3D). Jede Familie ist ein Stern: ein
+// leuchtender Punkt in der Mitte, die Eltern dicht daran, die Kinder als Strahlen ringsum. Über die Kinder, die selbst
+// eine Familie gründen, hängen die Sterne aneinander. Eine Kräftesimulation ordnet alles im Raum. ------------------------
+let sim = null, netzKanten = null, netzHell = null, netzSterne = null;
+const sternTextur = (() => {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d'), v = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  v.addColorStop(0, 'rgba(255,255,255,1)');
+  v.addColorStop(0.25, 'rgba(255,255,255,0.55)');
+  v.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = v;
+  g.fillRect(0, 0, 64, 64);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+})();
+
+// Familien aus den Eltern der Kinder, dazu Paare ohne gemeinsame Kinder
+function familienBilden() {
+  const fam = new Map();
+  const hole = eltern => {
+    const key = eltern.map(e => e.id).sort().join('+');
+    if (!fam.has(key)) fam.set(key, { key, eltern, kinder: [] });
+    return fam.get(key);
+  };
+  for (const p of imBild) {
+    const e = p.eltern.filter(x => x.imBild);
+    if (e.length) hole(e).kinder.push(p);
+  }
+  for (const p of imBild) for (const x of p.partnerP) if (x.imBild && p.id < x.id) hole([p, x]);
+  return [...fam.values()];
+}
 
 function netzStart() {
-  const hoch = Math.min(1, camera.aspect);
-  netzJahr = 0.22 / hoch;
-  netzBreite = hoch;
-  const index = new Map(imBild.map((p, i) => [p, i]));
-  const kanten = [];
-  for (const p of imBild) {
-    for (const k of p.kinderP) if (index.has(k)) kanten.push({ a: p, b: k, lang: 4.2, stark: 0.25, art: 'kind' });
-    for (const x of p.partnerP) if (index.has(x) && index.get(x) > index.get(p)) kanten.push({ a: p, b: x, lang: 2.4, stark: 0.5, art: 'partner' });
+  const familien = familienBilden(), kanten = [];
+  for (const f of familien) {
+    f.farbe = new THREE.Color(nameFarbe(f.eltern.find(e => e.geschlecht === 'M') || f.eltern[0]));
+    for (const e of f.eltern) kanten.push({ a: f, b: e, lang: 1.9, stark: 0.7, art: 'eltern', f });
+    for (const k of f.kinder) kanten.push({ a: f, b: k, lang: 3.6, stark: 0.45, art: 'kind', f });
   }
-  // Startlage waagrecht wie im Fächer: väterliche Vorfahren links, mütterliche rechts, die des Partners ganz rechts,
-  // Nachkommen nach ihren Zweigen; alle übrigen neben ihren schon platzierten Angehörigen. Die Höhe ist das Geburtsjahr.
-  const lage = new Map(), merk = new Map();
-  const blaetter = (p, folge) => {
-    const key = p.id + folge.name;
-    if (!merk.has(key)) { const k = folge(p); merk.set(key, k.length ? k.reduce((s, x) => s + blaetter(x, folge), 0) : 1); }
-    return merk.get(key);
-  };
-  const verteile = (p, von, bis, folge) => {
-    lage.set(p, (von + bis) / 2);
-    const k = folge(p), e = k.map(x => blaetter(x, folge)), summe = e.reduce((a, b) => a + b, 0);
-    let a = von;
-    k.forEach((x, i) => { const b = a + (bis - von) * e[i] / summe; verteile(x, a, b, folge); a = b; });
-  };
-  const elternIm = function elternIm(p) { return p.eltern.filter(e => e.rolle === 'vorfahr' && e.zumStart === p); };
-  const kinderIm = function kinderIm(p) { return p.kinderP.filter(c => c.rolle === 'nachkomme' && c.zumStart === p); };
-  const partner = imBild.filter(p => p.rolle === 'partner');
-  verteile(root, -1, partner.length ? 0.25 : 1, elternIm);
-  partner.forEach((pa, i) => verteile(pa, 0.3 + i * 0.7 / partner.length, 0.3 + (i + 1) * 0.7 / partner.length, elternIm));
-  verteile(root, -0.6, 0.6, kinderIm);
-  lage.set(root, 0);
+  // Startlage: von der Hauptperson aus nach außen, jeder Knoten neben einem schon platzierten Nachbarn (fester Zufall,
+  // damit jeder Aufbau gleich aussieht)
   let saat = 7;
-  const zufall = () => (saat = (saat * 16807) % 2147483647) / 2147483647 - 0.5;   // fester Zufall: jeder Aufbau sieht gleich aus
-  for (let runde = 0; runde < 30 && lage.size < imBild.length; runde++)
-    for (const p of imBild) {
-      if (lage.has(p)) continue;
-      const nah = [...p.partnerP, ...p.eltern, ...p.kinderP].filter(x => lage.has(x));
-      if (nah.length) lage.set(p, nah.reduce((s, x) => s + lage.get(x), 0) / nah.length + zufall() * 0.04);
+  const zufall = () => (saat = (saat * 16807) % 2147483647) / 2147483647 - 0.5;
+  const nachbarnVon = new Map();
+  const verbinde = (x, y) => { if (!nachbarnVon.has(x)) nachbarnVon.set(x, []); nachbarnVon.get(x).push(y); };
+  for (const k of kanten) { verbinde(k.a, k.b); verbinde(k.b, k.a); }
+  const knoten = [...imBild, ...familien];
+  for (const n of knoten) { n.pos = null; n.v = new THREE.Vector3(); }
+  root.pos = new THREE.Vector3();
+  const reihe = [root];
+  while (reihe.length) {
+    const x = reihe.shift();
+    for (const y of nachbarnVon.get(x) || []) {
+      if (y.pos) continue;
+      y.pos = x.pos.clone().add(new THREE.Vector3(zufall(), zufall(), zufall()).normalize().multiplyScalar(3));
+      reihe.push(y);
     }
-  const breite = Math.sqrt(imBild.length) * 5 * netzBreite;
-  imBild.forEach((p, i) => {
-    p.pos = new THREE.Vector3((lage.get(p) ?? zufall()) * breite / 2, yVon(p.jahrE), (i % 10) * 0.03);   // leicht gestaffelt gegen Flackern
-    p.v = new THREE.Vector2();
-  });
-  root.pos.x = 0;
-  sim = { kanten, alpha: 1 };
-  for (let i = 0; i < 220; i++) simSchritt();   // vorrechnen, damit das Netz gleich geordnet erscheint
+  }
+  for (const n of knoten) if (!n.pos) n.pos = new THREE.Vector3(zufall() * 40, zufall() * 40, zufall() * 40);
+  sim = { knoten, familien, kanten, alpha: 1 };
+  for (let i = 0; i < 260; i++) simSchritt();   // vorrechnen, damit das Netz gleich geordnet erscheint
 }
 
 function simSchritt() {
   if (!sim || sim.alpha < 0.004) return false;
-  const a = sim.alpha, R = 7, R2 = R * R;
-  // Abstoßung über ein Raster mit Zellgröße R: nur Nachbarn aus den neun Zellen ringsum
-  const zellen = new Map();
-  for (const p of imBild) {
-    const key = Math.floor(p.pos.x / R) * 100003 + Math.floor(p.pos.y / R);
-    let z = zellen.get(key);
-    if (!z) zellen.set(key, z = []);
-    z.push(p);
+  const a = sim.alpha, R = 8, R2 = R * R, d = new THREE.Vector3();
+  // Abstoßung über ein räumliches Raster mit Zellgröße R: nur Nachbarn aus den 27 Zellen ringsum
+  const zellen = new Map(), schluessel = (x, y, z) => (x * 73856093) ^ (y * 19349663) ^ (z * 83492791);
+  for (const n of sim.knoten) {
+    n.zelle = [Math.floor(n.pos.x / R), Math.floor(n.pos.y / R), Math.floor(n.pos.z / R)];
+    const k = schluessel(...n.zelle);
+    if (!zellen.has(k)) zellen.set(k, []);
+    zellen.get(k).push(n);
   }
-  for (const p of imBild) {
-    const cx = Math.floor(p.pos.x / R), cy = Math.floor(p.pos.y / R);
-    for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
-      for (const q of zellen.get((cx + dx) * 100003 + cy + dy) || []) {
-        if (q === p) continue;
-        let x = p.pos.x - q.pos.x;
-        const y = p.pos.y - q.pos.y;
-        if (Math.abs(x) < 0.01) x = p.id < q.id ? -0.01 : 0.01;
-        const d2 = x * x + y * y;
-        if (d2 > R2) continue;
-        const f = 9 * a / Math.max(d2, 0.3);
-        p.v.x += x * f * netzBreite;
-        p.v.y += y * f * 0.3;   // senkrecht schwächer: die Höhe bestimmt das Geburtsjahr
+  for (const n of sim.knoten) {
+    const [cx, cy, cz] = n.zelle, staerke = n.kinder ? 4 : 10;   // Familienpunkte stoßen schwächer ab
+    for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (let dz = -1; dz <= 1; dz++)
+      for (const m of zellen.get(schluessel(cx + dx, cy + dy, cz + dz)) || []) {
+        if (m === n) continue;
+        d.subVectors(n.pos, m.pos);
+        const d2 = d.lengthSq();
+        if (d2 < R2) n.v.addScaledVector(d, staerke * a / Math.max(d2, 0.25));
       }
-    }
   }
   for (const k of sim.kanten) {
-    const x = k.b.pos.x - k.a.pos.x, y = k.b.pos.y - k.a.pos.y, d = Math.max(0.01, Math.hypot(x, y));
-    const f = (d - k.lang) / d * k.stark * a;
-    k.a.v.x += x * f; k.b.v.x -= x * f;
-    if (k.art === 'partner') { k.a.v.y += y * f; k.b.v.y -= y * f; }   // Eltern und Kinder trennt ohnehin das Geburtsjahr
+    d.subVectors(k.b.pos, k.a.pos);
+    const l = Math.max(0.01, d.length()), f = (l - k.lang) / l * k.stark * a;
+    k.a.v.addScaledVector(d, f);
+    k.b.v.addScaledVector(d, -f);
   }
-  for (const p of imBild) {
-    p.v.x -= p.pos.x * 0.004 / netzBreite * a;          // sanft zur Mitte (im Hochformat stärker)
-    p.v.y += (yVon(p.jahrE) - p.pos.y) * 0.12 * a;      // Höhe nach Geburtsjahr
-    p.v.multiplyScalar(0.6);
-    p.pos.x += p.v.x;
-    p.pos.y += p.v.y;
+  for (const n of sim.knoten) {
+    n.v.addScaledVector(n.pos, -0.003 * a);   // sanft zur Mitte
+    n.v.multiplyScalar(0.6);
+    n.pos.add(n.v);
   }
-  root.pos.x = 0;
-  sim.alpha *= 0.985;
+  sim.alpha *= 0.986;
   return true;
 }
 
@@ -398,27 +401,29 @@ const kantenGeo = n => {
   return g;
 };
 function netzLinienBauen() {
-  const kind = sim.kanten.filter(k => k.art === 'kind'), partner = sim.kanten.filter(k => k.art === 'partner');
-  netzKanten = [[kind, 0x9fb2cc, 0.32], [partner, 0xe8b04f, 0.6]].map(([liste, farbe, o]) => {
-    const l = new THREE.LineSegments(kantenGeo(liste.length), new THREE.LineBasicMaterial({ color: farbe, transparent: true, opacity: o, depthWrite: false }));
-    l.userData = { kanten: liste, basis: o };
-    l.renderOrder = -1;
-    gruppe.add(l);
-    return l;
+  // Strahlen der Familiensterne in der Farbe der Familie, zu den Eltern heller als zu den Kindern
+  const geo = kantenGeo(sim.kanten.length), farben = new Float32Array(sim.kanten.length * 6);
+  sim.kanten.forEach((k, i) => {
+    const c = k.f.farbe.clone().multiplyScalar(k.art === 'eltern' ? 1 : 0.75);
+    farben.set([c.r, c.g, c.b, c.r, c.g, c.b], i * 6);
   });
-  netzHell = new THREE.LineSegments(kantenGeo(64), new THREE.LineBasicMaterial({ color: 0xf2ede4, transparent: true, opacity: 0.95, depthWrite: false }));
+  geo.setAttribute('color', new THREE.BufferAttribute(farben, 3));
+  const strahlen = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.5, depthWrite: false }));
+  strahlen.userData = { kanten: sim.kanten, basis: 0.5 };
+  gruppe.add(strahlen);
+  netzKanten = [strahlen];
+  netzHell = new THREE.LineSegments(kantenGeo(160), new THREE.LineBasicMaterial({ color: 0xf2ede4, transparent: true, opacity: 0.95, depthWrite: false }));
   netzHell.userData = { kanten: [] };
   gruppe.add(netzHell);
-  // Jahreszahlen am linken Rand, wie die Zeitringe im Fächer
-  const xs = imBild.map(p => p.pos.x), links = Math.min(...xs) - 6, rechts = Math.max(...xs) + 3;
-  const jahre = imBild.map(p => p.jahrE);
-  for (let j = Math.ceil(Math.min(...jahre) / 50) * 50; j <= Math.max(...jahre); j += 50) {
-    const t = textSprite(String(j), { groesse: 2.2, farbe: '#6f7786' });
-    t.position.set(links - 2, yVon(j), 0);
-    gruppe.add(t);
-    gruppe.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(links, yVon(j), -0.5), new THREE.Vector3(rechts, yVon(j), -0.5)]),
-      new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: j % 100 ? 0.07 : 0.14 })));
-  }
+  // die Familienpunkte: kleine Sterne in der Mitte jeder Familie
+  const pos = new Float32Array(sim.familien.length * 3), col = new Float32Array(sim.familien.length * 3);
+  sim.familien.forEach((f, i) => col.set([f.farbe.r, f.farbe.g, f.farbe.b], i * 3));
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  netzSterne = new THREE.Points(g, new THREE.PointsMaterial({ map: sternTextur, size: 2.4, vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+  netzSterne.frustumCulled = false;
+  gruppe.add(netzSterne);
   netzPositionen();
 }
 function linienSetzen(l) {
@@ -435,24 +440,32 @@ function netzPositionen() {
   for (const k of karten) { k.position.copy(k.userData.p.pos); k.userData.hof.position.copy(k.userData.p.pos); }
   for (const l of netzKanten || []) linienSetzen(l);
   if (netzHell) linienSetzen(netzHell);
+  if (netzSterne) {
+    const a = netzSterne.geometry.attributes.position;
+    sim.familien.forEach((f, i) => a.setXYZ(i, f.pos.x, f.pos.y, f.pos.z));
+    a.needsUpdate = true;
+  }
 }
-// hervorgehobene Linien der gewählten Person (zu Eltern, Kindern und Partnern)
+// hervorgehoben: die Sterne der gewählten Person – ihre Herkunftsfamilie und ihre eigenen Familien
 function netzHellSetzen(p) {
-  netzHell.userData.kanten = p ? sim.kanten.filter(k => k.a === p || k.b === p).slice(0, 64) : [];
+  const fams = p ? new Set(sim.kanten.filter(k => k.b === p).map(k => k.f)) : new Set();
+  netzHell.userData.kanten = sim.kanten.filter(k => fams.has(k.f)).slice(0, 160);
   linienSetzen(netzHell);
 }
 const nachbarn = p => new Set([p, ...p.eltern, ...p.kinderP, ...p.partnerP].filter(x => x.imBild));
 
 function ueberblickNetz() {
-  const box = new THREE.Box3();
-  for (const p of imBild) box.expandByPoint(p.pos);
-  const mitte = box.getCenter(new THREE.Vector3()), groesse = box.getSize(new THREE.Vector3());
-  const frei = Math.max(0.4, 1 - (kopfleiste.getBoundingClientRect().bottom + fussleiste.getBoundingClientRect().height + 16) / innerHeight);
+  // Kugel um die meisten Karten (einzelne Ausreißer zählen nicht), schräg von vorn oben
+  const mitte = new THREE.Vector3();
+  for (const p of imBild) mitte.add(p.pos);
+  mitte.divideScalar(imBild.length);
+  const abst = imBild.map(p => p.pos.distanceTo(mitte)).sort((x, y) => x - y);
+  const r = abst[Math.floor(abst.length * 0.95)] + 2;
   const tan = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-  const d = Math.max((groesse.y / 2 + 3) / (tan * frei), (groesse.x / 2 + 8) / (tan * camera.aspect));
-  controls.maxDistance = Math.max(260, d * 1.5);
-  scene.fog.far = Math.max(190, d + 150);
-  fliege(mitte.clone().add(new THREE.Vector3(0, 0, d)), mitte);
+  const d = r / Math.min(tan, tan * camera.aspect) * 1.05;
+  controls.maxDistance = Math.max(260, d * 1.6);
+  fliege(mitte.clone().addScaledVector(new THREE.Vector3(0.25, 0.3, 1).normalize(), d), mitte);
+  controls.autoRotate = true;   // dreht sich langsam, bis jemand eingreift
 }
 
 // --- Kamera-Flüge ---------------------------------------------------------------------------------
@@ -613,6 +626,7 @@ const panel = new Panel(daten, {
 
 function waehle(p, { panelOeffnen = true } = {}) {
   if (!p) return;
+  controls.autoRotate = false;
   if (!p.imBild) return setzeHauptperson(p);
   gewaehlt = p;
   aktualisiereDarstellung();
@@ -857,7 +871,7 @@ kameraKnopf.addEventListener('click', () => {
 function berechneFolgeZiel(j, aktuell) {
   let menge = imBild.filter(p => (p.geburt ?? p.jahrE) <= j + 1 && p.ende >= j);
   if (!menge.length) menge = imBild.filter(p => Math.abs(p.jahrE - j) < 30);
-  if (!menge.length) return { ziel: modus.netz ? new THREE.Vector3(0, yVon(j), 0) : new THREE.Vector3(0, 0, zVon(j)), d: 30 };
+  if (!menge.length) return { ziel: modus.netz ? new THREE.Vector3() : new THREE.Vector3(0, 0, zVon(j)), d: 30 };
   const ziel = new THREE.Vector3();
   for (const p of menge) ziel.add(p.pos);
   ziel.divideScalar(menge.length);
@@ -875,7 +889,7 @@ function kameraNachfuehren(dt) {
   if (performance.now() > zoomPause) versatz.setLength(laenge + (folgeZiel.d - laenge) * (1 - Math.exp(-dt / 6)));
   camera.position.copy(controls.target).add(versatz);
 }
-renderer.domElement.addEventListener('pointerdown', () => { nutzerZieht = true; });
+renderer.domElement.addEventListener('pointerdown', () => { nutzerZieht = true; controls.autoRotate = false; });
 addEventListener('pointerup', () => { nutzerZieht = false; });
 renderer.domElement.addEventListener('wheel', () => { zoomPause = performance.now() + 4000; }, { passive: true });
 

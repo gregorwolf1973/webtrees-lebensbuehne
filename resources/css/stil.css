@@ -462,5 +462,4 @@ body.netz .legende:not(.legende-netz) { display: none; }
 body.netz .legende-netz { display: flex; }
 @media (max-width: 1199px) { body.netz .legende-netz { display: none; } }
 .legende .namen { background: conic-gradient(#e38f8f, #e3d38f, #8fe39b, #8fc8e3, #c08fe3, #e38f8f); }
-.legende .strich { width: 16px; height: 2px; border-radius: 0; background: #9fb2cc; vertical-align: 4px; }
-.legende .strich.gold { background: var(--zeit); }
+.legende .stern { background: radial-gradient(circle, #fff 0 18%, rgba(255,255,255,0.35) 40%, transparent 70%); }

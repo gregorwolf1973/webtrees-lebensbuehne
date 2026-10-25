@@ -13,7 +13,7 @@ tunnel with a time travel, life stories, photos, maps and historical events. The
 ## Funktionen
 
 - **Ansichten:** Vorfahren, Nachkommen und die Familie des Partners. Die Hauptperson lässt sich frei wählen, per Suche oder Doppelklick.
-- **Netz:** alle Verwandten auf einen Blick, ähnlich der Ansicht „Lineage“: Die Porträtkarten ordnen sich in einer Kräftesimulation frei an, verbunden mit Eltern, Kindern und Partnern. Die Höhe ist das Geburtsjahr, die Farbe der Klang des Familiennamens (Kölner Phonetik, damit „Thöresz“, „Theres“ und „Tyres“ gleich aussehen). Ein Klick hebt die nächsten Angehörigen hervor; Zeitreise und Sternhimmel funktionieren wie im Fächer.
+- **Netz:** alle Verwandten auf einen Blick, ähnlich der Ansicht „Lineage“, aber räumlich: Jede Familie ist ein Stern – ein leuchtender Punkt, die Eltern dicht daran, die Kinder als Strahlen ringsum. Über die Kinder, die selbst eine Familie gründen, hängen die Sterne aneinander; eine Kräftesimulation ordnet alles im Raum, und das Netz dreht sich langsam. Die Farbe ist der Klang des Familiennamens (Kölner Phonetik, damit „Thöresz“, „Theres“ und „Tyres“ gleich aussehen). Ein Klick hebt die Familiensterne der Person hervor; Zeitreise und Sternhimmel funktionieren wie im Fächer.
 - **Zeitreise:** einstellbares Tempo in Jahren pro Minute. Wer geboren wird, leuchtet auf. Wer gestorben ist, verblasst. Ohne Todesdatum verblasst die Person nach 80 Jahren.
 - **Zeitgeschehen:** Kriege, Auswanderung, Seuchen und weitere Ereignisse laufen als Abspann mit.
 - **Lebensgeschichte zu jeder Person:** Bildgeschichte, Lebenslauf, Bilder und die Karte des Lebenswegs (Leaflet mit OpenStreetMap).

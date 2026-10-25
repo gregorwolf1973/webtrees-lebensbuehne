@@ -54,7 +54,7 @@ $json = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HE
           <button id="modus-vorfahren" aria-pressed="true"><?= e($t('Vorfahren')) ?></button>
           <button id="modus-nachkommen" aria-pressed="false"><?= e($t('Nachkommen')) ?></button>
           <button id="modus-partner" aria-pressed="false"><?= e($t('Partner')) ?></button>
-          <button id="modus-netz" aria-pressed="false" title="<?= e($t('Alle Verwandten als Netz: Linien zu Eltern, Kindern und Partnern, die Höhe ist das Geburtsjahr')) ?>"><?= e($t('Netz')) ?></button>
+          <button id="modus-netz" aria-pressed="false" title="<?= e($t('Alle Verwandten als räumliches Netz: jede Familie ein Stern, die Eltern innen, die Kinder als Strahlen')) ?>"><?= e($t('Netz')) ?></button>
         </span>
         <button id="spende-knopf" class="spende-knopf" aria-expanded="false" aria-controls="spende" title="<?= e($t('Die Lebensbühne unterstützen')) ?>">☕ <span class="spende-wort"><?= e($t('Unterstützen')) ?></span></button>
       </div>
@@ -68,9 +68,7 @@ $json = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HE
     </ul>
     <ul class="legende legende-netz">
       <li><i class="namen"></i><?= e($t('Farbe: Familienname')) ?></li>
-      <li><i class="strich"></i><?= e($t('Eltern und Kinder')) ?></li>
-      <li><i class="strich gold"></i><?= e($t('Ehe')) ?></li>
-      <li><?= e($t('oben älter, unten jünger')) ?></li>
+      <li><i class="stern"></i><?= e($t('Stern: eine Familie, Eltern innen, Kinder außen')) ?></li>
     </ul>
   </header>
 
