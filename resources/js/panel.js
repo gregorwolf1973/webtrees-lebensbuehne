@@ -145,9 +145,12 @@ export class Panel {
       clearInterval(this.spielt); clearInterval(this.diashow);
       this.karte?.remove(); this.karte = null;
       // Fotos in Aufnahmefolge (datierte zuerst), dann Dokumente; in der Zeitreise nur, was bis zum Jahr schon aufgenommen war
+      // danach Urkunden und Gräber, dann Ortsbilder, Zeitungsausschnitte ganz zuletzt – so sieht man vor allem Gesichter
+      const RANG = { urkunde: 1, grab: 2, ort: 3, zeitung: 4 };
       const fotos = p.bilder.map((b, n) => [b, n]).filter(([b]) => b.art === 'foto')
         .sort(([a], [b]) => (a.jahr ?? 1e4) - (b.jahr ?? 1e4));
-      const alleBilder = [...fotos, ...p.bilder.map((b, n) => [b, n]).filter(([b]) => b.art !== 'foto')];
+      const rest = p.bilder.map((b, n) => [b, n]).filter(([b]) => b.art !== 'foto').sort(([a], [b]) => (RANG[a.art] ?? 3) - (RANG[b.art] ?? 3));
+      const alleBilder = [...fotos, ...rest];
       if (!alleBilder.length && p.gesicht) alleBilder.push([{ src: p.gesicht, titel: t('Porträt') }, -1]);
       const reihe = { get length() { return alleBilder.length; } };
       const aktuell = () => {
@@ -424,7 +427,7 @@ export class Panel {
   bilder(box) {
     const p = this.p;
     if (!p.bilder.length) { box.innerHTML = `<p class="leer-hinweis">${t('Zu dieser Person sind noch keine Bilder in webtrees verknüpft.')}</p>`; return; }
-    const art = { foto: t('Foto'), urkunde: t('Dokument'), grab: t('Grab') };
+    const art = { foto: t('Foto'), urkunde: t('Dokument'), grab: t('Grab'), ort: t('Ortsbild'), zeitung: t('Zeitung') };
     box.innerHTML = `<div class="galerie">${p.bilder.map((b, n) =>
       `<button class="bild" data-bild="${n}"><img loading="lazy" src="${b.src}" alt=""><span>${art[b.art]}</span></button>`).join('')}</div>`;
   }
@@ -556,7 +559,7 @@ class Lightbox {
   male() {
     const b = this.bilder[this.n];
     this.el.querySelector('img').src = b.src;
-    const titel = /\.(jpe?g|png|gif|tiff?|webp)$/i.test(b.titel) ? { foto: t('Foto'), urkunde: t('Dokument'), grab: t('Grab') }[b.art] : b.titel;
+    const titel = /\.(jpe?g|png|gif|tiff?|webp)$/i.test(b.titel) ? { foto: t('Foto'), urkunde: t('Dokument'), grab: t('Grab'), ort: t('Ortsbild'), zeitung: t('Zeitung') }[b.art] : b.titel;
     this.el.querySelector('figcaption').textContent = `${titel} · ${this.n + 1} / ${this.bilder.length}`;
   }
   zu() { this.el.hidden = true; }

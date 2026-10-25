@@ -222,7 +222,17 @@ final class Daten
             $datei = $media !== null && $media->canShow($this->stufe) ? $media->firstImageFile() : null;
             if ($datei !== null && !$datei->isExternal() && preg_match(self::BILD, $datei->filename())) {
                 $name = $datei->filename();
-                $art  = preg_match('/URKUNDE|PASS|TAUFSCHEIN|AHNEN/i', $name) ? 'urkunde' : (str_contains(strtoupper($name), 'GRAB') ? 'grab' : 'foto');
+                // Art: Urkunde, Grab, Zeitung, Ortsbild (Orte, Zeitbilder, Denkmäler, Karten, Gemälde) oder Foto der Person
+                $gross = strtoupper($name);
+                $typ   = strtolower($datei->type());
+                $art   = match (true) {
+                    (bool) preg_match('/URKUNDE|PASS|TAUFSCHEIN|AHNEN/', $gross)                      => 'urkunde',
+                    str_contains($gross, 'GRAB') || $typ === 'tombstone'                               => 'grab',
+                    str_contains($gross, 'ZEITUNG') || $typ === 'newspaper'                            => 'zeitung',
+                    (bool) preg_match('#^(ORTE|ZEITBILDER|ZEITBILDER_PRIVAT|DENKMAELER)/#', $gross)
+                        || in_array($typ, ['map', 'painting'], true)                                  => 'ort',
+                    default                                                                            => 'foto',
+                };
 
                 $this->medien[$mid] = [
                     'datei' => $name,

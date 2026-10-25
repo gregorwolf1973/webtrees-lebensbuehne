@@ -773,17 +773,45 @@ function abspannRollen(dt) {
 const deckkraft = (d, fenster) => d <= 1 ? 1 : Math.max(0.25, 1 - (d - 1) / fenster);
 const FAMILIE = { BIRT: t('Geburt'), DEAT: t('Tod'), MARR: t('Hochzeit'), EMIG: t('Auswanderung'), IMMI: t('Einwanderung') };
 
+// Rechte Karte in der Zeitreise: Wer zuletzt geboren wurde, kommt dran – aber jede Person darf ein paar ihrer Bilder
+// zeigen (bis zu drei, je 2,6 s), bevor die nächste Geburt übernimmt. Wartende kommen der Reihe nach; liegt eine
+// wartende Person mehr als ZR_JAHRE hinter dem laufenden Jahr, wird sie übersprungen, damit der Bezug zum Jahr bleibt.
+const ZR_BILD_MS = 2600, ZR_JAHRE = 6;
+let zrGezeigt = null, zrSeit = 0, zrWarte = [];
+const zrBilder = p => p.bilder?.length || (p.gesicht ? 1 : 0);
+const zrGeburt = p => p.geburt ?? p.jahrE;
+function zeitreiseKarte(neueste, jGenau, sofort = false) {
+  const jetzt = performance.now();
+  if (neueste && neueste !== zrGezeigt && !zrWarte.includes(neueste)) zrWarte.push(neueste);
+  if (sofort || !zrGezeigt || !abspielen) {
+    if (neueste) { zrGezeigt = neueste; zrWarte = []; zrSeit = jetzt; }
+  } else if (zrWarte.length) {
+    const n = zrBilder(zrGezeigt);
+    const genug = jetzt - zrSeit >= (n ? Math.min(3, n) * ZR_BILD_MS : 1500);
+    const zuAlt = jGenau - zrGeburt(zrGezeigt) > ZR_JAHRE && zrWarte.some(w => jGenau - zrGeburt(w) <= ZR_JAHRE);
+    if (genug || zuAlt) {
+      while (zrWarte.length > 1 && jGenau - zrGeburt(zrWarte[0]) > ZR_JAHRE) zrWarte.shift();
+      zrGezeigt = zrWarte.shift();
+      zrSeit = jetzt;
+    }
+  }
+  if (zrGezeigt) panel.zeitreise(zrGezeigt, jGenau);
+}
+
 function setzeJahr(jGenau) {
   zeitJahr = jGenau;
   regler.value = jGenau;
   const j = Math.floor(jGenau);
-  if (j === letztesJahr) return aktualisiereDarstellung();   // Einblendungen nur bei neuem Jahr, die Karten bei jedem Schritt
+  if (j === letztesJahr) {   // Einblendungen nur bei neuem Jahr, die Karten bei jedem Schritt
+    if (abspielen && zrWarte.length) zeitreiseKarte(null, jGenau);   // Wartende dürfen auch mitten im Jahr an die Reihe kommen
+    return aktualisiereDarstellung();
+  }
   letztesJahr = j;
   jahrAnzeige.textContent = j;
   // rechts: die zuletzt geborene Person, die noch lebt
   const geboren = imBild.filter(p => (p.geburt ?? p.jahrE) <= j && p.ende >= j)
     .sort((a, b) => (b.geburt ?? b.jahrE) - (a.geburt ?? a.jahrE) || a.geschaetzt - b.geschaetzt || b.bilder.length - a.bilder.length);
-  if (geboren.length) panel.zeitreise(geboren[0], j);
+  if (geboren.length) zeitreiseKarte(geboren[0], jGenau);
   folgeZiel = berechneFolgeZiel(j, geboren[0]);
   gesichterAnpassen(j);
   const lebend = imBild.filter(p => p.jahrE <= j && p.ende >= j);

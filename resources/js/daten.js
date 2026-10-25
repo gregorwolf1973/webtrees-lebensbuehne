@@ -400,7 +400,7 @@ export function kapitel(p, alleZeit) {
   k.sort((a, b) => (a.typ === 'intro' ? -1e9 : sortJahr(a, p)) - (b.typ === 'intro' ? -1e9 : sortJahr(b, p)));
   // Fotos lassen sich keinem Ereignis sicher zuordnen (Dateinamen tragen kein Aufnahmedatum): eigene Albumseiten
   const nummern = art => p.bilder.map((b, n) => b.art === art ? n : -1).filter(n => n >= 0);
-  const fotoNr = nummern('foto'), dokNr = [...nummern('urkunde'), ...nummern('grab')];
+  const fotoNr = nummern('foto'), dokNr = [...nummern('urkunde'), ...nummern('grab'), ...nummern('zeitung')], ortNr = nummern('ort');
   const r = p.rufname, nf = fotoNr.length, nd = dokNr.length;
   if (nf) k.push({ typ: 'album', titel: t('Aus dem Familienalbum'), bilder: fotoNr.slice(0, 6),
     text: EN ? `${nf === 1 ? 'One photo' : nf + ' photos'} of ${r} ${nf === 1 ? 'is' : 'are'} linked in webtrees. Click a picture to enlarge it.`
@@ -408,6 +408,8 @@ export function kapitel(p, alleZeit) {
   if (nd) k.push({ typ: 'album', titel: t('Dokumente'), bilder: dokNr.slice(0, 6),
     text: EN ? (nd === 1 ? `One document about ${r}.` : `${nd} documents about ${r}: certificates, pedigree charts, grave photos.`)
       : (nd === 1 ? `Ein Dokument zu ${r}.` : `${nd} Dokumente zu ${r}: Urkunden, Ahnentafeln, Grabbilder.`) });
+  if (ortNr.length) k.push({ typ: 'album', titel: t('Orte und Zeit'), bilder: ortNr.slice(0, 6),
+    text: EN ? `Views of the places and the times in which ${r} lived.` : `Ansichten der Orte und der Zeit, in der ${r} lebte.` });
   const nb = p.bilder.length;
   const erhalten = EN ? (nb > 1 ? ` ${nb} pictures and documents of ${r} have been preserved.` : nb ? ` One picture of ${r} has been preserved.` : '')
     : (nb > 1 ? ` Von ${r} sind ${nb} Bilder und Dokumente erhalten.` : nb ? ` Von ${r} ist ein Bild erhalten.` : '');
