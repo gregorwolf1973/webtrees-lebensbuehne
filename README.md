@@ -17,7 +17,7 @@ tunnel with a time travel, life stories, photos, maps and historical events. The
 - **Zeitreise:** einstellbares Tempo in Jahren pro Minute. Wer geboren wird, leuchtet auf. Wer gestorben ist, verblasst. Ohne Todesdatum verblasst die Person nach 80 Jahren.
 - **Zeitgeschehen:** Kriege, Auswanderung, Seuchen und weitere Ereignisse laufen als Abspann mit.
 - **Lebensgeschichte zu jeder Person:** Bildgeschichte, Lebenslauf, Bilder und die Karte des Lebenswegs (Leaflet mit OpenStreetMap).
-- **Erzählung:** eine ausformulierte Lebensgeschichte je Person, auf Wunsch vom Browser vorgelesen. Dazu die Texte aus dem webtrees-Modul „Geschichten“, wenn es aktiv ist.
+- **Erzählung:** eine ausformulierte Lebensgeschichte je Person, auf Wunsch vom Browser vorgelesen – in ganzen Sätzen, mit einstellbarem Tempo und wählbarer Stimme (beides merkt sich der Browser). Dazu die Texte aus dem webtrees-Modul „Geschichten“, wenn es aktiv ist.
 - **Historische Grenzen:** Auf der Karte des Lebenswegs erscheinen die Staatsgrenzen zur Zeit der jeweiligen Station, von 1700 bis heute.
 - **2,5D-Porträts:** Das Gesicht auf der ersten Seite der Bildgeschichte wird zu einem räumlichen Porträt, das sich sanft bewegt und Maus oder Finger folgt.
 - **Ton:** frei lizenzierte Geräusche passend zur Epoche (sonst im Browser erzeugt), auf Wunsch eigene Aufnahmen. Dazu drei mitgelieferte Lieder oder ein eigenes, an dessen Länge sich das Tempo der Zeitreise anpassen lässt. Geburt, Hochzeit und Tod erklingen nur in der hervorgehobenen direkten Linie: von der angeklickten Person zur Hauptperson, ohne Auswahl von der ältesten Person aus.

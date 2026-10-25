@@ -146,7 +146,13 @@ body:not(.bereit) #buehne::after { content: "Stammbaum wird geladen …"; positi
 .erzaehlt p { margin: 0 0 14px; font: 17px/1.65 var(--serif); transition: color 0.3s; }
 .erzaehlt p.liest { color: var(--zeit); }
 .erzaehlt .hinweis { font: 12px/1.5 var(--sans); color: var(--text-3); }
-.vorlesen { float: right; margin: 0 0 10px 14px; background: var(--flaeche); border: 1px solid var(--linie); border-radius: 8px; padding: 6px 12px; font-size: 14px; }
+.vorlese-leiste { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 14px; font: 13px var(--sans); color: var(--text-2); }
+.vorlese-leiste[hidden] { display: none; }
+.vorlesen { background: var(--flaeche); border: 1px solid var(--linie); border-radius: 8px; padding: 6px 12px; font-size: 14px; }
+.lesetempo { display: flex; align-items: center; gap: 6px; }
+.lesetempo input { width: 110px; accent-color: var(--zeit); }
+.lesetempo span { min-width: 3.2em; font-variant-numeric: tabular-nums; }
+.vorlese-leiste .stimme { max-width: 220px; background: var(--flaeche); color: var(--text); border: 1px solid var(--linie); border-radius: 8px; padding: 5px 8px; font-size: 13px; }
 .vorlesen:hover, .vorlesen[aria-pressed="true"] { border-color: var(--vater); }
 .wt-geschichte { margin-top: 26px; padding-top: 16px; border-top: 1px solid var(--linie); }
 .wt-geschichte h3 { margin: 0 0 10px; font: 600 19px var(--serif); }

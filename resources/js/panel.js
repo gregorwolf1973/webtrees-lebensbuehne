@@ -5,6 +5,59 @@ import { t, EN } from 'lb/text.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
+// --- Vorlesen ---------------------------------------------------------------------------------------
+// Gesprochener Text: Zeichen und Abkürzungen ausschreiben, damit die Stimme flüssig liest (die Anzeige bleibt, wie sie ist)
+const MONATE = { Jan: 'Januar', Feb: 'Februar', Mär: 'März', Apr: 'April', Jun: 'Juni', Jul: 'Juli', Aug: 'August', Sep: 'September',
+                 Sept: 'September', Okt: 'Oktober', Nov: 'November', Dez: 'Dezember' };
+function sprechtext(text, sprache) {
+  let s = text.replace(/\s+/g, ' ');
+  if (sprache === 'de') {
+    s = s.replace(/\b(Jan|Feb|Mär|Apr|Jun|Jul|Aug|Sept?|Okt|Nov|Dez)\./g, (m, mo) => MONATE[mo])
+      .replace(/\*\s?/g, 'geboren ').replace(/†\s?/g, 'gestorben ').replace(/[∞⚭]\s?/g, 'verheiratet ')
+      .replace(/\bca\.\s?/g, 'circa ').replace(/\bz\.\s?B\./g, 'zum Beispiel').replace(/\bNr\.\s?/g, 'Nummer ')
+      .replace(/\bhl\.\s?/g, 'heilige ').replace(/\bSt\.\s?(?=[A-ZÄÖÜ])/g, 'Sankt ').replace(/\bgeb\.\s?/g, 'geborene ')
+      .replace(/\bbzw\.\s?/g, 'beziehungsweise ').replace(/\bJh\.\s?/g, 'Jahrhundert ').replace(/\bDr\.\s?/g, 'Doktor ')
+      .replace(/(\d{3,4})\s?[–-]\s?(\d{2,4})/g, '$1 bis $2');
+  } else {
+    s = s.replace(/\*\s?/g, 'born ').replace(/†\s?/g, 'died ').replace(/[∞⚭]\s?/g, 'married ').replace(/\bc\.\s?(?=\d)/g, 'circa ')
+      .replace(/(\d{3,4})\s?[–-]\s?(\d{2,4})/g, '$1 to $2');
+  }
+  return s.trim();
+}
+// Sätze erkennen (nicht nach Zahlen und Abkürzungen) und zu Abschnitten bis etwa 200 Zeichen bündeln: lang genug für
+// einen ruhigen Fluss, kurz genug, dass Chrome nicht nach 15 Sekunden abbricht
+const ABK = /(?:\d|\b(?:Jan|Feb|Mär|Apr|Jun|Jul|Aug|Sept?|Okt|Nov|Dez|Nr|ca|St|hl|Hl|Dr|geb|verh|Jh|bzw|vgl|usw|z\.\s?B|u\.\s?a|d\.\s?h|S|Bd|Str))$/;
+function stuecke(text) {
+  const saetze = [];
+  let anfang = 0;
+  const re = /[.!?…][“”»«"')]*\s+(?=[A-ZÄÖÜ„"(])/g;
+  let m;
+  while ((m = re.exec(text))) {
+    if (ABK.test(text.slice(anfang, m.index))) continue;
+    saetze.push(text.slice(anfang, m.index + m[0].length).trim());
+    anfang = m.index + m[0].length;
+  }
+  if (anfang < text.length) saetze.push(text.slice(anfang).trim());
+  const aus = [];
+  for (const satz of saetze) {
+    // überlange Sätze an Kommas teilen
+    const teile = satz.length > 260 ? satz.split(/(?<=[,;:])\s+/) : [satz];
+    for (const t of teile) {
+      if (aus.length && (aus[aus.length - 1] + ' ' + t).length <= 200) aus[aus.length - 1] += ' ' + t;
+      else aus.push(t);
+    }
+  }
+  return aus.filter(Boolean);
+}
+const lesetempo = () => { try { return Math.min(1.6, Math.max(0.6, +localStorage.getItem('lb-lesetempo') || 1)); } catch (e) { return 1; } };
+const gemerkteStimme = () => { try { return localStorage.getItem('lb-stimme') || ''; } catch (e) { return ''; } };
+const merke = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* ohne Speicher */ } };
+function stimmenFuer(sprache) {
+  const alle = speechSynthesis.getVoices().filter(v => new RegExp(`^${sprache}(-|_|$)`, 'i').test(v.lang));
+  const guete = v => (/natural|neural|online/i.test(v.name) ? 0 : /google/i.test(v.name) ? 1 : v.localService ? 3 : 2);
+  return alle.sort((a, b) => guete(a) - guete(b) || a.name.localeCompare(b.name));
+}
+
 export class Panel {
   constructor(daten, { zuPerson, hauptperson, geschlossen, breite }) {
     this.daten = daten;
@@ -209,37 +262,67 @@ export class Panel {
     if (!absaetze.length && !eigene.length) { box.innerHTML = `<p class="leer-hinweis">${t('Zu dieser Person gibt es noch keine Erzählung.')}</p>`; return; }
     box.innerHTML = `
       ${absaetze.length ? `<div class="erzaehlt">
-        <button class="vorlesen" aria-pressed="false" hidden>${t('▶ Vorlesen')}</button>
+        <div class="vorlese-leiste" hidden>
+          <button class="vorlesen" aria-pressed="false">${t('▶ Vorlesen')}</button>
+          <label class="lesetempo" title="${t('Lesetempo')}">${t('Tempo')} <input type="range" min="0.6" max="1.6" step="0.05"><span></span></label>
+          <select class="stimme" title="${t('Stimme')}" hidden></select>
+        </div>
         ${absaetze.map((a, n) => `<p data-absatz="${n}">${esc(a)}</p>`).join('')}
         <p class="hinweis">${t('Erzählt von Claude (KI) nach den Einträgen in webtrees')}${d.stand ? `, ${t('Stand')} ${esc(d.stand)}` : ''}. ${t('Zeitgeschehen ist allgemeine Geschichte. Fehler bitte in webtrees berichtigen.')}${EN && d.sprache === 'de' ? ' ' + t('(Erzählung auf Deutsch)') : ''}</p>
       </div>` : ''}
       ${eigene.map(g => `<article class="wt-geschichte"><h3>${esc(g.titel)}</h3><div class="wt-text">${g.html}</div></article>`).join('')}`;
     const knopf = box.querySelector('.vorlesen');
     if (!knopf || !('speechSynthesis' in window)) return;
-    knopf.hidden = false;
+    const sprache = d.sprache || 'de';
+    box.querySelector('.vorlese-leiste').hidden = false;
     knopf.onclick = () => {
       if (this.liest) { this.stilleStimme(); return; }
-      this.vorlesen(box, absaetze, knopf, d.sprache || 'de');
+      this.vorlesen(box, absaetze, knopf, sprache);
     };
+    // Tempo: wirkt sofort, ab dem gerade gelesenen Abschnitt
+    const regler = box.querySelector('.lesetempo input'), anzeige = box.querySelector('.lesetempo span');
+    const zeigeTempo = () => { anzeige.textContent = `${(+regler.value).toFixed(2).replace(/0$/, '').replace('.', EN ? '.' : ',')}×`; };
+    regler.value = lesetempo();
+    zeigeTempo();
+    regler.oninput = () => { zeigeTempo(); merke('lb-lesetempo', regler.value); };
+    regler.onchange = () => { if (this.liest) this.vorlesen(box, absaetze, knopf, sprache, this.liest.stelle); };
+    // Stimme: natürliche Stimmen zuerst; die Liste kommt in manchen Browsern erst etwas später
+    const wahl = box.querySelector('.stimme');
+    const fuelle = () => {
+      const stimmen = stimmenFuer(sprache);
+      if (stimmen.length < 2) return;
+      const gemerkt = gemerkteStimme();
+      wahl.innerHTML = stimmen.map(v => `<option value="${esc(v.name)}"${v.name === gemerkt ? ' selected' : ''}>${esc(v.name.replace(/^Microsoft |^Google /, ''))}</option>`).join('');
+      wahl.hidden = false;
+    };
+    fuelle();
+    speechSynthesis.addEventListener('voiceschanged', fuelle, { once: true });
+    wahl.onchange = () => { merke('lb-stimme', wahl.value); if (this.liest) this.vorlesen(box, absaetze, knopf, sprache, this.liest.stelle); };
   }
 
-  // Satzweise vorlesen (lange Texte brechen in manchen Browsern sonst ab); der gelesene Absatz wird hervorgehoben
-  vorlesen(box, absaetze, knopf, sprache) {
-    const stimmen = speechSynthesis.getVoices().filter(v => new RegExp(`^${sprache}(-|_|$)`, 'i').test(v.lang));
-    const stimme = stimmen.find(v => /natural|online|google|neural/i.test(v.name)) || stimmen.find(v => v.localService) || stimmen[0] || null;
+  // Vorlesen in Abschnitten ganzer Sätze, alle gleich in die Warteschlange (so entstehen keine Lücken); der gelesene
+  // Absatz wird hervorgehoben. „ab“: Abschnitt, bei dem es weitergeht (nach Änderung von Tempo oder Stimme)
+  vorlesen(box, absaetze, knopf, sprache, ab = 0) {
+    const stimmen = stimmenFuer(sprache);
+    const stimme = stimmen.find(v => v.name === gemerkteStimme()) || stimmen[0] || null;
     const teile = [];
-    absaetze.forEach((a, n) => { for (const s of a.match(/[^.!?…]+[.!?…]+[“”»«"')]*\s*|[^.!?…]+$/g) || [a]) teile.push([n, s.trim()]); });
+    absaetze.forEach((a, n) => { for (const s of stuecke(sprechtext(a, sprache))) teile.push([n, s]); });
     speechSynthesis.cancel();
-    this.liest = { knopf, box };
+    this.liest = { knopf, box, stelle: ab };
     knopf.textContent = t('■ Anhalten');
     knopf.setAttribute('aria-pressed', 'true');
-    teile.forEach(([n, satz], i) => {
+    const tempo = lesetempo(), liest = this.liest;
+    teile.slice(ab).forEach(([n, satz], i) => {
       const u = new SpeechSynthesisUtterance(satz);
-      u.lang = sprache === 'de' ? 'de-DE' : 'en-GB';
+      u.lang = stimme?.lang || (sprache === 'de' ? 'de-DE' : 'en-GB');
       if (stimme) u.voice = stimme;
-      u.rate = 0.95;
-      u.onstart = () => box.querySelectorAll('[data-absatz]').forEach(el => el.classList.toggle('liest', +el.dataset.absatz === n));
-      if (i === teile.length - 1) u.onend = () => this.stilleStimme();
+      u.rate = tempo;
+      u.onstart = () => {
+        if (this.liest !== liest) return;
+        liest.stelle = ab + i;
+        box.querySelectorAll('[data-absatz]').forEach(el => el.classList.toggle('liest', +el.dataset.absatz === n));
+      };
+      if (ab + i === teile.length - 1) u.onend = () => { if (this.liest === liest) this.stilleStimme(); };
       speechSynthesis.speak(u);
     });
   }
