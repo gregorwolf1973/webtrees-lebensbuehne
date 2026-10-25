@@ -121,6 +121,7 @@ Das Format ist dasselbe wie in der mitgelieferten Datei, eine Liste von Einträg
 ```
 
 - `jahr`, `bis`: Zeitraum
+- `orte` (optional): Dorf- oder Stadtgeschichte, z. B. `["grossjetscha", "iecea mare"]`; der Eintrag erscheint dann nur bei Personen, die an einem Ort mit diesem Namensteil gelebt haben (Groß- und Kleinschreibung, „ß“ und Bindestriche zählen nicht)
 - `regionen`: `welt`, `europa`, `deutschland`, `oesterreich`, `schweiz`, `ungarn`, `rumaenien`, `serbien`, `banat`, `westen` (Lothringen, Luxemburg, Pfalz, Saarland, Elsass), `frankreich`, `luxemburg`, `belgien`, `niederlande`, `italien`, `polen`, `tschechien`, `slowakei`, `kroatien`, `russland`, `ukraine`, `grossbritannien`, `irland`, `skandinavien`, `usa`, `kanada`, `lateinamerika`, `australien`
 - `titel`, `text` (deutsch), `titel_en`, `text_en` (englisch)
 - `gruppe`: dasselbe Ereignis in mehreren Fassungen (allgemein und regional); gezeigt wird je Gruppe nur die passendste, eigene Einträge gehen vor

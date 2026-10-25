@@ -98,7 +98,7 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
     use ModuleCustomTrait;
     use ModuleChartTrait;
 
-    public const string VERSION = '1.3.0';
+    public const string VERSION = '1.3.1';
 
     private const string ROUTE_SEITE   = 'lebensbuehne-seite';
     private const string ROUTE_DATEN   = 'lebensbuehne-daten';

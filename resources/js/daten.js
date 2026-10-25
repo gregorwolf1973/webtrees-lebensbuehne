@@ -26,6 +26,7 @@ export async function ladeDaten() {
     p.rufname = p.name.rufname || (p.name.vorname && p.name.vorname !== '?' ? p.name.vorname.split(' ')[0] : p.name.voll);
     p.regionen = new Set();
     for (const e of p.ereignisse) if (e.ort) for (const r of regionenVonOrt(e.ort.name)) p.regionen.add(r);
+    p.orteText = p.ereignisse.filter(e => e.ort).map(e => ortSchluessel(e.ort.name)).join('|');
     // Jahr für die Zeitachse: Geburt, sonst aus Heirat oder Tod geschätzt, sonst später aus der Verwandtschaft
     const ehe = p.ereignisse.find(e => e.art === 'MARR' && e.jahr);
     p.geschaetzt = !p.geburt;
@@ -55,7 +56,7 @@ export async function ladeDaten() {
     for (const p of personen)
       if (!p.regionen.size) {
         const q = [...p.kinderP, ...p.eltern].find(x => x.regionen.size);
-        if (q) p.regionen = new Set(q.regionen);
+        if (q) { p.regionen = new Set(q.regionen); p.orteText = q.orteText; }
       }
 
   // Einträge mit „nurKlang“ steuern nur die Geräusche und erscheinen nicht im Zeitgeschehen
@@ -145,14 +146,19 @@ export function regionenVonOrt(name) {
   return REGIONEN.filter(([, muster]) => muster.test(n)).map(([r]) => r);
 }
 
+// Ortsnamen vergleichbar machen: klein, ß → ss, ohne Bindestriche („Groß-Jetscha“ = „Grossjetscha“)
+const ortSchluessel = name => name.toLowerCase().replace(/ß/g, 'ss').replace(/-/g, '');
+
 // Passt eine Region eines Eintrags zur Person? Das Banat gehörte bis 1920 zu Ungarn, danach größtenteils zu Rumänien
 function passtRegion(r, z, p) {
   return p.regionen.has(r) || (r === 'ungarn' && p.regionen.has('banat') && z.jahr < 1920) ||
     (r === 'rumaenien' && p.regionen.has('banat') && (z.bis ?? z.jahr) >= 1919);
 }
 
-// Gehört ein Eintrag zu einer Person? Welt und Europa immer, sonst über die Regionen ihrer Orte
+// Gehört ein Eintrag zu einer Person? Welt und Europa immer, sonst über die Regionen ihrer Orte. Dorfgeschichte mit „orte“
+// (Namensteile wie „grossjetscha“) erscheint nur bei Personen, die dort gelebt haben.
 export function passtZeitgeschehen(z, p) {
+  if (z.orte && !z.orte.some(o => p.orteText?.includes(ortSchluessel(o)))) return false;
   return z.regionen.some(r => r === 'welt' || r === 'europa' || passtRegion(r, z, p));
 }
 
