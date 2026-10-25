@@ -241,6 +241,8 @@ function baue() {
     return rohr;
   });
 
+  const nachGeburt = [...imBild].sort((a, b) => (a.geburt ?? a.jahrE) - (b.geburt ?? b.jahrE) || b.mannesstamm - a.mannesstamm);
+  linienBasis = modus.vorfahren || modus.partner ? nachGeburt[0] : nachGeburt[nachGeburt.length - 1];
   const jahre = imBild.map(p => p.jahrE);
   document.getElementById('info-zahl').textContent =
     `${imBild.length} ${imBild.length === 1 ? 'Person' : 'Personen'} · ${Math.min(...jahre)}–${Math.max(...jahre)} · ${imBild.filter(p => p.gesicht).length} Gesichter`;
@@ -262,11 +264,51 @@ let flug = null;
 function fliege(pos, ziel, dauer = 1300) {
   flug = { von: camera.position.clone(), vonZiel: controls.target.clone(), pos, ziel, t0: performance.now(), dauer };
 }
+// Überblick: Blick schräg von vorn oben; der Abstand richtet sich nach der Bildschirmform, damit alle Karten
+// zwischen Kopf- und Fußleiste ganz zu sehen sind – auch im Hochformat, wo der Fächer breiter ist als der Bildschirm
 function ueberblick() {
-  const zs = imBild.map(p => p.pos.z), rs = imBild.map(p => Math.hypot(p.pos.x, p.pos.y));
-  const zmin = Math.min(...zs), zmax = Math.max(...zs), spanne = Math.max(20, zmax - zmin), rmax = Math.max(8, ...rs);
-  const d = Math.max(spanne * 0.42, rmax * 1.1) + 14;
-  fliege(new THREE.Vector3(0, d * 0.6, zmax + d * 0.7), new THREE.Vector3(0, -2, zmax - spanne * 0.3));
+  const zs = imBild.map(p => p.pos.z);
+  const zmax = Math.max(...zs), spanne = Math.max(20, zmax - Math.min(...zs));
+  const H = innerHeight;
+  const oben = 1 - 2 * (kopfleiste.getBoundingClientRect().bottom + 8) / H;
+  const unten = -1 + 2 * (fussleiste.getBoundingClientRect().height + 8) / H;
+  const probe = camera.clone();
+  probe.clearViewOffset();
+  const rechts = new THREE.Vector3(), hoch = new THREE.Vector3(), v = new THREE.Vector3();
+  const rahmen = (pos, ziel) => {
+    probe.position.copy(pos);
+    probe.lookAt(ziel);
+    probe.updateMatrixWorld();
+    rechts.setFromMatrixColumn(probe.matrixWorld, 0);
+    hoch.setFromMatrixColumn(probe.matrixWorld, 1);
+    const b = { x0: Infinity, x1: -Infinity, y0: Infinity, y1: -Infinity };
+    for (const p of imBild) {
+      const g = p.rolle === 'start' ? 1.35 : 1;
+      for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+        v.copy(p.pos).addScaledVector(rechts, sx * 1.2 * g).addScaledVector(hoch, sy * 1.55 * g).project(probe);
+        if (v.z > 1) return null;   // hinter der Kamera: zu nah
+        b.x0 = Math.min(b.x0, v.x); b.x1 = Math.max(b.x1, v.x); b.y0 = Math.min(b.y0, v.y); b.y1 = Math.max(b.y1, v.y);
+      }
+    }
+    return b;
+  };
+  const verschiebung = new THREE.Vector3();
+  const stelle = d => [new THREE.Vector3(0, d * 0.6, zmax + d * 0.7).add(verschiebung), new THREE.Vector3(0, -2, zmax - spanne * 0.3).add(verschiebung)];
+  const passt = d => { const b = rahmen(...stelle(d)); return b && b.x1 - b.x0 <= 1.9 && b.y1 - b.y0 <= oben - unten; };
+  let d = 20;
+  for (let runde = 0; runde < 2; runde++) {
+    let lo = 8, hi = 1200;
+    for (let i = 0; i < 22; i++) { const m = (lo + hi) / 2; if (passt(m)) hi = m; else lo = m; }
+    d = hi;
+    // Ausschnitt mittig zwischen die Leisten rücken
+    const [pos, ziel] = stelle(d), b = rahmen(pos, ziel);
+    if (!b) break;
+    const halbH = pos.distanceTo(ziel) * Math.tan(THREE.MathUtils.degToRad(probe.fov / 2)), halbB = halbH * probe.aspect;
+    verschiebung.addScaledVector(rechts, (b.x0 + b.x1) / 2 * halbB).addScaledVector(hoch, ((b.y0 + b.y1) / 2 - (oben + unten) / 2) * halbH);
+  }
+  const [pos, ziel] = stelle(d);
+  controls.maxDistance = Math.max(260, pos.distanceTo(ziel) * 1.4);
+  fliege(pos, ziel);
 }
 
 // --- Auswahl, Hervorhebung, Zeitreise ---------------------------------------------------------------
@@ -278,8 +320,14 @@ function linieZu(p) {
   return s;
 }
 
+// Die direkte Linie: von der gewählten Person zur Hauptperson, ohne Auswahl von der ältesten dargestellten Person
+// (nur Nachkommen: von der jüngsten). Sie ist hervorgehoben, und nur aus ihr kommen Geburts-, Hochzeits- und Todesklänge.
+let linienBasis = null;
+const direkteLinie = () => linieZu(gewaehlt ?? linienBasis ?? root);
+
 function aktualisiereDarstellung() {
   const pfad = gewaehlt ? linieZu(gewaehlt) : null;
+  const direkt = !pfad || abspielen ? direkteLinie() : null;
   for (const k of karten) {
     const p = k.userData.p;
     let o = 1, hell = 1, gross = 1, hof = 0;
@@ -305,6 +353,7 @@ function aktualisiereDarstellung() {
     const { von, zu } = l.userData;
     const an = pfad ? (pfad.has(von) && pfad.has(zu)) || von === gewaehlt : false;
     l.material.opacity = pfad && !abspielen ? (an ? 0.95 : 0.12)
+      : direkt?.has(von) && direkt.has(zu) ? 0.95
       : zeitJahr != null ? 0.6 * Math.min(lebenslicht(von, zeitJahr).o, lebenslicht(zu, zeitJahr).o) : 0.45;
   }
   for (const m of zeitMarken) {
@@ -612,7 +661,8 @@ function berechneFolgeZiel(j, aktuell) {
   if (aktuell?.pos) ziel.lerp(aktuell.pos, 0.35);   // die zuletzt geborene Person etwas in die Mitte rücken
   let r = 0;
   for (const p of menge) r = Math.max(r, p.pos.distanceTo(ziel));
-  return { ziel, d: Math.min(90, Math.max(26, r * 1.7 + 10)) };
+  const hochkant = Math.min(1, camera.aspect / 1.2);   // im Hochformat weiter weg, sonst laufen die Seiten aus dem Bild
+  return { ziel, d: Math.min(90, Math.max(26, r * 1.7 + 10)) / hochkant };
 }
 // weich nachführen: Blickpunkt mit etwa 4 s, Abstand mit etwa 6 s Zeitkonstante (unabhängig von der Bildrate)
 function kameraNachfuehren(dt) {
@@ -659,12 +709,13 @@ function klingen(j) {
   const bald = new Set();
   for (const z of daten.klangZeit) if (z.jahr > j && z.jahr <= j + 15) for (const art of z.klang.split('+')) if (ton.arten[art]) bald.add(art);
   if (bald.size) klang.vorladen([...bald]);
-  let n = 0;
-  for (const p of imBild) {
+  // Familienklänge nur aus der hervorgehobenen direkten Linie
+  let n = 0, hochzeit = false;
+  for (const p of direkteLinie()) {
     if (n > 3) break;
     if (p.geburt === j) { if (ton.arten.geburt) setTimeout(klang.geburt, n++ * 250); }
     else if (p.tod === j) { if (ton.arten.tod) setTimeout(klang.tod, n++ * 250); }
-    else if (ton.arten.hochzeit && p.geschlecht === 'M' && p.ereignisse.some(e => e.art === 'MARR' && e.jahr === j)) setTimeout(klang.hochzeit, n++ * 250);
+    else if (ton.arten.hochzeit && !hochzeit && p.ereignisse.some(e => e.art === 'MARR' && e.jahr === j)) { hochzeit = true; setTimeout(klang.hochzeit, n++ * 250); }
   }
 }
 
@@ -768,6 +819,19 @@ zeigeTon();
 liedLaden().then(setzeLied);
 klang.ladeAufnahmen();
 
+// Menü (☰) auf kleinen Bildschirmen: Suche, Überblick und Ansicht; schließt nach jeder Wahl
+const menueKnopf = document.getElementById('menue'), mehr = document.getElementById('mehr');
+const kompakt = matchMedia('(max-width: 1199px), (max-height: 600px)');
+function menue(offen) {
+  document.body.classList.toggle('menue-offen', offen);
+  menueKnopf.setAttribute('aria-expanded', offen);
+}
+menueKnopf.addEventListener('click', ev => { ev.stopPropagation(); menue(!document.body.classList.contains('menue-offen')); });
+addEventListener('click', ev => {
+  if (document.body.classList.contains('menue-offen') && !mehr.contains(ev.target) && ev.target !== menueKnopf && ev.target.id !== 'hauptperson') menue(false);
+});
+mehr.addEventListener('click', ev => { if (ev.target.closest('button')) menue(false); });
+
 document.getElementById('ansicht-ueberblick').addEventListener('click', () => {
   stoppeAbspielen(); zeitJahr = null; letztesJahr = null; jahrAnzeige.textContent = '–'; lebendAnzeige.textContent = '';
   gesichterAnpassen(null);
@@ -780,6 +844,7 @@ let hpWahl = false;
 function hpWahlEnde() { hpWahl = false; suche.placeholder = 'Person suchen …'; suche.classList.remove('hp-wahl'); }
 document.getElementById('hauptperson').addEventListener('click', () => {
   hpWahl = true;
+  if (kompakt.matches) menue(true);   // die Suche steckt dann im Menü
   suche.value = '';
   suche.placeholder = 'Neue Hauptperson: Namen eingeben …';
   suche.classList.add('hp-wahl');
@@ -816,6 +881,7 @@ document.getElementById('suche').addEventListener('change', e => {
   if (!p) return;
   if (hpWahl) { hpWahlEnde(); setzeHauptperson(p); } else waehle(p);
   suche.blur();
+  menue(false);
 });
 
 // --- Maus: Hover und Klick -------------------------------------------------------------------------
@@ -888,6 +954,10 @@ renderer.setAnimationLoop(now => {
   kameraNachfuehren(dt);
   abspannRollen(dt);
   controls.update();
+  // Nebel mit dem Abstand mitführen: aus großer Entfernung (Hochformat) sollen die Karten nicht im Dunst verschwinden
+  const abstandZiel = camera.position.distanceTo(controls.target);
+  scene.fog.near = Math.max(45, abstandZiel * 0.55);
+  scene.fog.far = Math.max(190, abstandZiel + 150);
   renderer.render(scene, camera);
 });
 document.body.classList.add('bereit');

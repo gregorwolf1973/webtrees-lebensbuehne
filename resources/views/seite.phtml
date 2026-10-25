@@ -41,16 +41,19 @@ $json = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HE
       <p id="info-zahl">Lade Stammbaum …</p>
     </div>
     <div class="werkzeuge">
-      <input id="suche" list="namen" placeholder="Person suchen …" autocomplete="off">
-      <datalist id="namen"></datalist>
-      <button id="ansicht-ueberblick">Überblick</button>
       <span class="hp-label">Hauptperson</span>
       <button id="hauptperson" class="hp" title="Klicken, um eine andere Hauptperson zu wählen">…</button>
-      <span class="umschalter" role="group" aria-label="Ansicht">
-        <button id="modus-vorfahren" aria-pressed="true">Vorfahren</button>
-        <button id="modus-nachkommen" aria-pressed="false">Nachkommen</button>
-        <button id="modus-partner" aria-pressed="false">Partner</button>
-      </span>
+      <button id="menue" class="menue-knopf" aria-expanded="false" aria-controls="mehr" title="Suche und Ansicht">☰</button>
+      <div id="mehr" class="mehr">
+        <input id="suche" list="namen" placeholder="Person suchen …" autocomplete="off">
+        <datalist id="namen"></datalist>
+        <button id="ansicht-ueberblick">Überblick</button>
+        <span class="umschalter" role="group" aria-label="Ansicht">
+          <button id="modus-vorfahren" aria-pressed="true">Vorfahren</button>
+          <button id="modus-nachkommen" aria-pressed="false">Nachkommen</button>
+          <button id="modus-partner" aria-pressed="false">Partner</button>
+        </span>
+      </div>
     </div>
     <ul class="legende">
       <li><i class="vater"></i>väterlicherseits</li>
@@ -78,6 +81,7 @@ $json = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HE
         <h3>Geräusche</h3>
         <label class="haken"><input type="checkbox" id="geraeusche-an"> abspielen</label>
         <label class="laut">Lautstärke <input type="range" id="vol-geraeusche" min="0" max="100"></label>
+        <p class="lied-tipp">Geburt, Hochzeit und Tod erklingen nur in der hervorgehobenen Linie: von der angeklickten Person zur Hauptperson, ohne Auswahl von der ältesten Person aus.</p>
         <fieldset id="klang-arten" class="arten"></fieldset>
         <input id="lied-datei" type="file" accept="audio/*" hidden>
       </div>

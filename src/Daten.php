@@ -13,6 +13,7 @@ namespace GregorWolf\Lebensbuehne;
 use Fisharebest\Webtrees\DB;
 use Fisharebest\Webtrees\Registry;
 use Fisharebest\Webtrees\Tree;
+use Fisharebest\Webtrees\Webtrees;
 
 use function array_column;
 use function array_filter;
@@ -24,7 +25,9 @@ use function count;
 use function explode;
 use function implode;
 use function in_array;
+use function is_file;
 use function json_decode;
+use function json_encode;
 use function md5;
 use function mb_strtolower;
 use function mb_strtoupper;
@@ -390,8 +393,10 @@ final class Daten
         }
         if ($wahl !== null) {
             $p['gesicht'] = $this->gesichtUrl($x, $wahl[0], $wahl[1]);
+            $p['tiefe']   = $this->tiefeUrl($x, $wahl[0], $wahl[1]);
         } elseif ($hauptbild !== null) {
             $p['gesicht'] = $this->gesichtUrl($x, $hauptbild, null);
+            $p['tiefe']   = $this->tiefeUrl($x, $hauptbild, null);
         }
 
         // altersgerechte Gesichter für die Zeitreise: jedes markierte Gesicht auf einem Foto mit bekanntem Aufnahmejahr
@@ -443,6 +448,26 @@ final class Daten
             'media' => $mid,
             'v'     => substr(md5(implode(',', $rahmen ?? []) . '|' . ($this->medien[$mid]['datei'] ?? '')), 0, 8),
         ];
+        if ($rahmen === null) {
+            $parameter['q'] = '1';
+        }
+
+        return route($this->gesichtRoute, $parameter);
+    }
+
+    /**
+     * Tiefenkarte zum Gesichtsausschnitt für das 2,5D-Porträt (tools/tiefen.py), nur wenn sie schon berechnet ist.
+     * Der Dateiname folgt dem Zwischenspeicher der Gesichter: Baum_Person_Medium_Prüfsumme.png
+     *
+     * @param list<int>|null $rahmen
+     */
+    private function tiefeUrl(string $xref, string $mid, ?array $rahmen): ?string
+    {
+        $name = $this->tree->id() . '_' . $xref . '_' . $mid . '_' . md5(json_encode($rahmen) . '|' . ($this->medien[$mid]['datei'] ?? '')) . '.png';
+        if (!is_file(Webtrees::DATA_DIR . 'lebensbuehne/tiefen/' . $name)) {
+            return null;
+        }
+        $parameter = ['tree' => $this->tree->name(), 'xref' => $xref, 'media' => $mid, 't' => '1'];
         if ($rahmen === null) {
             $parameter['q'] = '1';
         }

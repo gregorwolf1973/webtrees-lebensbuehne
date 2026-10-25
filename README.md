@@ -16,7 +16,11 @@ tunnel with a time travel, life stories, photos, maps and historical events. The
 - **Zeitreise:** einstellbares Tempo in Jahren pro Minute. Wer geboren wird, leuchtet auf. Wer gestorben ist, verblasst. Ohne Todesdatum verblasst die Person nach 80 Jahren.
 - **Zeitgeschehen:** Kriege, Auswanderung, Seuchen und weitere Ereignisse laufen als Abspann mit.
 - **Lebensgeschichte zu jeder Person:** Bildgeschichte, Lebenslauf, Bilder und die Karte des Lebenswegs (Leaflet mit OpenStreetMap).
-- **Ton:** künstlich erzeugte Geräusche passend zur Epoche, auf Wunsch eigene Aufnahmen. Dazu ein eigenes Lied, an dessen Länge sich das Tempo der Zeitreise anpassen lässt.
+- **Erzählung:** eine ausformulierte Lebensgeschichte je Person, auf Wunsch vom Browser vorgelesen. Dazu die Texte aus dem webtrees-Modul „Geschichten“, wenn es aktiv ist.
+- **Historische Grenzen:** Auf der Karte des Lebenswegs erscheinen die Staatsgrenzen zur Zeit der jeweiligen Station, von 1700 bis heute.
+- **2,5D-Porträts:** Das Gesicht auf der ersten Seite der Bildgeschichte wird zu einem räumlichen Porträt, das sich sanft bewegt und Maus oder Finger folgt.
+- **Ton:** künstlich erzeugte Geräusche passend zur Epoche, auf Wunsch eigene Aufnahmen. Dazu ein eigenes Lied, an dessen Länge sich das Tempo der Zeitreise anpassen lässt. Geburt, Hochzeit und Tod erklingen nur in der hervorgehobenen direkten Linie: von der angeklickten Person zur Hauptperson, ohne Auswahl von der ältesten Person aus.
+- **Handy und Tablet:** Suche und Ansichten liegen dort im Menü ☰. Der Überblick passt sich der Bildschirmform an, damit der ganze Stammbaum zu sehen ist.
 - **Bilder nur aus webtrees:** Die Fotos kommen aus der Medienverwaltung. Gesichter werden aus den Markierungen des Moduls [webtrees-faces](https://github.com/UksusoFF/webtrees-faces) ausgeschnitten, falls es installiert ist.
 
 ## Voraussetzungen
@@ -36,7 +40,36 @@ Nur **angemeldete Mitglieder** des jeweiligen Stammbaums. Gäste werden zur Anme
 
 Die Daten stellt webtrees für den jeweiligen Betrachter zusammen. Dabei gelten die Datenschutz-Einstellungen des Baums: Was ein Mitglied in webtrees nicht sehen darf, erscheint auch nicht in der Lebensbühne.
 
-Die Seite lädt keine Skripte von fremden Servern, three.js und Leaflet liegen im Modul. Nur die Kartenkacheln kommen von OpenStreetMap.
+Die Seite lädt keine Skripte von fremden Servern, three.js, Leaflet und die Grenzdaten liegen im Modul. Nur die Kartenkacheln kommen von OpenStreetMap. Das Vorlesen übernimmt die Sprachausgabe des Browsers; je nach Browser und Gerät kann sie den Text an einen Sprachdienst des Herstellers schicken.
+
+## Erzählungen
+
+Die Erzählungen sind keine webtrees-Daten, sondern eine Datei im Datenordner, je Stammbaum eine:
+
+```
+data/lebensbuehne/geschichten/<Baumname>.json
+```
+
+```json
+{ "_stand": "25.10.2026", "X123": "Erster Absatz …\n\nZweiter Absatz …" }
+```
+
+Absätze trennt eine Leerzeile. Die Texte kann man selbst schreiben oder von einer KI aus den webtrees-Daten schreiben lassen; die Lebensbühne kennzeichnet sie als „Erzählt von Claude (KI)“. Wer die Datei pflegt, sollte jede Aussage gegen webtrees prüfen. Personen, die ein Betrachter nicht sehen darf, bekommen auch keine Erzählung.
+
+## 2,5D-Porträts
+
+Ohne weiteres Zutun bekommt jedes Porträt eine weiche Kopfwölbung. Echtes Relief entsteht mit Tiefenkarten, die einmal auf einem PC berechnet werden:
+
+```
+pip install onnxruntime numpy pillow
+python3 tools/tiefen.py <webtrees>/data/lebensbuehne/cache <webtrees>/data/lebensbuehne/tiefen
+```
+
+Das Skript nimmt die Gesichtsausschnitte, die das Modul beim Ansehen im Zwischenspeicher ablegt, und schätzt die Tiefe mit dem Modell [Depth Anything V2 Small](https://huggingface.co/depth-anything/Depth-Anything-V2-Small) (Apache-2.0, etwa 100 MB, wird beim ersten Lauf geladen). Vorhandene Tiefenkarten werden übersprungen, neue Gesichter kommen also beim nächsten Lauf dazu.
+
+## Historische Grenzen
+
+Die Grenzen stammen aus [historical-basemaps](https://github.com/aourednik/historical-basemaps) von André Ourednik (GPL-3.0). Mitgeliefert ist ein vereinfachter Europa-Ausschnitt für 15 Stichjahre zwischen 1700 und 2010 in `resources/data/grenzen/`. Erzeugt wird er mit `tools/grenzen.py`. Die Karte zeigt jeweils den letzten Stand vor dem Jahr der Station, also für 1905 die Grenzen von 1900. Die Daten sind für große Maßstäbe gedacht und an Grenzflüssen ungenau.
 
 ## Eigene Klänge und ein eigenes Lied
 

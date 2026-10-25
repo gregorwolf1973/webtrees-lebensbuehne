@@ -23,44 +23,62 @@ use Fisharebest\Webtrees\Module\ModuleChartInterface;
 use Fisharebest\Webtrees\Module\ModuleChartTrait;
 use Fisharebest\Webtrees\Module\ModuleCustomInterface;
 use Fisharebest\Webtrees\Module\ModuleCustomTrait;
+use Fisharebest\Webtrees\Module\ModuleTabInterface;
 use Fisharebest\Webtrees\Registry;
+use Fisharebest\Webtrees\Services\ModuleService;
 use Fisharebest\Webtrees\Tree;
 use Fisharebest\Webtrees\Validator;
 use Fisharebest\Webtrees\View;
 use Fisharebest\Webtrees\Webtrees;
+use DOMComment;
+use DOMDocument;
+use DOMElement;
+use DOMNode;
 use Imagick;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use Throwable;
 
+use function array_keys;
 use function basename;
+use function class_exists;
 use function extension_loaded;
 use function fclose;
 use function file_get_contents;
 use function file_put_contents;
+use function filemtime;
 use function filesize;
 use function fopen;
 use function fread;
 use function fseek;
 use function glob;
+use function htmlspecialchars;
+use function implode;
+use function in_array;
 use function intdiv;
 use function is_array;
 use function is_dir;
 use function is_file;
 use function is_object;
+use function is_string;
+use function iterator_to_array;
 use function json_decode;
 use function json_encode;
+use function libxml_clear_errors;
+use function libxml_use_internal_errors;
 use function max;
 use function md5;
 use function min;
 use function mkdir;
+use function nl2br;
 use function pathinfo;
 use function preg_match;
 use function redirect;
 use function rename;
 use function response;
 use function route;
+use function strip_tags;
 use function strlen;
 use function strtolower;
 use function view;
@@ -75,12 +93,17 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
     use ModuleCustomTrait;
     use ModuleChartTrait;
 
-    public const string VERSION = '1.0.3';
+    public const string VERSION = '1.1.0';
 
     private const string ROUTE_SEITE   = 'lebensbuehne-seite';
     private const string ROUTE_DATEN   = 'lebensbuehne-daten';
     private const string ROUTE_GESICHT = 'lebensbuehne-gesicht';
     private const string ROUTE_KLANG   = 'lebensbuehne-klang';
+    private const string ROUTE_GESCHICHTE = 'lebensbuehne-geschichte';
+
+    // Tags und Attribute, die aus den Geschichten des webtrees-Moduls „Geschichten“ übernommen werden
+    private const array HTML_TAGS = ['p', 'br', 'b', 'strong', 'i', 'em', 'u', 'ul', 'ol', 'li', 'h2', 'h3', 'h4', 'blockquote', 'a', 'img',
+        'figure', 'figcaption', 'span', 'div', 'table', 'thead', 'tbody', 'tr', 'td', 'th', 'hr'];
 
     private const string AUDIO = '/^[\w-]+\.(mp3|ogg|oga|opus|wav|flac|m4a)$/i';
 
@@ -99,6 +122,7 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
         $karte->get(self::ROUTE_DATEN, '/tree/{tree}/lebensbuehne-daten', $this);
         $karte->get(self::ROUTE_GESICHT, '/tree/{tree}/lebensbuehne-gesicht/{xref}/{media}', $this);
         $karte->get(self::ROUTE_KLANG, '/tree/{tree}/lebensbuehne-klang/{datei}', $this);
+        $karte->get(self::ROUTE_GESCHICHTE, '/tree/{tree}/lebensbuehne-geschichte/{xref}', $this);
 
         View::registerNamespace($this->name(), $this->resourcesFolder() . 'views/');
     }
@@ -174,6 +198,7 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
             self::ROUTE_DATEN   => $this->daten($tree, $user),
             self::ROUTE_GESICHT => $this->gesicht($request, $tree),
             self::ROUTE_KLANG   => $this->klang($request, $tree),
+            self::ROUTE_GESCHICHTE => $this->geschichte($request, $tree, $user),
             default             => throw new HttpNotFoundException(),
         };
     }
@@ -187,13 +212,21 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
             'three'                                  => $this->assetUrl('vendor/three/three.module.min.js'),
             'three/addons/controls/OrbitControls.js' => $this->assetUrl('vendor/three/OrbitControls.js'),
         ];
-        foreach (['app', 'daten', 'panel', 'klang'] as $datei) {
+        foreach (['app', 'daten', 'panel', 'klang', 'tiefe'] as $datei) {
             $importe['lb/' . $datei . '.js'] = $this->assetUrl('js/' . $datei . '.js');
+        }
+
+        // historische Grenzen je Jahr (resources/data/grenzen/JJJJ.json)
+        $grenzen = [];
+        foreach (glob($this->resourcesFolder() . 'data/grenzen/*.json') ?: [] as $pfad) {
+            $grenzen[basename($pfad, '.json')] = $this->assetUrl('data/grenzen/' . basename($pfad));
         }
 
         $musik = $this->musikDatei();
         $config = [
             'daten'         => route(self::ROUTE_DATEN, ['tree' => $tree->name()]),
+            'geschichte'    => route(self::ROUTE_GESCHICHTE, ['tree' => $tree->name(), 'xref' => 'XREF']),
+            'grenzen'       => (object) $grenzen,
             'zeitgeschehen' => $this->assetUrl('data/zeitgeschehen.json'),
             'klaenge'       => route(self::ROUTE_KLANG, ['tree' => $tree->name(), 'datei' => 'liste.json']),
             'klangDatei'    => route(self::ROUTE_KLANG, ['tree' => $tree->name(), 'datei' => 'DATEI']),
@@ -223,12 +256,22 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
         $stand = DB::table('change')->where('gedcom_id', '=', $tree->id())
             ->selectRaw("COALESCE(MAX(change_id), 0) AS m, SUM(CASE WHEN status = 'accepted' THEN 1 ELSE 0 END) AS a")
             ->first();
-        $schluessel = 'lebensbuehne-' . $tree->id() . '-' . $stufe . '-' . ($stand->m ?? 0) . '-' . ($stand->a ?? 0) . '-' . self::VERSION;
+        // Personen mit Erzählung oder webtrees-Geschichte bekommen den Reiter „Erzählung“; neue Tiefenkarten erneuern ihn auch
+        $mitGeschichte = $this->geschichtenXrefs($tree, $user);
+        $tiefen        = Webtrees::DATA_DIR . 'lebensbuehne/tiefen';
+        $schluessel    = 'lebensbuehne-' . $tree->id() . '-' . $stufe . '-' . ($stand->m ?? 0) . '-' . ($stand->a ?? 0) . '-' . self::VERSION
+            . '-' . md5(implode(',', array_keys($mitGeschichte)) . '|' . (is_dir($tiefen) ? (string) filemtime($tiefen) : ''));
 
-        $json = Registry::cache()->file()->remember($schluessel, function () use ($tree, $stufe): string {
-            $daten = new Daten($tree, $stufe, self::ROUTE_GESICHT);
+        $json = Registry::cache()->file()->remember($schluessel, function () use ($tree, $stufe, $mitGeschichte): string {
+            $alle = (new Daten($tree, $stufe, self::ROUTE_GESICHT))->alle();
+            foreach ($alle['personen'] as &$p) {
+                if (isset($mitGeschichte[$p['id']])) {
+                    $p['geschichte'] = true;
+                }
+            }
+            unset($p);
 
-            return (string) json_encode($daten->alle(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            return (string) json_encode($alle, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         }, 86400);
 
         return response($json, 200, ['content-type' => 'application/json', 'cache-control' => 'private, no-cache']);
@@ -253,7 +296,19 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
         }
 
         $ordner = Webtrees::DATA_DIR . 'lebensbuehne/cache/';
-        $ziel   = $ordner . $tree->id() . '_' . $xref . '_' . $mid . '_' . md5(json_encode($rahmen) . '|' . $datei->filename()) . '.jpg';
+        $name   = $tree->id() . '_' . $xref . '_' . $mid . '_' . md5(json_encode($rahmen) . '|' . $datei->filename());
+        $ziel   = $ordner . $name . '.jpg';
+
+        // Tiefenkarte für das 2,5D-Porträt (berechnet mit tools/tiefen.py, liegt neben dem Zwischenspeicher)
+        if (Validator::queryParams($request)->string('t', '') === '1') {
+            $tiefe = Webtrees::DATA_DIR . 'lebensbuehne/tiefen/' . $name . '.png';
+            if (!is_file($tiefe)) {
+                throw new HttpNotFoundException();
+            }
+
+            return response((string) file_get_contents($tiefe), 200, ['content-type' => 'image/png', 'cache-control' => 'private, max-age=2592000']);
+        }
+
         if (!is_file($ziel)) {
             try {
                 if (!extension_loaded('imagick')) {
@@ -356,6 +411,154 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
         }
 
         return $this->dateiAntwort($request, $pfad);
+    }
+
+    // Erzählung (data/lebensbuehne/geschichten/<Baum>.json) und Geschichten aus dem webtrees-Modul „Geschichten“ zu einer Person
+    private function geschichte(ServerRequestInterface $request, Tree $tree, UserInterface $user): ResponseInterface
+    {
+        $xref   = Validator::attributes($request)->isXref()->string('xref');
+        $person = Registry::individualFactory()->make($xref, $tree);
+        if ($person === null || !$person->canShow()) {
+            throw new HttpNotFoundException();
+        }
+        $erzaehlungen = $this->erzaehlungen($tree);
+        $antwort      = [
+            'erzaehlung'  => is_string($erzaehlungen[$xref] ?? null) ? $erzaehlungen[$xref] : null,
+            'stand'       => is_string($erzaehlungen['_stand'] ?? null) ? $erzaehlungen['_stand'] : '',
+            'geschichten' => $this->webtreesGeschichten($tree, $user, $xref),
+        ];
+
+        return response((string) json_encode($antwort, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 200, ['content-type' => 'application/json', 'cache-control' => 'private, no-cache']);
+    }
+
+    /**
+     * Erzählte Lebensgeschichten eines Baums: {"_stand": "…", "X123": "Absatz\n\nAbsatz", …}
+     *
+     * @return array<string,mixed>
+     */
+    private function erzaehlungen(Tree $tree): array
+    {
+        $pfad = Webtrees::DATA_DIR . 'lebensbuehne/geschichten/' . $tree->name() . '.json';
+        if (!is_file($pfad)) {
+            return [];
+        }
+        $daten = json_decode((string) file_get_contents($pfad), true);
+
+        return is_array($daten) ? $daten : [];
+    }
+
+    /**
+     * @return array<string,true> Personen mit Erzählung oder webtrees-Geschichte
+     */
+    private function geschichtenXrefs(Tree $tree, UserInterface $user): array
+    {
+        $xrefs = [];
+        foreach (array_keys($this->erzaehlungen($tree)) as $x) {
+            if ($x !== '_stand') {
+                $xrefs[(string) $x] = true;
+            }
+        }
+        if ($this->geschichtenModul($tree, $user)) {
+            foreach (DB::table('block')->where('gedcom_id', '=', $tree->id())->where('module_name', '=', 'stories')->whereNotNull('xref')->pluck('xref') as $x) {
+                $xrefs[(string) $x] = true;
+            }
+        }
+
+        return $xrefs;
+    }
+
+    // Das Modul „Geschichten“ muss aktiv und für den Betrachter freigegeben sein
+    private function geschichtenModul(Tree $tree, UserInterface $user): bool
+    {
+        $modul = Registry::container()->get(ModuleService::class)->findByName('stories');
+
+        return $modul instanceof ModuleTabInterface && Auth::accessLevel($tree, $user) <= $modul->accessLevel($tree, ModuleTabInterface::class);
+    }
+
+    /**
+     * @return list<array{titel:string,html:string}>
+     */
+    private function webtreesGeschichten(Tree $tree, UserInterface $user, string $xref): array
+    {
+        if (!$this->geschichtenModul($tree, $user)) {
+            return [];
+        }
+        $liste = [];
+        $ids   = DB::table('block')->where('gedcom_id', '=', $tree->id())->where('module_name', '=', 'stories')->where('xref', '=', $xref)->orderBy('block_id')->pluck('block_id');
+        foreach ($ids as $id) {
+            $einstellung = DB::table('block_setting')->where('block_id', '=', $id)->pluck('setting_value', 'setting_name');
+            $liste[]     = ['titel' => (string) ($einstellung['title'] ?? ''), 'html' => $this->saubereHtml((string) ($einstellung['story_body'] ?? ''))];
+        }
+
+        return $liste;
+    }
+
+    // Geschichten-HTML auf harmlose Tags und Attribute beschränken (keine Skripte, keine Ereignis-Attribute, keine Stile)
+    private function saubereHtml(string $html): string
+    {
+        if (!class_exists(DOMDocument::class)) {
+            return '<p>' . nl2br(htmlspecialchars(strip_tags($html))) . '</p>';
+        }
+        $dom = new DOMDocument();
+        $alt = libxml_use_internal_errors(true);
+        $dom->loadHTML('<?xml encoding="utf-8"?><div>' . $html . '</div>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+        libxml_clear_errors();
+        libxml_use_internal_errors($alt);
+        $wurzel = null;
+        foreach ($dom->childNodes as $k) {
+            if ($k instanceof DOMElement) {
+                $wurzel = $k;
+                break;
+            }
+        }
+        if ($wurzel === null) {
+            return '';
+        }
+        $saeubere = function (DOMNode $knoten) use (&$saeubere): void {
+            foreach (iterator_to_array($knoten->childNodes) as $kind) {
+                if ($kind instanceof DOMComment) {
+                    $knoten->removeChild($kind);
+                    continue;
+                }
+                if (!$kind instanceof DOMElement) {
+                    continue;
+                }
+                $name = strtolower($kind->nodeName);
+                if (in_array($name, ['script', 'style', 'iframe', 'object', 'embed', 'form', 'input', 'button', 'textarea', 'select'], true)) {
+                    $knoten->removeChild($kind);
+                    continue;
+                }
+                $saeubere($kind);
+                if (!in_array($name, self::HTML_TAGS, true)) {
+                    while ($kind->firstChild !== null) {
+                        $knoten->insertBefore($kind->firstChild, $kind);
+                    }
+                    $knoten->removeChild($kind);
+                    continue;
+                }
+                foreach (iterator_to_array($kind->attributes) as $attribut) {
+                    $a  = strtolower($attribut->name);
+                    $ok = ($name === 'a' && $a === 'href') || ($name === 'img' && in_array($a, ['src', 'alt', 'width', 'height'], true));
+                    if ($ok && ($a === 'href' || $a === 'src') && preg_match('/^\s*(javascript|data|vbscript):/i', $attribut->value)) {
+                        $ok = false;
+                    }
+                    if (!$ok) {
+                        $kind->removeAttribute($attribut->name);
+                    }
+                }
+                if ($name === 'a') {
+                    $kind->setAttribute('target', '_blank');
+                    $kind->setAttribute('rel', 'noopener');
+                }
+            }
+        };
+        $saeubere($wurzel);
+        $ergebnis = '';
+        foreach ($wurzel->childNodes as $k) {
+            $ergebnis .= $dom->saveHTML($k);
+        }
+
+        return $ergebnis;
     }
 
     private function musikDatei(): ?string

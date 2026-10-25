@@ -108,6 +108,10 @@ body:not(.bereit) #buehne::after { content: "Stammbaum wird geladen …"; positi
 .bildflaeche > img { max-width: 100%; max-height: 100%; object-fit: contain; animation: blende 0.5s ease; }
 .bildflaeche > img.rund { width: 240px; height: 240px; border-radius: 50%; object-fit: cover; border: 3px solid var(--vater); }
 @keyframes blende { from { opacity: 0; transform: scale(1.03); } }
+.bildflaeche > .tiefe-portraet { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); border-radius: 50%;
+  opacity: 0; transition: opacity 0.6s ease; touch-action: pan-y; filter: drop-shadow(0 14px 26px rgba(0, 0, 0, 0.55)); }
+.bildflaeche > .tiefe-portraet.an { opacity: 1; }
+.tiefe-portraet canvas { width: 100% !important; height: 100% !important; display: block; }
 .plakat { width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; padding: 28px; animation: blende 0.5s ease;
   background: radial-gradient(circle at 30% 20%, rgba(232, 176, 79, 0.18), transparent 60%), #141820; }
 .plakat-jahr { font: 600 46px/1 var(--serif); color: var(--zeit); }
@@ -134,6 +138,19 @@ body:not(.bereit) #buehne::after { content: "Stammbaum wird geladen …"; positi
 .punkt.an { background: var(--vater); }
 .punkt.typ-zeit.an { background: var(--zeit); }
 .hinweis { font-size: 12px; color: var(--text-3); margin-top: 18px; }
+
+/* Erzählung */
+.erzaehlt p { margin: 0 0 14px; font: 17px/1.65 var(--serif); transition: color 0.3s; }
+.erzaehlt p.liest { color: var(--zeit); }
+.erzaehlt .hinweis { font: 12px/1.5 var(--sans); color: var(--text-3); }
+.vorlesen { float: right; margin: 0 0 10px 14px; background: var(--flaeche); border: 1px solid var(--linie); border-radius: 8px; padding: 6px 12px; font-size: 14px; }
+.vorlesen:hover, .vorlesen[aria-pressed="true"] { border-color: var(--vater); }
+.wt-geschichte { margin-top: 26px; padding-top: 16px; border-top: 1px solid var(--linie); }
+.wt-geschichte h3 { margin: 0 0 10px; font: 600 19px var(--serif); }
+.wt-text { font: 15.5px/1.6 var(--serif); color: var(--text-2); overflow-wrap: anywhere; }
+.wt-text img { max-width: 100%; height: auto; border-radius: 6px; }
+.wt-text table { border-collapse: collapse; max-width: 100%; display: block; overflow-x: auto; }
+.wt-text td, .wt-text th { border: 1px solid var(--linie); padding: 4px 8px; }
 
 /* Lebenslauf */
 .notizen { border-left: 3px solid var(--vater); padding: 2px 0 2px 14px; margin-bottom: 18px; }
@@ -173,6 +190,10 @@ body:not(.bereit) #buehne::after { content: "Stammbaum wird geladen …"; positi
 .karten-leiste { display: flex; align-items: center; gap: 12px; margin: 12px 0; }
 .karten-leiste button { background: var(--flaeche); border: 1px solid var(--linie); border-radius: 8px; padding: 7px 12px; }
 .karten-leiste .station { color: var(--zeit); font-size: 14px; }
+.karten-leiste { flex-wrap: wrap; }
+.grenz-schalter { margin-left: auto; display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-2); white-space: nowrap; }
+.grenz-schalter input { accent-color: var(--vater); }
+.leaflet-tooltip.grenz-name { font: 600 12px var(--sans); color: #4a1f0c; background: rgba(255, 244, 220, 0.92); border-color: #c9a46a; }
 .stationen { list-style: none; padding: 0; margin: 0; }
 .stationen li { padding: 6px 8px; border-radius: 6px; cursor: pointer; color: var(--text-2); font-size: 14px; }
 .stationen li:hover, .stationen li.an { background: rgba(214, 162, 78, 0.12); color: var(--text); }
@@ -238,7 +259,7 @@ body:not(.bereit) #buehne::after { content: "Stammbaum wird geladen …"; positi
 .umschalter button + button { border-left: 0; }
 
 /* Abspann während der Zeitreise */
-#zeit-karte.rollen { display: block; top: 96px; bottom: 92px; max-height: none; overflow: hidden;
+#zeit-karte.rollen { display: block; top: var(--oben, 96px); bottom: 92px; max-height: none; overflow: hidden;
   -webkit-mask-image: none; mask-image: none; }
 #zeit-karte.rollen .zk { position: absolute; left: 0; right: 0; top: 0; transition: none; opacity: 1; will-change: transform; }
 .ton-menue .haken + .haken, .ton-menue .klein + .haken { margin-top: 8px; }
@@ -267,14 +288,17 @@ body[data-panel="voll"] .leiste-oben { right: min(580px, 100vw); }   /* Kopfleis
   .hilfe { bottom: calc(var(--leiste) + 8px); }
   #panel { width: min(460px, 44vw); }
   body[data-panel="voll"] .leiste-oben { right: min(460px, 44vw); }
-  #zeit-karte { width: min(340px, 30vw); bottom: calc(var(--leiste) + 12px); max-height: calc(100vh - var(--leiste) - 160px); }
-  #zeit-karte.rollen { top: auto; bottom: calc(var(--leiste) + 12px); height: 34vh; }
+  #zeit-karte { width: min(340px, 30vw); bottom: calc(var(--leiste) + 12px); max-height: calc(100vh - var(--leiste) - var(--oben, 120px) - 24px); }
+  #zeit-karte.rollen { top: auto; bottom: calc(var(--leiste) + 12px); height: min(34vh, calc(100vh - var(--leiste) - var(--oben, 120px) - 24px)); }
   .zk { padding: 8px 11px; }
   .zk p { font-size: 12.5px; }
 
   /* Zeitreise: kleine Karte oben rechts statt großer Einblendung, damit der Baum frei bleibt */
-  #panel[data-modus="zeitreise"] { top: var(--oben, 120px); bottom: auto; right: 10px; width: min(320px, 34vw); max-height: 48vh;
-    border: 1px solid var(--linie); border-radius: 12px; }
+  #panel[data-modus="zeitreise"] { top: var(--oben, 120px); bottom: auto; right: 10px; width: min(320px, 34vw);
+    max-height: min(48vh, calc(100vh - var(--oben, 120px) - var(--leiste) - 16px)); border: 1px solid var(--linie); border-radius: 12px; }
+  /* das Bild gibt nach, wenn wenig Höhe da ist; Kopf und Knopf bleiben sichtbar */
+  #panel[data-modus="zeitreise"] .zeitreise { display: flex; flex-direction: column; min-height: 0; }
+  #panel[data-modus="zeitreise"] .zeitreise > * { flex-shrink: 0; }
   #panel[data-modus="zeitreise"] .kopf.kompakt { height: auto; padding: 10px 40px 6px 10px; gap: 10px; }
   #panel[data-modus="zeitreise"] .kopf.kompakt .portraet { width: 48px; height: 48px; border-width: 2px; }
   #panel[data-modus="zeitreise"] .kopf.kompakt h2 { font-size: 15px; margin: 0; }
@@ -282,7 +306,7 @@ body[data-panel="voll"] .leiste-oben { right: min(580px, 100vw); }   /* Kopfleis
   #panel[data-modus="zeitreise"] .kopf.kompakt .daten { font-size: 11px; }
   #panel[data-modus="zeitreise"] .kopf.kompakt .daten { -webkit-line-clamp: 1; }
   #panel[data-modus="zeitreise"] .zeitreise { padding: 0 10px 10px; }
-  #panel[data-modus="zeitreise"] .zr-bild { height: 20vh; }
+  #panel[data-modus="zeitreise"] .zeitreise > .zr-bild { height: auto; flex: 0 1 20vh; min-height: 56px; }
   #panel[data-modus="zeitreise"] .zr-alter { font-size: 15px; margin: 6px 0 0; }
   #panel[data-modus="zeitreise"] .zr-hinweis { display: none; }
   #panel[data-modus="zeitreise"] .zr-voll { font-size: 12px; padding: 4px 8px; margin-top: 6px; }
@@ -313,7 +337,7 @@ body[data-panel="voll"] .leiste-oben { right: min(580px, 100vw); }   /* Kopfleis
   .bildflaeche > img.rund { width: 180px; height: 180px; }
   #karte { height: 260px; }
   #panel[data-modus="zeitreise"] { width: min(320px, 46vw); max-height: 42vh; }
-  #panel[data-modus="zeitreise"] .zr-bild { height: 16vh; }
+  #panel[data-modus="zeitreise"] .zeitreise > .zr-bild { flex-basis: 16vh; }
   #zeit-karte { left: 10px; width: min(420px, calc(100vw - 20px)); max-height: 26vh; }
   #zeit-karte.rollen { height: 24vh; }
   body[data-panel="voll"] #zeit-karte { display: none !important; }
@@ -322,17 +346,9 @@ body[data-panel="voll"] .leiste-oben { right: min(580px, 100vw); }   /* Kopfleis
 /* Handy: kompakte Kopf- und Fußleiste */
 @media (max-width: 760px) {
   :root { --leiste: 100px; }
-  .leiste-oben { padding: 8px 10px; gap: 6px 8px; }
-  .titel { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px; }
-  .titel .zurueck { flex-basis: 100%; margin: 0; font-size: 11px; }
+  .leiste-oben { padding: 8px 10px; }
   .titel h1 { font-size: 19px; }
-  .titel p { margin: 0; font-size: 11px; }
-  .werkzeuge { gap: 6px; }
   .werkzeuge input, .werkzeuge button { padding: 5px 9px; font-size: 13px; }
-  .werkzeuge input { width: 140px; }
-  .werkzeuge input.hp-wahl { width: 210px; }
-  .hp-label { display: none; }
-  .werkzeuge .hp { max-width: 150px; }
   .leiste-unten { gap: 6px 8px; padding: 8px 10px 10px; }
   .leiste-unten button { padding: 6px 10px; font-size: 13px; }
   .leiste-unten #abspielen { min-width: 0; }
@@ -350,4 +366,69 @@ body[data-panel="voll"] .leiste-oben { right: min(580px, 100vw); }   /* Kopfleis
   .lb-zurueck, .lb-vor { position: absolute; bottom: 14px; }
   .lb-zurueck { left: 14px; }
   .lb-vor { right: 14px; }
+}
+
+/* --- Kopfleiste: am PC alles in einer Zeile, sonst nur Hauptperson und Menüknopf (☰) --------------------- */
+.mehr { display: contents; }
+#suche { order: 1; }
+#ansicht-ueberblick { order: 2; }
+.hp-label { order: 3; }
+.werkzeuge .hp { order: 4; }
+.umschalter { order: 5; }
+.menue-knopf { display: none; order: 6; }
+
+@media (max-width: 1199px), (max-height: 600px) {
+  .leiste-oben { flex-wrap: nowrap; align-items: center; gap: 10px; padding: 8px 12px; }
+  .titel { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px; min-width: 0; }
+  .titel .zurueck { flex-basis: 100%; margin: 0; font-size: 11px; }
+  .titel h1 { font-size: 20px; }
+  .titel p { margin: 0; font-size: 11px; }
+  .werkzeuge { flex-wrap: nowrap; margin-left: auto; gap: 6px; }
+  .hp-label { display: none; }
+  .werkzeuge .hp { max-width: 46vw; }
+  .werkzeuge .menue-knopf { display: inline-block; font-size: 18px; line-height: 1.1; padding: 5px 11px; }
+  .menue-knopf[aria-expanded="true"] { border-color: var(--vater); background: rgba(214, 162, 78, 0.22); }
+  .mehr { display: none; }
+  body.menue-offen .mehr { display: flex; flex-direction: column; align-items: stretch; gap: 8px; position: fixed; z-index: 35;
+    top: var(--oben, 64px); right: 10px; width: min(340px, calc(100vw - 20px)); padding: 12px;
+    background: var(--flaeche-fest); border: 1px solid var(--linie); border-radius: 12px; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5); }
+  body.menue-offen .mehr input, body.menue-offen .mehr input.hp-wahl { width: auto; }
+  body.menue-offen .umschalter { display: flex; }
+  body.menue-offen .umschalter button { flex: 1; padding-left: 6px; padding-right: 6px; }
+}
+
+/* --- Wenig Höhe (Handy quer): Fußleiste einzeilig, Lebensgeschichte als rechte Hälfte in voller Höhe -------- */
+@media (max-height: 560px) and (orientation: landscape) {
+  .leiste-unten { flex-wrap: nowrap; gap: 8px; padding: 6px 10px 8px; }
+  .regler { order: 0; flex: 1 1 auto; flex-basis: auto; min-width: 100px; }
+  .skala { display: none; }
+  .lang { display: none; }
+  .kurz { display: inline; }
+  .leiste-unten button { padding: 6px 10px; font-size: 13px; }
+  .leiste-unten #abspielen { min-width: 0; }
+  .tempo input { width: 50px; }
+  .jahrbox { margin-left: 0; }
+  #jahr-anzeige { font-size: 20px; }
+  #lebend { display: none; }
+  .hilfe { display: none; }
+  .ton-menue { position: fixed; left: 10px; bottom: calc(var(--leiste) + 6px); width: min(380px, calc(100vw - 20px));
+    max-height: calc(100vh - var(--leiste) - 20px); }
+  #panel[data-modus="voll"] { top: 0; bottom: var(--leiste); width: min(440px, 52vw); overflow-y: auto; overscroll-behavior: contain; }
+  #panel[data-modus="voll"] > * { flex-shrink: 0; }
+  #panel[data-modus="voll"] .inhalt { flex: none; overflow: visible; }
+  #panel[data-modus="voll"] .tabs { position: sticky; top: 0; z-index: 1; background: var(--flaeche-fest); padding: 0 8px; overflow-x: auto; scrollbar-width: none; }
+  #panel[data-modus="voll"] .tabs button { padding: 9px; white-space: nowrap; }
+  body[data-panel="voll"] .leiste-oben { right: min(440px, 52vw); }
+  body[data-panel="voll"] #zeit-karte { display: none !important; }
+  .kopf { padding: 12px 48px 8px 14px; gap: 12px; align-items: flex-start; }
+  .portraet { width: 56px; height: 56px; }
+  .kopf h2 { font-size: 19px; }
+  .linie { font-size: 12.5px; }
+  .bildflaeche { height: 200px; }
+  .bildflaeche > img.rund { width: 170px; height: 170px; }
+  #karte { height: 220px; }
+  #panel[data-modus="zeitreise"] { width: min(300px, 36vw); }
+  #zeit-karte { width: min(320px, 38vw); }
+  .zk { padding: 6px 10px; font-size: 13px; }
+  .zk p { font-size: 12px; }
 }

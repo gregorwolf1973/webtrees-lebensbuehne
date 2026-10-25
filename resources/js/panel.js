@@ -1,5 +1,6 @@
 // Einblendung zu einer Person: Bildgeschichte, Lebenslauf mit Zeitgeschehen, Bilder, Karte des Lebenswegs.
-import { kapitel, lebensdaten, verwandtschaft, jahreKurz, ortKurz, trenneNotiz, zeitgeschehenFuer, erzaehle, sortJahr } from 'lb/daten.js';
+import { kapitel, lebensdaten, verwandtschaft, jahreKurz, ortKurz, trenneNotiz, zeitgeschehenFuer, erzaehle, sortJahr, LB } from 'lb/daten.js';
+import { belebe } from 'lb/tiefe.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -40,13 +41,17 @@ export class Panel {
     this.zrPerson = null;
     clearInterval(this.diashow);
     this.offen = true;
+    this.stilleStimme();
     this.modus('voll');
-    const tabAlt = this.aktiverTab || 'geschichte';
+    // mit Erzählung beginnt die Einblendung dort, sonst beim zuletzt gewählten Reiter
+    let tabAlt = this.aktiverTab || (p.geschichte ? 'erzaehlung' : 'geschichte');
+    if (tabAlt === 'erzaehlung' && !p.geschichte) tabAlt = 'geschichte';
     this.el.innerHTML = `
       <button class="griff" aria-label="Einblendung größer oder kleiner"></button>
       <button class="schliessen" aria-label="Schließen">✕</button>
       ${this.kopf(p)}
       <nav class="tabs" role="tablist">
+        ${p.geschichte ? '<button data-tab="erzaehlung">Erzählung</button>' : ''}
         <button data-tab="geschichte">Bildgeschichte</button>
         <button data-tab="lebenslauf">Lebenslauf</button>
         <button data-tab="bilder">Bilder <span class="zahl">${p.bilder.length}</span></button>
@@ -65,6 +70,7 @@ export class Panel {
       this.zrPerson = p;
       this.p = p;
       this.offen = true;
+      this.stilleStimme();
       this.modus('zeitreise');
       clearInterval(this.spielt); clearInterval(this.diashow);
       this.karte?.remove(); this.karte = null;
@@ -149,6 +155,7 @@ export class Panel {
     this.offen = false;
     this.modus('');
     this.zrPerson = null;
+    this.stilleStimme();
     clearInterval(this.spielt); clearInterval(this.diashow);
     this.karte?.remove(); this.karte = null;
     this.cb.geschlossen();
@@ -160,9 +167,73 @@ export class Panel {
     const box = this.el.querySelector('.inhalt');
     clearInterval(this.spielt);
     this.karte?.remove(); this.karte = null;
+    this.stilleStimme();
     box.scrollTop = 0;
-    ({ geschichte: () => this.geschichte(box), lebenslauf: () => this.lebenslauf(box),
+    ({ erzaehlung: () => this.erzaehlung(box), geschichte: () => this.geschichte(box), lebenslauf: () => this.lebenslauf(box),
        bilder: () => this.bilder(box), karte: () => this.lebensweg(box) })[name]();
+  }
+
+  // --- Erzählung: von Claude erzählte Lebensgeschichte, dazu Geschichten aus webtrees; auf Wunsch vorgelesen ----------------
+  async erzaehlung(box) {
+    const p = this.p;
+    box.innerHTML = '<p class="leer-hinweis">Erzählung wird geladen …</p>';
+    let d = null;
+    try {
+      if (LB.geschichte) d = await fetch(LB.geschichte.replace('XREF', encodeURIComponent(p.id))).then(r => r.ok ? r.json() : null);
+      else {
+        const alle = await (this.lokaleGeschichten ??= fetch('data/geschichten.json').then(r => r.ok ? r.json() : {}).catch(() => ({})));
+        d = { erzaehlung: alle[p.id] ?? null, stand: alle._stand ?? '', geschichten: [] };
+      }
+    } catch (e) { d = null; }
+    if (this.p !== p || this.aktiverTab !== 'erzaehlung') return;
+    const absaetze = (d?.erzaehlung || '').split(/\n\s*\n/).map(a => a.trim()).filter(Boolean);
+    const eigene = d?.geschichten || [];
+    if (!absaetze.length && !eigene.length) { box.innerHTML = '<p class="leer-hinweis">Zu dieser Person gibt es noch keine Erzählung.</p>'; return; }
+    box.innerHTML = `
+      ${absaetze.length ? `<div class="erzaehlt">
+        <button class="vorlesen" aria-pressed="false" hidden>▶ Vorlesen</button>
+        ${absaetze.map((a, n) => `<p data-absatz="${n}">${esc(a)}</p>`).join('')}
+        <p class="hinweis">Erzählt von Claude (KI) nach den Einträgen in webtrees${d.stand ? `, Stand ${esc(d.stand)}` : ''}. Zeitgeschehen ist allgemeine Geschichte. Fehler bitte in webtrees berichtigen.</p>
+      </div>` : ''}
+      ${eigene.map(g => `<article class="wt-geschichte"><h3>${esc(g.titel)}</h3><div class="wt-text">${g.html}</div></article>`).join('')}`;
+    const knopf = box.querySelector('.vorlesen');
+    if (!knopf || !('speechSynthesis' in window)) return;
+    knopf.hidden = false;
+    knopf.onclick = () => {
+      if (this.liest) { this.stilleStimme(); return; }
+      this.vorlesen(box, absaetze, knopf);
+    };
+  }
+
+  // Satzweise vorlesen (lange Texte brechen in manchen Browsern sonst ab); der gelesene Absatz wird hervorgehoben
+  vorlesen(box, absaetze, knopf) {
+    const stimmen = speechSynthesis.getVoices().filter(v => /^de(-|_|$)/i.test(v.lang));
+    const stimme = stimmen.find(v => /natural|online|google|neural/i.test(v.name)) || stimmen.find(v => v.localService) || stimmen[0] || null;
+    const teile = [];
+    absaetze.forEach((a, n) => { for (const s of a.match(/[^.!?…]+[.!?…]+[“”»«"')]*\s*|[^.!?…]+$/g) || [a]) teile.push([n, s.trim()]); });
+    speechSynthesis.cancel();
+    this.liest = { knopf, box };
+    knopf.textContent = '■ Anhalten';
+    knopf.setAttribute('aria-pressed', 'true');
+    teile.forEach(([n, satz], i) => {
+      const u = new SpeechSynthesisUtterance(satz);
+      u.lang = 'de-DE';
+      if (stimme) u.voice = stimme;
+      u.rate = 0.95;
+      u.onstart = () => box.querySelectorAll('[data-absatz]').forEach(el => el.classList.toggle('liest', +el.dataset.absatz === n));
+      if (i === teile.length - 1) u.onend = () => this.stilleStimme();
+      speechSynthesis.speak(u);
+    });
+  }
+
+  stilleStimme() {
+    if (!this.liest) return;
+    const { knopf, box } = this.liest;
+    this.liest = null;
+    if ('speechSynthesis' in window) speechSynthesis.cancel();
+    knopf.textContent = '▶ Vorlesen';
+    knopf.setAttribute('aria-pressed', 'false');
+    box.querySelectorAll('.liest').forEach(el => el.classList.remove('liest'));
   }
 
   // --- Bildgeschichte -----------------------------------------------------------------------------
@@ -187,7 +258,24 @@ export class Panel {
       flaeche.className = `bildflaeche typ-${k.typ}`;
       if (k.typ === 'zeit') flaeche.innerHTML = `<div class="plakat"><span class="plakat-jahr">${esc(k.datum)}</span><span class="plakat-titel">${esc(k.titel)}</span><span class="plakat-label">Zeitgeschehen</span></div>`;
       else if (k.typ === 'album') flaeche.innerHTML = `<div class="collage n${k.bilder.length}">${k.bilder.map(n => `<button data-bild="${n}"><img src="${p.bilder[n].src}" alt=""></button>`).join('')}</div>`;
-      else if (k.bild) flaeche.innerHTML = `<img class="${k.rund ? 'rund' : ''}" src="${k.bild}" alt="">${k.ort?.lat ? `<div class="ortsmarke">${esc(ortKurz(k.ort))}</div>` : ''}`;
+      else if (k.bild) {
+        flaeche.innerHTML = `<img class="${k.rund ? 'rund' : ''}" src="${k.bild}" alt="">${k.ort?.lat ? `<div class="ortsmarke">${esc(ortKurz(k.ort))}</div>` : ''}`;
+        // Vorstellung: das Gesicht als bewegtes 2,5D-Porträt über das Bild legen, sobald es bereit ist
+        if (k.typ === 'intro' && k.rund) {
+          const img = flaeche.querySelector('img'), ziel = document.createElement('div');
+          ziel.className = 'tiefe-portraet';
+          flaeche.appendChild(ziel);
+          const groesse = () => { const s = img.offsetWidth || 240; ziel.style.width = ziel.style.height = `${s}px`; };
+          groesse();
+          img.addEventListener('load', groesse, { once: true });
+          belebe(ziel, k.bild, p.tiefe).then(ok => {
+            if (!ok) return ziel.remove();
+            groesse();
+            ziel.classList.add('an');
+            img.style.visibility = 'hidden';
+          });
+        }
+      }
       else if (k.ort?.lat) flaeche.innerHTML = kartenKachel(k.ort.lat, k.ort.lon, ortKurz(k.ort));
       else flaeche.innerHTML = `<div class="plakat ruhig"><span class="plakat-jahr">${esc(k.datum || (k.jahr ?? ''))}</span><span class="plakat-titel">${esc(k.titel)}</span></div>`;
       text.innerHTML = `<p class="kap-kopf">${k.typ === 'zeit' ? 'Zeitgeschehen · ' : ''}${esc(k.datum || '')}${k.datum ? ' · ' : ''}${esc(k.titel)}</p>
@@ -246,7 +334,8 @@ export class Panel {
     const stationen = p.ereignisse.filter(e => e.ort?.lat != null);
     if (!stationen.length) { box.innerHTML = '<p class="leer-hinweis">Für diese Person sind keine Orte mit Koordinaten erfasst.</p>'; return; }
     box.innerHTML = `<div class="kartenbox"><div id="karte"></div>
-      <div class="karten-leiste"><button class="abspielen">▶ Lebensweg abspielen</button><span class="station"></span></div>
+      <div class="karten-leiste"><button class="abspielen">▶ Lebensweg abspielen</button><span class="station"></span>
+        <label class="grenz-schalter" title="Staatsgrenzen zur Zeit der gewählten Station"><input type="checkbox" class="grenzen-an"> <span class="grenz-jahr">Historische Grenzen</span></label></div>
       <ol class="stationen">${stationen.map((e, n) => `<li data-n="${n}"><span class="nr">${n + 1}</span><b>${esc(e.datum || e.jahr || '?')}</b> ${esc(e.titel)} – ${esc(ortKurz(e.ort))}</li>`).join('')}</ol></div>`;
     const karte = L.map(box.querySelector('#karte'), { zoomControl: true, attributionControl: true });
     this.karte = karte;
@@ -266,9 +355,36 @@ export class Panel {
     L.polyline(pts, { color: '#d6a24e', weight: 3, opacity: 0.85, dashArray: '6 6' }).addTo(karte);
     const grenzen = L.latLngBounds(pts);
     setTimeout(() => { karte.invalidateSize(); pts.length > 1 ? karte.fitBounds(grenzen.pad(0.3)) : karte.setView(pts[0], 9); }, 50);
+
+    // Staatsgrenzen zur Zeit der Station (historical-basemaps von A. Ourednik, GPL-3.0), umschaltbar und im Browser gemerkt
+    karte.attributionControl.addAttribution('Grenzen: <a href="https://github.com/aourednik/historical-basemaps" target="_blank" rel="noopener">historical-basemaps</a>');
+    const schalter = box.querySelector('.grenzen-an'), grenzText = box.querySelector('.grenz-jahr');
+    let grenzSchicht = null, grenzSoll = null;
+    try { schalter.checked = localStorage.getItem('lb-grenzen') !== '0'; } catch (e) { schalter.checked = true; }
+    const zeigeGrenzen = async jahr => {
+      const g = grenzJahr(jahr);
+      grenzSoll = g;
+      grenzText.textContent = schalter.checked && g ? `Grenzen von ${g}` : 'Historische Grenzen';
+      if (!schalter.checked || !g) { grenzSchicht?.remove(); grenzSchicht = null; return; }
+      const daten = await ladeGrenzen(g);
+      if (!daten || grenzSoll !== g || this.karte !== karte || !schalter.checked) return;
+      grenzSchicht?.remove();
+      grenzSchicht = L.geoJSON(daten, {
+        style: { color: '#8a3d1c', weight: 1.6, opacity: 0.85, dashArray: '5 4', fillColor: '#e8b04f', fillOpacity: 0.05 },
+        onEachFeature: (f, schicht) => schicht.bindTooltip(f.properties.name, { sticky: true, className: 'grenz-name' }),
+      }).addTo(karte);
+    };
+    let grenzStation = stationen[0].jahr ?? p.geburt ?? p.jahrE;
+    schalter.addEventListener('change', () => {
+      try { localStorage.setItem('lb-grenzen', schalter.checked ? '1' : '0'); } catch (e) { /* ohne Speicher */ }
+      zeigeGrenzen(grenzStation);
+    });
+    zeigeGrenzen(grenzStation);
+
     const anzeige = box.querySelector('.station');
     const gehe = n => {
       const e = stationen[n];
+      if (e.jahr != null) { grenzStation = e.jahr; zeigeGrenzen(e.jahr); }
       marker[n].openPopup();
       karte.flyTo(pts[n], Math.max(karte.getZoom(), 8), { duration: 0.8 });
       anzeige.textContent = `${e.datum || e.jahr || ''} · ${e.titel} · ${ortKurz(e.ort)}`;
@@ -281,6 +397,21 @@ export class Panel {
       this.spielt = setInterval(() => { n++; if (n >= stationen.length) { clearInterval(this.spielt); karte.flyToBounds(grenzen.pad(0.3)); return; } gehe(n); }, 2200);
     };
   }
+}
+
+// Historische Grenzen: der jüngste Stand bis zum Jahr (1905 → Grenzen von 1900); vor 1700 gibt es keine
+const GRENZ_JAHRE = [1700, 1715, 1783, 1800, 1815, 1880, 1900, 1914, 1920, 1930, 1938, 1945, 1960, 1994, 2010];
+const grenzCache = new Map();
+function grenzJahr(j) {
+  if (j == null || j < GRENZ_JAHRE[0]) return j == null ? null : GRENZ_JAHRE[0];
+  return GRENZ_JAHRE.filter(g => g <= j).pop();
+}
+function ladeGrenzen(jahr) {
+  if (!grenzCache.has(jahr)) {
+    const url = LB.grenzen?.[jahr] ?? `data/grenzen/${jahr}.json`;
+    grenzCache.set(jahr, fetch(url).then(r => r.ok ? r.json() : null).catch(() => null));
+  }
+  return grenzCache.get(jahr);
 }
 
 // Kartenausschnitt aus OSM-Kacheln (5 × 3) um einen Ort, sepia getönt
