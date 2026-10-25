@@ -226,10 +226,12 @@ final class Daten
                 $gross = strtoupper($name);
                 $typ   = strtolower($datei->type());
                 $art   = match (true) {
-                    (bool) preg_match('/URKUNDE|PASS|TAUFSCHEIN|AHNEN/', $gross)                      => 'urkunde',
+                    (bool) preg_match('/URKUNDE|PASS|TAUFSCHEIN|AHNEN/', $gross)
+                        || in_array($typ, ['document', 'certificate'], true)
+                        || (bool) preg_match('/reisepass|personalausweis|urkunde|ahnenpass/i', $datei->title()) => 'urkunde',
                     str_contains($gross, 'GRAB') || $typ === 'tombstone'                               => 'grab',
                     str_contains($gross, 'ZEITUNG') || $typ === 'newspaper'                            => 'zeitung',
-                    (bool) preg_match('#^(ORTE|ZEITBILDER|ZEITBILDER_PRIVAT|DENKMAELER)/#', $gross)
+                    (bool) preg_match('#^(ORTE|ZEITBILDER|ZEITBILDER_PRIVAT|DENKMAELER)/|_HAUS_#', $gross)
                         || in_array($typ, ['map', 'painting'], true)                                  => 'ort',
                     default                                                                            => 'foto',
                 };
