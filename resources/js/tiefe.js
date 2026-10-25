@@ -1,9 +1,11 @@
 // 2,5D-Porträt: das Gesicht als gewölbte Fläche, die sich sanft dreht und der Maus bzw. dem Finger folgt.
 // Mit Tiefenkarte (tools/tiefen.py, hell = nah) wird die Wölbung zum Relief, ohne sie gibt es eine weiche Kopfwölbung.
-// Alle Porträts teilen sich einen WebGL-Zeichner; er läuft nur, solange sein Porträt im Dokument hängt.
+// Je Platz (Kopf der Einblendung, große Seite der Bildgeschichte) gibt es einen WebGL-Zeichner; er läuft nur,
+// solange sein Porträt im Dokument hängt.
 import * as THREE from 'three';
 
-let zeichner = null, szene, kamera, netz, material, wolbung = null, aktiv = null;
+const plaetze = new Map();
+let wolbung = null;
 
 const ladeTextur = src => new Promise(ok => {
   if (!src) return ok(null);
@@ -32,21 +34,22 @@ function standardTiefe() {
   return wolbung;
 }
 
-function bereite() {
-  if (zeichner) return true;
+function platz(name) {
+  if (plaetze.has(name)) return plaetze.get(name);
+  let zeichner;
   try {
     zeichner = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   } catch (e) {
-    zeichner = null;
-    return false;
+    plaetze.set(name, null);
+    return null;
   }
   zeichner.setPixelRatio(Math.min(devicePixelRatio, 2));
   zeichner.setClearColor(0x000000, 0);
-  szene = new THREE.Scene();
-  kamera = new THREE.PerspectiveCamera(28, 1, 0.1, 10);
-  kamera.position.set(0, 0, 2.25);
-  material = new THREE.ShaderMaterial({
-    uniforms: { bild: { value: null }, tiefe: { value: null }, staerke: { value: 0.2 }, rand: { value: new THREE.Color('#d6a24e') } },
+  const szene = new THREE.Scene();
+  const kamera = new THREE.PerspectiveCamera(28, 1, 0.1, 10);
+  kamera.position.set(0, 0, 2.3);
+  const material = new THREE.ShaderMaterial({
+    uniforms: { bild: { value: null }, tiefe: { value: null }, staerke: { value: 0.2 }, ring: { value: 1 }, rand: { value: new THREE.Color('#d6a24e') } },
     vertexShader: `
       uniform sampler2D tiefe;
       uniform float staerke;
@@ -62,64 +65,72 @@ function bereite() {
     fragmentShader: `
       uniform sampler2D bild;
       uniform vec3 rand;
+      uniform float ring;
       varying vec2 vUv;
       void main() {
         float r = length(vUv - 0.5) * 2.0;
         if (r > 1.0) discard;
-        vec3 f = r > 0.97 ? rand : texture2D(bild, vUv).rgb;   // goldener Ring wie bei den anderen Porträts
+        vec3 f = ring > 0.5 && r > 0.97 ? rand : texture2D(bild, vUv).rgb;   // goldener Ring wie bei den anderen Porträts
         gl_FragColor = vec4(f, 1.0);
       }`,
     transparent: true,
   });
-  netz = new THREE.Mesh(new THREE.PlaneGeometry(1, 1, 96, 96), material);
+  const netz = new THREE.Mesh(new THREE.PlaneGeometry(1, 1, 96, 96), material);
   szene.add(netz);
-  return true;
+  const p = { zeichner, szene, kamera, material, netz, aktiv: null };
+  p.male = zeit => male(p, zeit);
+  plaetze.set(name, p);
+  return p;
 }
 
-function male(zeit) {
-  if (!aktiv || !aktiv.el.isConnected) {
-    zeichner.setAnimationLoop(null);
-    aktiv = null;
+function male(p, zeit) {
+  const a = p.aktiv;
+  if (!a || !a.el.isConnected) {
+    p.zeichner.setAnimationLoop(null);
+    p.aktiv = null;
     return;
   }
-  const t = zeit / 1000, z = aktiv.zeiger;
-  // langsames Atmen plus Neigung zum Zeiger, weich nachgeführt
-  aktiv.ry += ((Math.sin(t * 0.45) * 0.3 + z.x * 0.55) - aktiv.ry) * 0.08;
-  aktiv.rx += ((Math.sin(t * 0.31) * 0.12 + z.y * 0.4) - aktiv.rx) * 0.08;
-  netz.rotation.set(aktiv.rx, aktiv.ry, 0);
-  const w = aktiv.el.clientWidth, h = aktiv.el.clientHeight;
-  if (w && h && (w !== aktiv.w || h !== aktiv.h)) {
-    aktiv.w = w; aktiv.h = h;
-    zeichner.setSize(w, h, false);
-    kamera.aspect = w / h;
-    kamera.updateProjectionMatrix();
+  const t = zeit / 1000, z = a.zeiger;
+  // deutliches, langsames Schwenken plus Neigung zum Zeiger, weich nachgeführt
+  a.ry += ((Math.sin(t * 0.55) * 0.42 + z.x * 0.7) - a.ry) * 0.08;
+  a.rx += ((Math.sin(t * 0.37) * 0.17 + z.y * 0.5) - a.rx) * 0.08;
+  p.netz.rotation.set(a.rx, a.ry, 0);
+  const w = a.el.clientWidth, h = a.el.clientHeight;
+  if (w && h && (w !== a.w || h !== a.h)) {
+    a.w = w; a.h = h;
+    p.zeichner.setSize(w, h, false);
+    p.kamera.aspect = w / h;
+    p.kamera.updateProjectionMatrix();
   }
-  zeichner.render(szene, kamera);
+  p.zeichner.render(p.szene, p.kamera);
 }
 
 /**
  * Macht aus einem Gesichtsbild ein bewegtes 2,5D-Porträt im Element `ziel` (quadratisch, rund ausgeschnitten).
+ * `name` wählt den Platz (je Platz ein Porträt gleichzeitig), `ring` zeichnet den goldenen Rand selbst.
  * Gibt false zurück, wenn WebGL fehlt oder das Bild nicht lädt; dann bleibt das normale Bild stehen.
  */
-export async function belebe(ziel, bildSrc, tiefeSrc) {
-  if (!bereite()) return false;
+export async function belebe(ziel, bildSrc, tiefeSrc, { name = 'gross', ring = true } = {}) {
+  const p = platz(name);
+  if (!p) return false;
   const [bild, tiefe] = await Promise.all([ladeTextur(bildSrc), ladeTextur(tiefeSrc)]);
   if (!bild || !ziel.isConnected) { bild?.dispose(); tiefe?.dispose(); return false; }
-  const alt = material.uniforms;
-  alt.bild.value?.dispose();
-  if (alt.tiefe.value && alt.tiefe.value !== wolbung) alt.tiefe.value.dispose();
-  alt.bild.value = bild;
-  alt.tiefe.value = tiefe ?? standardTiefe();
-  alt.staerke.value = tiefe ? 0.26 : 0.16;
-  aktiv = { el: ziel, zeiger: { x: 0, y: 0 }, rx: 0, ry: 0, w: 0, h: 0 };
-  const zustand = aktiv;
-  ziel.appendChild(zeichner.domElement);
+  const u = p.material.uniforms;
+  u.bild.value?.dispose();
+  if (u.tiefe.value && u.tiefe.value !== wolbung) u.tiefe.value.dispose();
+  u.bild.value = bild;
+  u.tiefe.value = tiefe ?? standardTiefe();
+  u.staerke.value = tiefe ? 0.34 : 0.2;
+  u.ring.value = ring ? 1 : 0;
+  p.aktiv = { el: ziel, zeiger: { x: 0, y: 0 }, rx: 0, ry: 0, w: 0, h: 0 };
+  const zustand = p.aktiv;
+  ziel.appendChild(p.zeichner.domElement);
   ziel.addEventListener('pointermove', ev => {
     const r = ziel.getBoundingClientRect();
     zustand.zeiger.x = (ev.clientX - r.left) / r.width - 0.5;
     zustand.zeiger.y = (ev.clientY - r.top) / r.height - 0.5;
   });
   ziel.addEventListener('pointerleave', () => { zustand.zeiger.x = zustand.zeiger.y = 0; });
-  zeichner.setAnimationLoop(male);
+  p.zeichner.setAnimationLoop(p.male);
   return true;
 }

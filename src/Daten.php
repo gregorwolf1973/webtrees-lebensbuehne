@@ -364,14 +364,15 @@ final class Daten
             }
         }
 
-        // Gesicht für die Karte: 1. markiertes Gesicht auf dem Hauptbild (erstes verknüpftes Foto),
-        // 2. Porträts (nur diese Person markiert) vor Gruppenbildern, jeweils das größte, 3. sonst das Hauptbild quadratisch
+        // Gesicht für die Karte: das Hauptbild wie in webtrees (erstes Bild direkt an der Person, Reihenfolge über
+        // „Medien neu ordnen“), mit markiertem Gesicht als Ausschnitt, sonst ganz. Nur ohne Hauptbild: ein Porträt
+        // (nur diese Person markiert) vor Gruppenbildern, jeweils das größte Gesicht, sonst das erste Foto an einem Ereignis
         $flaeche   = static fn (array $c): int => ($c[2] - $c[0]) * ($c[3] - $c[1]);
         $istFoto   = fn (string $mid): bool => ($this->medium($mid)['art'] ?? '') === 'foto';
         $rahmen    = array_values(array_filter($this->rahmenVon[$x] ?? [], fn (array $r): bool => $this->medium($r[0]) !== null));
         $hauptbild = null;
-        foreach ([...$ebene1, ...$mids] as $mid) {
-            if ($istFoto($mid)) {
+        foreach ($ebene1 as $mid) {
+            if ($this->medium($mid) !== null) {
                 $hauptbild = $mid;
                 break;
             }
@@ -383,11 +384,19 @@ final class Daten
                 break;
             }
         }
-        if ($wahl === null) {
+        if ($wahl === null && $hauptbild === null) {
             $portraets = array_values(array_filter($rahmen, fn (array $r): bool => ($this->personenAuf[$r[0]] ?? 0) === 1));
             foreach ($portraets !== [] ? $portraets : $rahmen as $r) {
                 if ($wahl === null || $flaeche($r[1]) > $flaeche($wahl[1])) {
                     $wahl = $r;
+                }
+            }
+            if ($wahl === null) {
+                foreach ($mids as $mid) {
+                    if ($istFoto($mid)) {
+                        $hauptbild = $mid;
+                        break;
+                    }
                 }
             }
         }

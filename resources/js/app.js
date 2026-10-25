@@ -378,12 +378,13 @@ function lebenslicht(p, j) {
            gross: 1 + 0.06 * licht + 0.45 * neu, hof: neu };
 }
 
-// altersgerechte Gesichter: in der Zeitreise das zuletzt aufgenommene Foto bis zum aktuellen Jahr, sonst das Kartengesicht
+// altersgerechte Gesichter: in der Zeitreise das zuletzt aufgenommene Foto bis zum aktuellen Jahr; ohne Zeitreise
+// und am Ende (heute) wieder das Hauptbild aus webtrees
 function gesichterAnpassen(j) {
   for (const k of karten) {
     const p = k.userData.p;
     if (!p.gesichter?.length && k.userData.gesichtSrc === p.gesicht) continue;
-    const passend = j == null ? null : [...(p.gesichter || [])].reverse().find(g => g.jahr <= j);
+    const passend = j == null || j >= JETZT - 0.5 ? null : [...(p.gesichter || [])].reverse().find(g => g.jahr <= j);
     const src = passend?.src ?? p.gesicht;
     if (!src || src === k.userData.gesichtSrc) continue;
     k.userData.gesichtSrc = src;

@@ -23,10 +23,10 @@ export class Panel {
       const bild = ev.target.closest('[data-bild]');
       if (bild && +bild.dataset.bild >= 0) this.lightbox.zeige(this.p.bilder, +bild.dataset.bild);
     });
-    // Porträt leicht kippen: ein erster Hauch von Tiefe
+    // Porträt leicht kippen, solange das 2,5D-Porträt noch nicht bereit ist
     this.el.addEventListener('pointermove', ev => {
       const f = this.el.querySelector('.portraet');
-      if (!f) return;
+      if (!f || f.querySelector('.tiefe-kopf.an')) return;
       const r = f.getBoundingClientRect();
       const x = (ev.clientX - r.left) / r.width - 0.5, y = (ev.clientY - r.top) / r.height - 0.5;
       if (Math.abs(x) > 2 || Math.abs(y) > 2) return;
@@ -59,7 +59,23 @@ export class Panel {
       </nav>
       <section class="inhalt"></section>`;
     this.tab(tabAlt === 'bilder' && !p.bilder.length ? 'geschichte' : tabAlt);
+    this.kopf25d(p);
     requestAnimationFrame(() => this.cb.breite(this.breite()));
+  }
+
+  // Kopfbild als bewegtes 2,5D-Porträt: legt sich über das runde Bild, sobald es bereit ist
+  kopf25d(p) {
+    const rahmen = this.el.querySelector('.portraet');
+    if (!rahmen || !p.gesicht) return;
+    const ziel = document.createElement('div');
+    ziel.className = 'tiefe-kopf';
+    rahmen.appendChild(ziel);
+    belebe(ziel, p.gesicht, p.tiefe, { name: 'kopf', ring: false }).then(ok => {
+      if (!ok) return ziel.remove();
+      ziel.classList.add('an');
+      const img = rahmen.querySelector('img');
+      if (img) img.style.visibility = 'hidden';
+    });
   }
 
   // Zeitreise: zeigt die zuletzt geborene, noch lebende Person; ihre Bilder wechseln im Bildfenster
@@ -93,6 +109,7 @@ export class Panel {
           <p class="zr-hinweis">${reihe.length ? `${reihe.length} ${reihe.length === 1 ? 'Bild' : 'Bilder'} · wechseln während der Zeitreise` : ''}</p>
           <button class="zr-voll" data-person="${p.id}">Ganze Lebensgeschichte öffnen</button>
         </section>`;
+      this.kopf25d(p);
       if (reihe.length) {
         const a = this.el.querySelector('.zr-a'), b = this.el.querySelector('.zr-b');
         let n = 0, vorn = a;
