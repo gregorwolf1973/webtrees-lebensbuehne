@@ -70,7 +70,8 @@ body:not(.bereit) #buehne::after { content: "Stammbaum wird geladen …"; positi
 #lebend { color: var(--text-3); font-size: 12px; }
 
 #zeit-karte { position: fixed; left: 20px; bottom: 92px; width: min(420px, calc(100vw - 40px)); display: grid; gap: 8px; }
-.zk { background: var(--flaeche); border: 1px solid var(--linie); border-left: 3px solid var(--zeit); border-radius: 8px; padding: 10px 14px; }
+/* Lauftext links: halb durchsichtig, damit die Bühne durchscheint; die leichte Unschärfe dahinter hält den Text lesbar */
+.zk { background: rgba(20, 24, 33, 0.58); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); border: 1px solid rgba(255, 255, 255, 0.08); border-left: 3px solid var(--zeit); border-radius: 8px; padding: 10px 14px; }
 .zk.leer { color: var(--text-3); border-left-color: var(--linie); font-size: 13px; }
 .zk-jahr { color: var(--zeit); font-weight: 600; margin-right: 8px; }
 .zk p { margin: 4px 0 0; color: var(--text-2); font-size: 13.5px; }
