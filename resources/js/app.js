@@ -412,7 +412,9 @@ function netzLinienBauen() {
   strahlen.userData = { kanten: sim.kanten, basis: 0.5 };
   gruppe.add(strahlen);
   netzKanten = [strahlen];
-  netzHell = new THREE.LineSegments(kantenGeo(160), new THREE.LineBasicMaterial({ color: 0xf2ede4, transparent: true, opacity: 0.95, depthWrite: false }));
+  const hellGeo = kantenGeo(160);
+  hellGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(160 * 6), 3));
+  netzHell = new THREE.LineSegments(hellGeo, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.95, depthWrite: false }));
   netzHell.userData = { kanten: [] };
   gruppe.add(netzHell);
   // die Familienpunkte: kleine Sterne in der Mitte jeder Familie
@@ -446,10 +448,19 @@ function netzPositionen() {
     a.needsUpdate = true;
   }
 }
-// hervorgehoben: die Sterne der gewählten Person – ihre Herkunftsfamilie und ihre eigenen Familien
+// hervorgehoben: die Sterne der gewählten Person – ihre Herkunftsfamilie und ihre eigenen Familien. Der Weg zum
+// Partner (die Person und der Partner an ihrem gemeinsamen Familienpunkt) ist rosa wie die Partnerseite im Fächer.
+const HELL = new THREE.Color(0xf2ede4), HELL_PARTNER = new THREE.Color(0xff6fae);
 function netzHellSetzen(p) {
   const fams = p ? new Set(sim.kanten.filter(k => k.b === p).map(k => k.f)) : new Set();
-  netzHell.userData.kanten = sim.kanten.filter(k => fams.has(k.f)).slice(0, 160);
+  const liste = sim.kanten.filter(k => fams.has(k.f)).slice(0, 160), farben = netzHell.geometry.attributes.color;
+  liste.forEach((k, i) => {
+    const c = k.art === 'eltern' && k.f.eltern.includes(p) ? HELL_PARTNER : HELL;
+    farben.setXYZ(i * 2, c.r, c.g, c.b);
+    farben.setXYZ(i * 2 + 1, c.r, c.g, c.b);
+  });
+  farben.needsUpdate = true;
+  netzHell.userData.kanten = liste;
   linienSetzen(netzHell);
 }
 const nachbarn = p => new Set([p, ...p.eltern, ...p.kinderP, ...p.partnerP].filter(x => x.imBild));
