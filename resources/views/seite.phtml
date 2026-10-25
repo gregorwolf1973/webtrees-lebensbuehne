@@ -55,6 +55,7 @@ $json = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HE
           <button id="modus-nachkommen" aria-pressed="false"><?= e($t('Nachkommen')) ?></button>
           <button id="modus-partner" aria-pressed="false"><?= e($t('Partner')) ?></button>
         </span>
+        <button id="spende-knopf" class="spende-knopf" aria-expanded="false" aria-controls="spende" title="<?= e($t('Die Lebensbühne unterstützen')) ?>">☕ <span class="spende-wort"><?= e($t('Unterstützen')) ?></span></button>
       </div>
     </div>
     <ul class="legende">
@@ -100,6 +101,11 @@ $json = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HE
 
   <aside id="panel" hidden></aside>
   <div id="tip" hidden></div>
+  <div id="spende" class="spende" hidden>
+    <p><?= e($t('In der Lebensbühne stecken viele Stunden Arbeit. Wenn sie dir Freude macht, freue ich mich über einen Kaffee – jede kleine Spende hilft, sie weiterzuentwickeln.')) ?></p>
+    <a class="kaffee" href="https://buymeacoffee.com/gregorwolf1973" target="_blank" rel="noopener">☕ Buy me a coffee</a>
+    <p class="spende-klein">Gregor Wolf · <?= e($t('Danke!')) ?></p>
+  </div>
   <p class="hilfe"><?= e($t('Ziehen: drehen · Rechte Maustaste: verschieben · Mausrad: zoomen · Klick auf ein Gesicht: Lebensgeschichte · Doppelklick: als Hauptperson')) ?></p>
 
   <script type="module" src="<?= e($appJs) ?>"></script>

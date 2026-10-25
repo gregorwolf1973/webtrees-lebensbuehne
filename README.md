@@ -20,6 +20,7 @@ tunnel with a time travel, life stories, photos, maps and historical events. The
 - **Historische Grenzen:** Auf der Karte des Lebenswegs erscheinen die Staatsgrenzen zur Zeit der jeweiligen Station, von 1700 bis heute.
 - **2,5D-Porträts:** Das Gesicht auf der ersten Seite der Bildgeschichte wird zu einem räumlichen Porträt, das sich sanft bewegt und Maus oder Finger folgt.
 - **Ton:** frei lizenzierte Geräusche passend zur Epoche (sonst im Browser erzeugt), auf Wunsch eigene Aufnahmen. Dazu drei mitgelieferte Lieder oder ein eigenes, an dessen Länge sich das Tempo der Zeitreise anpassen lässt. Geburt, Hochzeit und Tod erklingen nur in der hervorgehobenen direkten Linie: von der angeklickten Person zur Hauptperson, ohne Auswahl von der ältesten Person aus.
+- **Sternhimmel:** echte Sterne aus dem Yale Bright Star Catalogue (gemeinfrei) mit Helligkeit und Farbe wie am Himmel, dazu die Milchstraße – nur im Hintergrund.
 - **Handy und Tablet:** Suche und Ansichten liegen dort im Menü ☰. Der Überblick passt sich der Bildschirmform an, damit der ganze Stammbaum zu sehen ist.
 - **Bilder nur aus webtrees:** Die Fotos kommen aus der Medienverwaltung. Gesichter werden aus den Markierungen des Moduls [webtrees-faces](https://github.com/UksusoFF/webtrees-faces) ausgeschnitten, falls es installiert ist.
 

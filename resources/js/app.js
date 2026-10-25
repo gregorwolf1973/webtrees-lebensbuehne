@@ -6,6 +6,7 @@ import { ladeDaten, ansicht, jahreKurz, verwandtschaft, zeitFuerAnsicht, JETZT }
 import { t, EN as SPRACHE_EN } from 'lb/text.js';
 import { Panel } from 'lb/panel.js';
 import * as klang from 'lb/klang.js';
+import { baueHimmel } from 'lb/himmel.js';
 
 const FARBE = { vater: '#d6a24e', mutter: '#62b6a9', start: '#f2ede4' };
 const ZWEIGE = ['#c99be0', '#86aee6', '#e39a8b', '#a5d388', '#e8c872', '#86d6cf'];   // Nachkommen: je Kind der Hauptperson eine Farbe
@@ -142,16 +143,8 @@ function baueZeitMarken() {
     zeitMarken.push(m);
   }
 }
-{
-  const n = 2200, pos = new Float32Array(n * 3);
-  for (let i = 0; i < n; i++) {
-    const w = Math.random() * Math.PI * 2, r = 4 + Math.random() * 55;
-    pos.set([Math.sin(w) * r, Math.cos(w) * r * 0.8, zVon(JAHR_MIN - 30) + Math.random() * (zVon(JETZT + 30) - zVon(JAHR_MIN - 30))], i * 3);
-  }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  scene.add(new THREE.Points(geo, new THREE.PointsMaterial({ color: 0x9aa4b5, size: 0.08, transparent: true, opacity: 0.35 })));
-}
+// Sternhimmel nur im Hintergrund (echte Sterne und Milchstraße), er geht mit der Kamera mit
+const himmelFolgt = baueHimmel(scene, (window.LEBENSBUEHNE || {}).sterne || 'data/sterne.json', renderer.getPixelRatio());
 
 // Lichthof für frisch Geborene (warmes, weiches Leuchten hinter der Karte)
 const hofTextur = (() => {
@@ -889,6 +882,18 @@ addEventListener('click', ev => {
 });
 mehr.addEventListener('click', ev => { if (ev.target.closest('button')) menue(false); });
 
+// Kaffee-Knopf: kleiner Hinweis mit Link zur Spende (Buy Me a Coffee)
+const spendeKnopf = document.getElementById('spende-knopf'), spende = document.getElementById('spende');
+spendeKnopf.addEventListener('click', ev => {
+  ev.stopPropagation();
+  menue(false);
+  spende.hidden = !spende.hidden;
+  spendeKnopf.setAttribute('aria-expanded', !spende.hidden);
+});
+addEventListener('click', ev => {
+  if (!spende.hidden && !spende.contains(ev.target) && !spendeKnopf.contains(ev.target)) { spende.hidden = true; spendeKnopf.setAttribute('aria-expanded', false); }
+});
+
 document.getElementById('ansicht-ueberblick').addEventListener('click', () => {
   stoppeAbspielen(); zeitJahr = null; letztesJahr = null; jahrAnzeige.textContent = '–'; lebendAnzeige.textContent = '';
   gesichterAnpassen(null);
@@ -1011,6 +1016,7 @@ renderer.setAnimationLoop(now => {
   kameraNachfuehren(dt);
   abspannRollen(dt);
   controls.update();
+  himmelFolgt(camera, now);
   // Nebel mit dem Abstand mitführen: aus großer Entfernung (Hochformat) sollen die Karten nicht im Dunst verschwinden
   const abstandZiel = camera.position.distanceTo(controls.target);
   scene.fog.near = Math.max(45, abstandZiel * 0.55);
@@ -1018,4 +1024,4 @@ renderer.setAnimationLoop(now => {
   renderer.render(scene, camera);
 });
 document.body.classList.add('bereit');
-window.__lb = { camera, controls, fliege, THREE, zVon, daten, karten: () => karten, waehle: id => waehle(daten.byId.get(id)), klang: () => klang.zustand() };  // zum Ausprobieren in der Konsole
+window.__lb = { camera, controls, fliege, THREE, zVon, daten, himmel: himmelFolgt, karten: () => karten, waehle: id => waehle(daten.byId.get(id)), klang: () => klang.zustand() };  // zum Ausprobieren in der Konsole

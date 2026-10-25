@@ -438,3 +438,17 @@ body[data-panel="voll"] .leiste-oben { right: min(580px, 100vw); }   /* Kopfleis
   .zk { padding: 6px 10px; font-size: 13px; }
   .zk p { font-size: 12px; }
 }
+
+/* Spenden-Hinweis (Kaffee-Knopf) */
+.spende-knopf { order: 7; white-space: nowrap; }
+.spende-knopf[aria-expanded="true"] { border-color: var(--zeit) !important; }
+.spende { position: fixed; z-index: 36; top: var(--oben, 70px); right: 16px; width: min(330px, calc(100vw - 20px)); padding: 14px 16px 12px;
+  background: var(--flaeche-fest); border: 1px solid var(--linie); border-radius: 12px; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5); }
+.spende p { margin: 0 0 12px; font-size: 14px; line-height: 1.5; color: var(--text-2); }
+.spende .kaffee { display: block; text-align: center; padding: 10px 14px; border-radius: 10px; background: #ffdd00; color: #1a1408;
+  font-weight: 700; text-decoration: none; font-size: 15px; }
+.spende .kaffee:hover { background: #ffe74d; }
+.spende .spende-klein { margin: 10px 0 0; font-size: 12px; color: var(--text-3); text-align: center; }
+@media (max-width: 1199px), (max-height: 600px) {
+  body.menue-offen .mehr .spende-knopf { text-align: center; }
+}
