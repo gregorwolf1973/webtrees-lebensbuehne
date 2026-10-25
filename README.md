@@ -1,6 +1,6 @@
 # Lebensbühne für webtrees
 
-[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://buymeacoffee.com/gregorwolf1973)
+[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://buymeacoffee.com/gregorwolf1973) [![Donate using Liberapay](https://liberapay.com/assets/widgets/donate.svg)](https://liberapay.com/Gregor_Wolf/donate)
 
 Die Lebensbühne zeigt einen Stammbaum als begehbaren 3D-Zeittunnel: Vorfahren, Nachkommen und Partnerfamilien
 stehen als Bilderkarten in der Tiefe des Raums, nach Geburtsjahr gestaffelt. Ein Zeitregler und eine Zeitreise
@@ -141,4 +141,4 @@ GNU General Public License v3 oder später (siehe `LICENSE`). Mitgeliefert sind 
 
 Wenn dir die Lebensbühne gefällt, freue ich mich über einen Kaffee:
 
-[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://buymeacoffee.com/gregorwolf1973)
+[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://buymeacoffee.com/gregorwolf1973) [![Donate using Liberapay](https://liberapay.com/assets/widgets/donate.svg)](https://liberapay.com/Gregor_Wolf/donate)
