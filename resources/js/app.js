@@ -231,6 +231,7 @@ function baue() {
       verteile(pa, 0.12 + i * breite, 0.12 + (i + 1) * breite, elternIm, 0.7);
     });
     if (modus.nachkommen) verteile(root, -WINKEL, WINKEL, kinderIm);
+    entzerren(imBild.filter(p => p !== root));
   }
 
   const aufloesung = modus.netz ? (matchMedia('(pointer: coarse)').matches ? 0.38 : 0.5) : 1;   // im Netz viele Karten: kleinere Texturen
@@ -313,6 +314,33 @@ const sternTextur = (() => {
 })();
 
 // Familien aus den Eltern der Kinder, dazu Paare ohne gemeinsame Kinder
+// Karten aus derselben Zeit, die im Fächer aufeinanderliegen – etwa eingeheiratete Vorfahren ohne eigene Vorfahren
+// auf den inneren Ringen –, auf ihrem Ring auseinanderschieben, bis eine Kartenbreite dazwischen ist; nur der Winkel ändert sich
+function entzerren(menge) {
+  const ABSTAND = 2.2, ZEIT = 1.5;   // Kartenbreite 2,3; Karten mit mehr als etwa 6 Jahren Unterschied liegen ohnehin hintereinander
+  const k = menge.map(p => ({ p, r: Math.hypot(p.pos.x, p.pos.y / 0.82), w: Math.atan2(p.pos.x, p.pos.y / 0.82) }));
+  for (let runde = 0; runde < 60; runde++) {
+    let bewegt = false;
+    for (let i = 0; i < k.length; i++) for (let j = i + 1; j < k.length; j++) {
+      const a = k[i], b = k[j];
+      if (Math.abs(a.p.pos.z - b.p.pos.z) >= ZEIT) continue;
+      const d = Math.hypot(a.p.pos.x - b.p.pos.x, a.p.pos.y - b.p.pos.y);
+      if (d >= ABSTAND) continue;
+      const schub = (ABSTAND - d) / Math.min(a.r, b.r) / 2 + 0.002;
+      const [links, rechts] = a.w <= b.w ? [a, b] : [b, a];
+      links.w -= schub;
+      rechts.w += schub;
+      for (const x of [a, b]) {
+        x.w = Math.max(-WINKEL, Math.min(WINKEL, x.w));
+        x.p.pos.x = Math.sin(x.w) * x.r;
+        x.p.pos.y = Math.cos(x.w) * x.r * 0.82;
+      }
+      bewegt = true;
+    }
+    if (!bewegt) break;
+  }
+}
+
 function familienBilden() {
   const fam = new Map();
   const hole = eltern => {
