@@ -952,27 +952,27 @@ try {
 const tonSpeichern = () => { try { localStorage.setItem('lb-ton', JSON.stringify(ton)); } catch (e) { /* ohne Speicher */ } };
 let geraeuscheAn = ton.geraeusche, liedAn = ton.lied;
 
+// Es klingt immer nur ein Geräusch (klang.js): Familienklänge zuerst und nacheinander, dann das Zeitgeschehen als kurze Szene
 function klingen(j) {
+  // Familienklänge nur aus der hervorgehobenen direkten Linie
+  let n = 0, hochzeit = false;
+  for (const p of direkteLinie()) {
+    if (n > 3) break;
+    if (p.geburt === j) { if (ton.arten.geburt) { klang.familie('geburt'); n++; } }
+    else if (p.tod === j) { if (ton.arten.tod) { klang.familie('tod'); n++; } }
+    else if (ton.arten.hochzeit && !hochzeit && p.ereignisse.some(e => e.art === 'MARR' && e.jahr === j)) { hochzeit = true; klang.familie('hochzeit'); n++; }
+  }
+  // Zeitgeschehen, das gerade läuft (bis ein Jahr nach seinem Ende)
   const ziele = {};
   for (const z of klangAnsicht) {
-    const bis = (z.klangBis ?? z.bis ?? z.jahr) + 1;
-    const st = j < z.jahr ? 1 - (z.jahr - j) / 1.5 : j > bis ? 1 - (j - bis) / 1.5 : 1;   // anderthalb Jahre ein- und ausblenden
-    if (st <= 0) continue;
-    for (const art of z.klang.split('+')) if (ton.arten[art]) ziele[art] = Math.max(ziele[art] ?? 0, st);
+    if (j < z.jahr || j > (z.klangBis ?? z.bis ?? z.jahr) + 1) continue;
+    for (const art of z.klang.split('+')) if (ton.arten[art]) ziele[art] = 1;
   }
   klang.stimmung(ziele);
   // Aufnahmen für die Ereignisse der nächsten Jahrzehnte schon holen, damit sie beim Einsatz bereitliegen
   const bald = new Set();
   for (const z of klangAnsicht) if (z.jahr > j && z.jahr <= j + 15) for (const art of z.klang.split('+')) if (ton.arten[art]) bald.add(art);
   if (bald.size) klang.vorladen([...bald]);
-  // Familienklänge nur aus der hervorgehobenen direkten Linie
-  let n = 0, hochzeit = false;
-  for (const p of direkteLinie()) {
-    if (n > 3) break;
-    if (p.geburt === j) { if (ton.arten.geburt) setTimeout(klang.geburt, n++ * 250); }
-    else if (p.tod === j) { if (ton.arten.tod) setTimeout(klang.tod, n++ * 250); }
-    else if (ton.arten.hochzeit && !hochzeit && p.ereignisse.some(e => e.art === 'MARR' && e.jahr === j)) { hochzeit = true; setTimeout(klang.hochzeit, n++ * 250); }
-  }
 }
 
 // --- Lied: eigene Datei (media/musik.mp3 o. ä. oder im Menü gewählt, im Browser gespeichert) --------------------

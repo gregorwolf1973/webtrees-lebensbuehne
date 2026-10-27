@@ -1,6 +1,7 @@
 // Geräusche zur Zeitreise: eigene Aufnahmen (Dateiname = Art, z. B. kanone.mp3, kanone_2.ogg), sonst die mitgelieferten
 // freien Aufnahmen des Moduls, sonst im Browser erzeugt (Web Audio).
-// Atmosphären laufen, solange ein Ereignis andauert, und werden weich ein- und ausgeblendet.
+// Es klingt immer nur ein Geräusch: Familienklänge (Geburt, Hochzeit, Tod) warten in einer Schlange und gehen vor,
+// das Zeitgeschehen spielt je Art eine kurze Szene, die weich ein- und ausgeblendet wird.
 
 let ctx = null, master = null, rauschen = null, pegel = 0.5;
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -106,8 +107,8 @@ export function vorladen(arten) {
 // Einzelgeräusche aus langen Aufnahmen: Abschnittslänge und Vorlauf vor dem lauten Einsatz (Sekunden)
 const ABSCHNITT = {
   kanone: [4, 0.1], artillerie: [5, 0.1], gewehr: [4, 0.1], mg1: [3.5, 0.1], mg2: [3.5, 0.1], mg: [3.5, 0.1],
-  bombe: [7, 3], stuka: [11, 8], luftalarm: [20, 0.5], totenglocke: [6, 0.05], glocke_hell: [3, 0.05], glocke_tief: [7, 0.05], hochzeit: [9, 0],
-  geburt: [3.5, 0.15], lachen: [5, 0.2],
+  bombe: [7, 3], stuka: [11, 8], luftalarm: [7, 0.5], totenglocke: [6, 0.05], glocke_hell: [3, 0.05], glocke_tief: [4, 0.05], hochzeit: [4, 0],
+  geburt: [3, 0.15], lachen: [2.5, 0.2],
 };
 const EINSAETZE = new WeakMap();
 // laute Einsätze finden: 50-ms-Fenster, deutlich lauter als das vorige und als der Durchschnitt, mindestens 1 s auseinander
@@ -133,16 +134,17 @@ function einsaetze(b) {
   EINSAETZE.set(b, liste);
   return liste;
 }
+// spielt einen Abschnitt und gibt seine Dauer in Sekunden zurück (0, wenn die Aufnahme noch nicht geladen ist)
 function spiele(name, ziel, { laut = 1, pan = rnd(-0.7, 0.7), tonhoehe = rnd(0.95, 1.05) } = {}) {
   const b = puffer(name);
-  if (!b) return false;
+  if (!b) return 0;
   const [laenge, vorlauf] = ABSCHNITT[name] ?? [b.duration, 0];
-  let ab = 0, dauer = b.duration;
+  let ab = 0;
+  const dauer = Math.min(b.duration, laenge);
   if (b.duration > laenge + 1) {
     const e = einsaetze(b);
     const t = e.length ? e[Math.floor(Math.random() * e.length)] : rnd(0, b.duration - laenge);
     ab = Math.max(0, Math.min(b.duration - laenge, t - vorlauf));
-    dauer = laenge;
   }
   const t0 = ctx.currentTime, s = ctx.createBufferSource(), g = ctx.createGain();
   s.buffer = b;
@@ -153,7 +155,7 @@ function spiele(name, ziel, { laut = 1, pan = rnd(-0.7, 0.7), tonhoehe = rnd(0.9
   g.gain.linearRampToValueAtTime(0, t0 + dauer / tonhoehe);
   s.connect(g).connect(panner(pan)).connect(ziel);
   s.start(t0, ab, dauer + 0.05);
-  return true;
+  return dauer / tonhoehe;
 }
 // Aufnahme als Endlosschleife (an zufälliger Stelle beginnend); gibt die Stopp-Funktion zurück oder null
 function schleife(name, ziel, laut = 1) {
@@ -167,13 +169,19 @@ function schleife(name, ziel, laut = 1) {
   s.start(ctx.currentTime, rnd(0, b.duration));
   return () => s.stop();
 }
-// Geburt: Babylachen bzw. Jauchzen; Hochzeit: Glocken mit hellem Lachen
-export const geburt = () => ctx && (spiele('geburt', master, { laut: 0.6, pan: rnd(-0.4, 0.4), tonhoehe: 1 }) || spiele('glocke_hell', master, { laut: 0.5, pan: 0 }) || glocke(880 + rnd(0, 200), 0.08, 2.5));
-export const tod = () => ctx && (spiele('glocke_tief', master, { laut: 0.6, pan: 0 }) || glocke(rnd(150, 190), 0.16, 5));
-export const hochzeit = () => {
-  if (!ctx) return;
-  if (!spiele('hochzeit', master, { laut: 0.45, pan: 0 })) { glocke(523, 0.1, 3); setTimeout(() => glocke(659, 0.1, 3), 300); }
-  setTimeout(() => ctx && spiele('lachen', master, { laut: 0.55, pan: rnd(-0.3, 0.3), tonhoehe: 1 }), 400);
+// Familienklänge; jeder gibt seine Dauer in Sekunden zurück
+const FAMILIE = {
+  // Geburt: Babylachen bzw. Jauchzen
+  geburt: () => spiele('geburt', master, { laut: 0.6, pan: rnd(-0.4, 0.4), tonhoehe: 1 }) || spiele('glocke_hell', master, { laut: 0.5, pan: 0 }) || glocke(880 + rnd(0, 200), 0.08, 2.5),
+  tod: () => spiele('glocke_tief', master, { laut: 0.6, pan: 0 }) || glocke(rnd(150, 190), 0.16, 5),
+  // Hochzeit: erst die Glocken, danach helles Lachen
+  hochzeit: () => {
+    let d = spiele('hochzeit', master, { laut: 0.45, pan: 0 });
+    if (!d) { glocke(523, 0.1, 1.2); setTimeout(() => ctx && glocke(659, 0.1, 2.5), 1200); d = 3.7; }
+    if (!varianten('lachen').some(x => PUFFER.has(x))) return d;
+    setTimeout(() => ctx && spiele('lachen', master, { laut: 0.55, pan: rnd(-0.3, 0.3), tonhoehe: 1 }), (d + 0.1) * 1000);
+    return d + 0.1 + ABSCHNITT.lachen[0];
+  },
 };
 
 // Gesamtlautstärke der Geräusche (0..1); gilt auch, wenn der Ton erst später startet
@@ -182,22 +190,14 @@ export function lautstaerke(v) {
   if (master) master.gain.setTargetAtTime(v, ctx.currentTime, 0.1);
 }
 
-// kurze Hörprobe einer Art (für das Ton-Menü)
+// kurze Hörprobe einer Art (für das Ton-Menü); beendet die vorige Probe
 export function probe(art) {
   if (!ctx) return;
-  if (art === 'geburt') return geburt();
-  if (art === 'tod') return tod();
-  if (art === 'hochzeit') return hochzeit();
-  if (art === 'luftkrieg') { luftalarm(master, 6); setTimeout(() => ctx && bombe(master), 1500); return; }
-  if (art === 'krieg2') { stuka(master); return; }
+  stille();
+  if (FAMILIE[art]) return familie(art);
   if (!ATMO[art]) return;
-  const g = ctx.createGain();
-  g.gain.value = 0;
-  g.connect(master);
-  const stop = ATMO[art](g);
-  g.gain.setTargetAtTime(1, ctx.currentTime, 0.3);
-  setTimeout(() => g.gain.setTargetAtTime(0, ctx.currentTime, 0.4), 3500);
-  setTimeout(() => { stop(); g.disconnect(); }, 5500);
+  offen.set(art, { seit: ctx.currentTime, laenge: 5 });
+  weiter();
 }
 
 function rauschQuelle(loop = true) {
@@ -214,9 +214,10 @@ function panner(x) {
   return p;
 }
 
-// --- Einzelne Klänge ---------------------------------------------------------------------------
+// --- Einzelne Klänge (jeder gibt seine Dauer in Sekunden zurück) ---------------------------------
 function kanone(ziel, nah = Math.random(), art = 'kanone') {
-  if (spiele(art, ziel, { laut: 0.35 + 0.65 * nah }) || (art !== 'kanone' && spiele('kanone', ziel, { laut: 0.35 + 0.65 * nah }))) return;
+  const e = spiele(art, ziel, { laut: 0.35 + 0.65 * nah }) || (art !== 'kanone' && spiele('kanone', ziel, { laut: 0.35 + 0.65 * nah }));
+  if (e) return e;
   const t = ctx.currentTime, p = panner(rnd(-0.8, 0.8));
   const s = rauschQuelle(false), f = ctx.createBiquadFilter(), g = ctx.createGain();
   f.type = 'lowpass';
@@ -236,6 +237,7 @@ function kanone(ziel, nah = Math.random(), art = 'kanone') {
   o.connect(og).connect(p);
   o.start(t);
   o.stop(t + 1.1);
+  return 2.4;
 }
 
 function schuss(ziel, pan) {
@@ -251,9 +253,12 @@ function schuss(ziel, pan) {
 }
 
 function salve(ziel) {
-  if (spiele('gewehr', ziel, { laut: 0.7 })) return;
+  const e = spiele('gewehr', ziel, { laut: 0.7 });
+  if (e) return e;
   const pan = rnd(-1, 1), n = Math.floor(rnd(3, 10));
-  for (let i = 0, z = 0; i < n; i++, z += rnd(60, 240)) setTimeout(() => ctx && schuss(ziel, pan + rnd(-0.15, 0.15)), z);
+  let z = 0;
+  for (let i = 0; i < n; i++, z += rnd(60, 240)) setTimeout(() => ctx && schuss(ziel, pan + rnd(-0.15, 0.15)), z);
+  return z / 1000 + 0.15;
 }
 
 // Stimme: Sägezahn durch Vokalfilter („ah“), mit Vibrato und Tonhöhengleiten – klagend, rufend oder jubelnd
@@ -297,11 +302,13 @@ export function glocke(grund = 440, laut = 0.2, dauer = 3.5, ziel = master) {
     o.start(t);
     o.stop(t + dauer);
   }
+  return dauer;
 }
 
 // Maschinengewehr: schnelle, gleichmäßige Schüsse (Erster Weltkrieg langsamer, Zweiter schneller)
 function mg(ziel, abstand = 110) {
-  if (spiele(abstand < 80 ? 'mg2' : 'mg1', ziel, { laut: 0.7 }) || spiele('mg', ziel, { laut: 0.7 })) return;
+  const e = spiele(abstand < 80 ? 'mg2' : 'mg1', ziel, { laut: 0.7 }) || spiele('mg', ziel, { laut: 0.7 });
+  if (e) return e;
   const pan = rnd(-1, 1), n = Math.floor(rnd(8, 26)), laut = rnd(0.5, 1);
   for (let i = 0; i < n; i++) setTimeout(() => {
     if (!ctx) return;
@@ -312,11 +319,13 @@ function mg(ziel, abstand = 110) {
     s.connect(f).connect(g).connect(panner(pan)).connect(ziel);
     s.start(t, rnd(0, 3.5)); s.stop(t + 0.08);
   }, i * abstand * rnd(0.92, 1.08));
+  return n * abstand * 1.08 / 1000 + 0.1;
 }
 
 // Fliegerbombe: Pfeifen im Fall, dann schwere Explosion
 function bombe(ziel) {
-  if (spiele('bombe', ziel, { laut: 0.9 })) return;
+  const e = spiele('bombe', ziel, { laut: 0.9 });
+  if (e) return e;
   const t = ctx.currentTime, d = rnd(1.8, 3), o = ctx.createOscillator(), g = ctx.createGain(), p = panner(rnd(-0.7, 0.7));
   o.type = 'sine';
   o.frequency.setValueAtTime(rnd(1500, 2000), t);
@@ -327,12 +336,14 @@ function bombe(ziel) {
   g.gain.linearRampToValueAtTime(0, t + d);
   o.connect(g).connect(p).connect(ziel);
   o.start(t); o.stop(t + d);
-  setTimeout(() => { if (ctx) { kanone(p, 1); kanone(p, 0.8); } }, d * 1000);
+  setTimeout(() => ctx && kanone(p, 1), d * 1000);
+  return d + ABSCHNITT.kanone[0];   // die Explosion kann auch eine Kanonen-Aufnahme sein
 }
 
 // Sturzkampfbomber: Motor und anschwellende Sirene im Sturzflug, am Ende die Bombe
 function stuka(ziel) {
-  if (spiele('stuka', ziel, { laut: 0.8 })) return;
+  const e = spiele('stuka', ziel, { laut: 0.8 });
+  if (e) return e;
   const t = ctx.currentTime, d = rnd(3.5, 5), p = panner(rnd(-0.8, 0.8));
   const motor = ctx.createOscillator(), mf = ctx.createBiquadFilter(), mg2 = ctx.createGain();
   motor.type = 'sawtooth';
@@ -355,11 +366,13 @@ function stuka(ziel) {
   p.connect(ziel);
   motor.start(t); sirene.start(t); motor.stop(t + d + 0.6); sirene.stop(t + d + 0.4);
   setTimeout(() => ctx && bombe(ziel), (d - 1.5) * 1000);
+  return d - 1.5 + ABSCHNITT.bombe[0];   // die Bombe kann eine Aufnahme sein
 }
 
-// Luftalarm: Sirene, die etwa eine Viertelminute auf- und abschwillt
-function luftalarm(ziel, dauer = 14) {
-  if (spiele('luftalarm', ziel, { laut: 0.6, pan: 0, tonhoehe: 1 })) return;
+// Luftalarm: Sirene, die auf- und abschwillt
+function luftalarm(ziel, dauer = 7) {
+  const e = spiele('luftalarm', ziel, { laut: 0.6, pan: 0, tonhoehe: 1 });
+  if (e) return e;
   const t = ctx.currentTime, o = ctx.createOscillator(), o2 = ctx.createOscillator(), f = ctx.createBiquadFilter(), g = ctx.createGain();
   o.type = 'sawtooth'; o2.type = 'sawtooth';
   const lfo = ctx.createOscillator(), lg = ctx.createGain();
@@ -375,6 +388,7 @@ function luftalarm(ziel, dauer = 14) {
   o.connect(f); o2.connect(f); f.connect(g).connect(panner(rnd(-0.4, 0.4))).connect(ziel);
   o.start(t); o2.start(t); lfo.start(t);
   o.stop(t + dauer); o2.stop(t + dauer); lfo.stop(t + dauer);
+  return dauer;
 }
 
 // Marschtritte: viele Stiefel im Gleichschritt, dazu Trommel
@@ -488,65 +502,47 @@ function strom(ziel) {
   return () => { clearInterval(id); o.stop(); };
 }
 
+// Einzelklänge einer Szene nacheinander, nie übereinander: schritt() spielt einen Klang und gibt seine Dauer zurück
+function folge(schritt, luecke = [0.15, 0.6]) {
+  let id = null, aus = false;
+  const weiter = () => {
+    if (aus || !ctx) return;
+    id = setTimeout(weiter, ((schritt() || 1) + rnd(...luecke)) * 1000);
+  };
+  weiter();
+  return () => { aus = true; clearTimeout(id); };
+}
+
 const ATMO = {
   // Kriege vor 1900: Kanonen und Gewehrsalven
-  krieg: g => {
-    const id = setInterval(() => {
-      if (Math.random() < 0.55) kanone(g, Math.random());
-      if (Math.random() < 0.4) salve(g);
-    }, 850);
-    return () => clearInterval(id);
-  },
+  krieg: g => folge(() => Math.random() < 0.6 ? kanone(g, Math.random()) : salve(g)),
   // Erster Weltkrieg: Artillerie und Maschinengewehre
-  krieg1: g => {
-    const id = setInterval(() => {
-      if (Math.random() < 0.45) kanone(g, Math.random(), 'artillerie');
-      if (Math.random() < 0.35) mg(g, 115);
-      if (Math.random() < 0.2) salve(g);
-    }, 900);
-    return () => clearInterval(id);
-  },
+  krieg1: g => folge(() => {
+    const r = Math.random();
+    return r < 0.5 ? kanone(g, Math.random(), 'artillerie') : r < 0.8 ? mg(g, 115) : salve(g);
+  }),
   // Zweiter Weltkrieg: schnelle Maschinengewehre, Stukas, Bomben
   krieg2: g => {
     let n = 0;
-    const id = setInterval(() => {
-      if (Math.random() < 0.4) mg(g, 55);
-      if (Math.random() < 0.3) kanone(g, Math.random(), 'artillerie');
-      if (n % 14 === 3) stuka(g);
-      else if (Math.random() < 0.12) bombe(g);
-      n++;
-    }, 900);
-    return () => clearInterval(id);
+    return folge(() => {
+      if (n++ % 4 === 1) return stuka(g);
+      const r = Math.random();
+      return r < 0.45 ? mg(g, 55) : r < 0.8 ? kanone(g, Math.random(), 'artillerie') : bombe(g);
+    });
   },
-  // Luftkrieg der letzten Kriegsjahre: Luftalarm und Bombenhagel
+  // Luftkrieg der letzten Kriegsjahre: erst der Luftalarm, dann der Angriff (Originalaufnahme oder Bomben und Stukas)
   luftkrieg: g => {
-    const echt = schleife('luftkrieg', g, 0.7);   // Originalaufnahme eines Luftangriffs, dazu ab und zu die Sirene
-    if (echt) {
-      let m = 0;
-      const id2 = setInterval(() => { if (m % 30 === 0) luftalarm(g); m++; }, 1000);
-      return () => { echt(); clearInterval(id2); };
-    }
-    let n = 0;
-    const id = setInterval(() => {
-      if (n % 24 === 0) luftalarm(g);
-      if (n % 24 > 8 && Math.random() < 0.35) bombe(g);
-      if (n % 24 === 12) stuka(g);
-      n++;
-    }, 1000);
-    return () => clearInterval(id);
+    let n = 0, angriff = null;
+    const stop = folge(() => {
+      if (n++ === 0) return luftalarm(g);
+      if (n === 2 && (angriff = schleife('luftkrieg', g, 0.7))) return 600;   // die Aufnahme läuft bis zum Ende der Szene
+      return n % 3 ? bombe(g) : stuka(g);
+    });
+    return () => { stop(); angriff?.(); };
   },
   // Schießereien bei Aufständen
-  gefecht: g => {
-    const id = setInterval(() => {
-      if (Math.random() < 0.4) mg(g, 70);
-      if (Math.random() < 0.5) salve(g);
-    }, 1100);
-    return () => clearInterval(id);
-  },
-  totenglocke: g => {
-    const id = setInterval(() => spiele('totenglocke', g, { laut: 0.7, pan: 0, tonhoehe: 1 }) || glocke(rnd(105, 125), 0.22, 6, g), 4200);
-    return () => clearInterval(id);
-  },
+  gefecht: g => folge(() => Math.random() < 0.45 ? mg(g, 70) : salve(g)),
+  totenglocke: g => folge(() => spiele('totenglocke', g, { laut: 0.7, pan: 0, tonhoehe: 1 }) || glocke(rnd(105, 125), 0.22, 4, g), [0.3, 0.8]),
   marsch: g => {
     const echt = schleife('marsch', g, 0.8);
     if (echt) return echt;
@@ -556,7 +552,7 @@ const ATMO = {
   },
   not: g => {
     const echt = schleife('klagen', g, 0.8);
-    if (echt) { const w2 = schleife('wind', g, 0.4); return () => { echt(); w2?.(); }; }
+    if (echt) return echt;
     const w = wind(g, 0.6);
     const id = setInterval(() => {
       if (Math.random() < 0.65) stimme(g, { laut: 0.09 });
@@ -570,44 +566,127 @@ const ATMO = {
   zug: g => schleife('zug', g, 0.8) || zug(g),
   jubel: g => schleife('jubel', g, 0.8) || menge(g, true),
   unruhe: g => schleife('menge', g, 0.8) || menge(g, false),
-  glocken: g => {
-    const echt = schleife('glocken', g, 0.7);
-    if (echt) return echt;
-    const id = setInterval(() => glocke(rnd(300, 480), 0.16, 4, g), 1600);
-    return () => clearInterval(id);
-  },
+  glocken: g => schleife('glocken', g, 0.7) || folge(() => glocke(rnd(300, 480), 0.16, 2.2, g), [0, 0.2]),
   strom: g => schleife('strom', g, 0.6) || strom(g),
 };
 export const ARTEN = Object.keys(ATMO);
 
-const aktiv = new Map();
-// ziele: { art: Stärke 0..1 }; was fehlt, wird ausgeblendet
-export function stimmung(ziele) {
-  if (!ctx) return;
-  for (const [art, st] of Object.entries(ziele)) {
-    if (!ATMO[art] || st <= 0.01) continue;
-    let a = aktiv.get(art);
-    if (!a) {
-      const g = ctx.createGain();
-      g.gain.value = 0;
-      g.connect(master);
-      a = { g, stop: ATMO[art](g), ende: null };
-      aktiv.set(art, a);
-    }
-    if (a.ende) { clearTimeout(a.ende); a.ende = null; }
-    a.g.gain.setTargetAtTime(st, ctx.currentTime, 0.6);
-  }
-  for (const [art, a] of aktiv) {
-    if ((ziele[art] ?? 0) > 0.01 || a.ende) continue;
-    a.g.gain.setTargetAtTime(0, ctx.currentTime, 0.5);
-    a.ende = setTimeout(() => { a.stop(); a.g.disconnect(); aktiv.delete(art); }, 2500);
-  }
+// --- Eine Spur: nie zwei Geräusche zugleich ---------------------------------------------------------
+// Länge einer Szene in Sekunden, auch wenn das Ereignis Jahrzehnte dauert (die Auswanderung 1846–1914 war sonst eine Minute Wasser)
+const SZENE = {
+  krieg: 10, krieg1: 10, krieg2: 12, luftkrieg: 14, gefecht: 8, totenglocke: 7, marsch: 6, not: 7, kaelte: 6,
+  wasser: 5, flut: 6, zug: 6, jubel: 6, unruhe: 6, glocken: 6, strom: 4,
+};
+const EIN = 0.8, AUS = 1.2;   // Ein- und Ausblenden einer Szene (Sekunden)
+const MINDESTENS = 4;         // so lange klingt eine Szene, bevor ein neu beginnendes Ereignis sie ablöst
+const WARTEN = 3;             // länger wartende Familienklänge kommen zu spät und entfallen
+
+let szene = null;                                  // { art, g, stop, start, endet }
+const schlange = [];                               // wartende Familienklänge { name, seit }
+let familieAn = false, familieTimer = null;
+const offen = new Map(), erledigt = new Set();     // fällige Arten (Art → { seit, laenge }); schon gespielt, solange ihr Ereignis läuft
+
+function blende(g, ziel, dauer) {
+  const t = ctx.currentTime;
+  g.gain.cancelScheduledValues(t);
+  g.gain.setValueAtTime(g.gain.value, t);
+  g.gain.linearRampToValueAtTime(ziel, t + dauer);
 }
 
-export function stille() { stimmung({}); }
+function szeneStarten(art, laenge = SZENE[art] ?? 6) {
+  const g = ctx.createGain();
+  g.gain.value = 0;
+  g.connect(master);
+  const s = { art, g, stop: ATMO[art](g), start: ctx.currentTime, endet: false };
+  szene = s;
+  blende(g, 1, EIN);
+  s.timer = setTimeout(() => szeneBeenden(s), Math.max(0, laenge - AUS) * 1000);
+}
+
+function szeneBeenden(s, aus = AUS) {
+  if (s.endet) return;
+  s.endet = true;
+  clearTimeout(s.timer); clearTimeout(s.abloesen);
+  blende(s.g, 0, aus);
+  setTimeout(() => {
+    s.stop?.();
+    s.g.disconnect();
+    if (szene === s) { szene = null; weiter(); }
+  }, aus * 1000 + 50);
+}
+
+// Hat ein neueres Ereignis begonnen, löst es die laufende Szene ab, sobald diese MINDESTENS Sekunden geklungen hat
+function abloesen() {
+  if (!szene || szene.endet || ![...offen.values()].some(o => o.seit > szene.start)) return;
+  const rest = szene.start + MINDESTENS - ctx.currentTime;
+  clearTimeout(szene.abloesen);
+  if (rest > 0) szene.abloesen = setTimeout(abloesen, rest * 1000);
+  else szeneBeenden(szene, familieAn ? 0.05 : 0.6);
+}
+
+// nächstes Geräusch auf die Spur: zuerst wartende Familienklänge, dann die zuletzt fällig gewordene Szene
+function weiter() {
+  if (!ctx || familieAn || szene?.endet) return;   // wer gerade klingt oder ausblendet, ruft danach wieder weiter()
+  while (schlange.length && ctx.currentTime - schlange[0].seit > WARTEN) schlange.shift();
+  if (schlange.length) {
+    const { name } = schlange.shift();
+    familieAn = true;
+    const stumm = !!szene;   // laufende Szene ausblenden; sie läuft unhörbar weiter und kommt danach zurück
+    if (stumm) blende(szene.g, 0, 0.3);
+    familieTimer = setTimeout(() => {
+      const d = FAMILIE[name]();
+      familieTimer = setTimeout(() => { familieAn = false; weiter(); }, (d + 0.15) * 1000);
+    }, stumm ? 300 : 0);
+    return;
+  }
+  if (szene) { blende(szene.g, 1, EIN); abloesen(); return; }
+  let art = null, seit = -1;
+  for (const [a, o] of offen) if (o.seit > seit) { art = a; seit = o.seit; }   // bei Gleichstand die zuerst genannte Art
+  if (!art) return;
+  const { laenge } = offen.get(art);
+  offen.delete(art);
+  erledigt.add(art);
+  szeneStarten(art, laenge);
+}
+
+// Familienklang (geburt, hochzeit, tod) anstellen
+export function familie(name) {
+  if (!ctx || !FAMILIE[name]) return;
+  schlange.push({ name, seit: ctx.currentTime });
+  weiter();
+}
+
+// ziele: { art: 1 } für jedes Ereignis, das gerade läuft. Jede Art klingt einmal als kurze Szene; erst wenn ihr Ereignis
+// vorbei ist, kann sie wieder fällig werden.
+export function stimmung(ziele) {
+  if (!ctx) return;
+  const laeuft = art => (ziele[art] ?? 0) > 0;
+  for (const art of Object.keys(ziele)) {
+    if (!ATMO[art] || !laeuft(art) || offen.has(art) || erledigt.has(art)) continue;
+    if (szene?.art === art && !szene.endet) erledigt.add(art);
+    else offen.set(art, { seit: ctx.currentTime });
+  }
+  for (const art of offen.keys()) if (!laeuft(art)) offen.delete(art);
+  for (const art of erledigt) if (!laeuft(art)) erledigt.delete(art);
+  abloesen();
+  weiter();
+}
+
+export function stille() {
+  if (!ctx) return;
+  schlange.length = 0;
+  offen.clear();
+  erledigt.clear();
+  clearTimeout(familieTimer);
+  familieAn = false;
+  if (szene) szeneBeenden(szene, 0.5);
+}
 
 // für die Fehlersuche in der Konsole
 export function zustand() {
   const einsatz = Object.fromEntries([...PUFFER].filter(([n]) => ABSCHNITT[n.replace(/_\d+$/, '')]).map(([n, b]) => [n, `${Math.round(b.duration)} s, ${einsaetze(b).length} Einsätze`]));
-  return { audio: ctx?.state ?? 'aus', abtastrate: ctx?.sampleRate, atmosphaeren: [...aktiv.keys()], geladen: [...PUFFER.keys()], verfuegbar: Object.keys(LISTE).length, einsatz };
+  return {
+    audio: ctx?.state ?? 'aus', abtastrate: ctx?.sampleRate, szene: szene?.art ?? null, familie: familieAn, schlange: schlange.map(x => x.name),
+    offen: [...offen.keys()], geladen: [...PUFFER.keys()], verfuegbar: Object.keys(LISTE).length, einsatz,
+  };
 }

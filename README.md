@@ -20,7 +20,7 @@ tunnel with a time travel, life stories, photos, maps and historical events. The
 - **Erzählung:** eine ausformulierte Lebensgeschichte je Person, auf Wunsch vom Browser vorgelesen – in ganzen Sätzen, mit einstellbarem Tempo und wählbarer Stimme (beides merkt sich der Browser). Dazu die Texte aus dem webtrees-Modul „Geschichten“, wenn es aktiv ist.
 - **Historische Grenzen:** Auf der Karte des Lebenswegs erscheinen die Staatsgrenzen zur Zeit der jeweiligen Station, von 1700 bis heute.
 - **2,5D-Porträts:** Das Gesicht auf der ersten Seite der Bildgeschichte wird zu einem räumlichen Porträt, das sich sanft bewegt und Maus oder Finger folgt.
-- **Ton:** frei lizenzierte Geräusche passend zur Epoche (sonst im Browser erzeugt), auf Wunsch eigene Aufnahmen. Dazu drei mitgelieferte Lieder oder ein eigenes, an dessen Länge sich das Tempo der Zeitreise anpassen lässt. Geburt, Hochzeit und Tod erklingen nur in der hervorgehobenen direkten Linie: von der angeklickten Person zur Hauptperson, ohne Auswahl von der ältesten Person aus.
+- **Ton:** frei lizenzierte Geräusche passend zur Epoche (sonst im Browser erzeugt), auf Wunsch eigene Aufnahmen. Dazu drei mitgelieferte Lieder oder ein eigenes, an dessen Länge sich das Tempo der Zeitreise anpassen lässt. Geburt, Hochzeit und Tod erklingen nur in der hervorgehobenen direkten Linie: von der angeklickten Person zur Hauptperson, ohne Auswahl von der ältesten Person aus. Es klingt immer nur ein Geräusch: Geburt, Hochzeit und Tod gehen vor, ein Ereignis des Zeitgeschehens ist eine kurze, weich ein- und ausgeblendete Szene – auch wenn es Jahrzehnte dauert.
 - **Sternhimmel:** echte Sterne aus dem Yale Bright Star Catalogue (gemeinfrei) mit Helligkeit und Farbe wie am Himmel, dazu die Milchstraße – nur im Hintergrund.
 - **Handy und Tablet:** Suche und Ansichten liegen dort im Menü ☰. Der Überblick passt sich der Bildschirmform an, damit der ganze Stammbaum zu sehen ist.
 - **Bilder nur aus webtrees:** Die Fotos kommen aus der Medienverwaltung. Gesichter werden aus den Markierungen des Moduls [webtrees-faces](https://github.com/UksusoFF/webtrees-faces) ausgeschnitten, falls es installiert ist.
@@ -126,7 +126,7 @@ Das Format ist dasselbe wie in der mitgelieferten Datei, eine Liste von Einträg
 - `regionen`: `welt`, `europa`, `deutschland`, `oesterreich`, `schweiz`, `ungarn`, `rumaenien`, `serbien`, `banat`, `westen` (Lothringen, Luxemburg, Pfalz, Saarland, Elsass), `frankreich`, `luxemburg`, `belgien`, `niederlande`, `italien`, `polen`, `tschechien`, `slowakei`, `kroatien`, `russland`, `ukraine`, `grossbritannien`, `irland`, `skandinavien`, `usa`, `kanada`, `lateinamerika`, `australien`
 - `titel`, `text` (deutsch), `titel_en`, `text_en` (englisch)
 - `gruppe`: dasselbe Ereignis in mehreren Fassungen (allgemein und regional); gezeigt wird je Gruppe nur die passendste, eigene Einträge gehen vor
-- `klang`: Geräusche, mehrere mit `+` verbunden, z. B. `krieg2+totenglocke`
+- `klang`: Geräusche, mehrere mit `+` verbunden, z. B. `krieg2+totenglocke`; sie erklingen nacheinander, nie zugleich
 
 ## Sprachen
 
