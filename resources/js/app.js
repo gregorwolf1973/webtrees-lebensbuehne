@@ -317,7 +317,7 @@ const sternTextur = (() => {
 // Karten aus derselben Zeit, die im Fächer aufeinanderliegen – etwa eingeheiratete Vorfahren ohne eigene Vorfahren
 // auf den inneren Ringen –, auf ihrem Ring auseinanderschieben, bis eine Kartenbreite dazwischen ist; nur der Winkel ändert sich
 function entzerren(menge) {
-  const ABSTAND = 2.2, ZEIT = 1.5;   // Kartenbreite 2,3; Karten mit mehr als etwa 6 Jahren Unterschied liegen ohnehin hintereinander
+  const ABSTAND = 2.6, ZEIT = 1.5;   // Kartenbreite 2,3, dazu etwas Luft; Karten mit mehr als etwa 6 Jahren Unterschied liegen ohnehin hintereinander
   const k = menge.map(p => ({ p, r: Math.hypot(p.pos.x, p.pos.y / 0.82), w: Math.atan2(p.pos.x, p.pos.y / 0.82) }));
   for (let runde = 0; runde < 60; runde++) {
     let bewegt = false;
