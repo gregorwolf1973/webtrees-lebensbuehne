@@ -36,6 +36,8 @@ tunnel with a time travel, life stories, photos, maps and historical events. The
 2. In webtrees unter *Verwaltung → Module → Diagramme* prüfen, dass die „Lebensbühne“ aktiviert ist.
 3. Aufruf: im Diagramm-Menü einer Person den Punkt „Lebensbühne“ wählen, oder direkt `…/tree/<Baum>/lebensbuehne/<XREF>`.
 
+Die größeren Lieder (Donau, Moldau, Beethoven) liegen nicht im ZIP, sondern als eigene Dateien `musik_*.m4a` am Release. Wer sie haben möchte, legt sie nach `modules_v4/lebensbuehne/resources/musik/`; sie erscheinen dann von selbst in der Liedauswahl.
+
 ## Wer darf die Lebensbühne sehen?
 
 Nur **angemeldete Mitglieder** des jeweiligen Stammbaums. Gäste werden zur Anmeldung geschickt. Das gilt für die Seite, die Daten, die Gesichtsausschnitte und die Klänge, und zwar unabhängig von der Einstellung in der Modulverwaltung. Dort lässt sich der Zugang nur weiter einschränken, etwa auf Verwalter.
@@ -75,10 +77,11 @@ Die Grenzen stammen aus [historical-basemaps](https://github.com/aourednik/histo
 
 ## Klänge und Lieder
 
-**Mitgeliefert** sind 47 frei lizenzierte Geräusche (Glocken, Babylachen, Kanonen, Sirenen, Dampflok, Wind, Wasser, Marschtritte …) und drei Lieder, alle mit Urheber und Lizenz in [`resources/klaenge/QUELLEN.md`](resources/klaenge/QUELLEN.md):
+**Mitgeliefert** sind 47 frei lizenzierte Geräusche (Glocken, Babylachen, Kanonen, Sirenen, Dampflok, Wind, Wasser, Marschtritte …) und vier Lieder, alle mit Urheber und Lizenz in [`resources/klaenge/QUELLEN.md`](resources/klaenge/QUELLEN.md):
 
 - **Johann Strauss: „An der schönen blauen Donau“**, United States Marine Band (gemeinfrei) – die Donau als Weg der Auswanderer
 - **Bedřich Smetana: „Die Moldau“**, Musopen Symphony Orchestra (CC0) – von der Quelle zum großen Strom
+- **Ludwig van Beethoven: Sinfonie Nr. 5, 1. Satz**, Fuldaer Symphonisches Orchester unter Simon Schindler (Open Audio License 1.0) – das Schicksal klopft an
 - **Kevin MacLeod: „Eternal Hope“** (CC BY 4.0) – ruhiger Aufbau zu einem hoffnungsvollen Höhepunkt
 
 Das Lied wählt jedes Mitglied im Ton-Menü; das Tempo der Zeitreise passt sich auf Wunsch der Länge an. Fehlt eine Aufnahme, erzeugt der Browser das Geräusch selbst.
@@ -87,6 +90,8 @@ Das Lied wählt jedes Mitglied im Ton-Menü; das Tempo der Zeitreise passt sich 
 
 ```
 data/lebensbuehne/musik.mp3              Lied der Familie (auch .m4a, .ogg, .opus, .wav)
+data/lebensbuehne/musik/lieder.json      weitere Lieder in der Liedauswahl, Format wie resources/musik/lieder.json,
+data/lebensbuehne/musik/<datei>.m4a      die Dateien daneben – etwa Aufnahmen, die nur in der EU frei sind
 data/lebensbuehne/klaenge/<name>.mp3     Geräusche (auch .ogg, .wav, .flac, .m4a, .opus)
 ```
 

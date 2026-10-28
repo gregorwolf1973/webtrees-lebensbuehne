@@ -98,7 +98,7 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
     use ModuleCustomTrait;
     use ModuleChartTrait;
 
-    public const string VERSION = '1.5.0';
+    public const string VERSION = '1.5.1';
 
     // Oberflächenwörter des Moduls, die webtrees selbst in viele Sprachen übersetzt (deutscher Schlüssel => englische msgid)
     private const array WEBTREES_WOERTER = [
@@ -249,6 +249,15 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
         foreach (is_array($liste) ? $liste : [] as $lied) {
             if (is_array($lied) && is_string($lied['datei'] ?? null) && preg_match(self::AUDIO, $lied['datei']) && is_file($this->resourcesFolder() . 'musik/' . $lied['datei'])) {
                 $lieder[] = $lied + ['url' => $klangUrl($lied['datei'])];
+            }
+        }
+        // eigene Lieder der Installation (data/lebensbuehne/musik/lieder.json, Format wie oben), etwa Aufnahmen, die nur
+        // in der EU frei sind und deshalb nicht im Modul liegen
+        $eigeneLieder = Webtrees::DATA_DIR . 'lebensbuehne/musik/';
+        $liste        = is_file($eigeneLieder . 'lieder.json') ? json_decode((string) file_get_contents($eigeneLieder . 'lieder.json'), true) : [];
+        foreach (is_array($liste) ? $liste : [] as $lied) {
+            if (is_array($lied) && is_string($lied['datei'] ?? null) && preg_match(self::AUDIO, $lied['datei']) && is_file($eigeneLieder . $lied['datei'])) {
+                $lieder[] = $lied + ['url' => route(self::ROUTE_KLANG, ['tree' => $tree->name(), 'datei' => 'eigen-' . $lied['datei']])];
             }
         }
 
@@ -460,6 +469,16 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
                 }
             }
             throw new HttpNotFoundException();
+        }
+
+        // eigene Lieder der Installation („eigen-<Datei>“ aus data/lebensbuehne/musik/)
+        if (str_starts_with($datei, 'eigen-')) {
+            $name = substr($datei, 6);
+            if (!preg_match(self::AUDIO, $name) || !is_file($ordner . 'musik/' . $name)) {
+                throw new HttpNotFoundException();
+            }
+
+            return $this->dateiAntwort($request, $ordner . 'musik/' . $name);
         }
 
         if (!preg_match(self::AUDIO, $datei)) {
