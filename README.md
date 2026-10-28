@@ -13,9 +13,9 @@ tunnel with a time travel, life stories, photos, maps and historical events. The
 ## Funktionen
 
 - **Ansichten:** Vorfahren, Nachkommen und die Familie des Partners. Die Hauptperson lässt sich frei wählen, per Suche oder Doppelklick.
-- **Netz:** alle Verwandten auf einen Blick, ähnlich der Ansicht „Lineage“, aber räumlich: Jede Familie ist ein Stern – ein leuchtender Punkt, die Eltern dicht daran, die Kinder als Strahlen ringsum. Über die Kinder, die selbst eine Familie gründen, hängen die Sterne aneinander; eine Kräftesimulation ordnet alles im Raum, und das Netz dreht sich langsam. Die Farbe ist der Klang des Familiennamens (Kölner Phonetik, damit „Thöresz“, „Theres“ und „Tyres“ gleich aussehen). Ein Klick hebt die Familiensterne der Person hervor; Zeitreise und Sternhimmel funktionieren wie im Fächer.
+- **Netz:** alle Verwandten auf einen Blick, ähnlich der Ansicht „Lineage“, aber räumlich: Jede Familie ist ein Stern – ein leuchtender Punkt, die Eltern dicht daran, die Kinder als Strahlen ringsum. Über die Kinder, die selbst eine Familie gründen, hängen die Sterne aneinander; eine Kräftesimulation ordnet alles im Raum, und das Netz dreht sich langsam. Die Farbe ist der Klang des Familiennamens (Kölner Phonetik, damit „Thöresz“, „Theres“ und „Tyres“ gleich aussehen). Ein Klick hebt die Familiensterne der Person hervor; Zeitreise und Sternhimmel funktionieren wie im Fächer. Wie weit das Netz reicht, stellt die Auswahl „Tiefe“ ein (Schritte über Eltern, Kinder und Partner); höchstens 2.500 Personen, die nächsten zuerst, damit auch Stammbäume mit Zehntausenden Personen den Browser nicht überfordern.
 - **Zeitreise:** einstellbares Tempo in Jahren pro Minute. Wer geboren wird, leuchtet auf. Wer gestorben ist, verblasst. Ohne Todesdatum verblasst die Person nach 80 Jahren.
-- **Zeitgeschehen:** Kriege, Auswanderung, Seuchen und weitere Ereignisse laufen als Abspann mit.
+- **Zeitgeschehen:** Kriege, Auswanderung, Seuchen und weitere Ereignisse laufen als Abspann mit. Der Schalter „Weltgeschehen“ blendet allgemeine Ereignisse wie den Kalten Krieg aus; dann bleiben nur die Regionen der Familie und eigene Einträge.
 - **Lebensgeschichte zu jeder Person:** Bildgeschichte, Lebenslauf, Bilder und die Karte des Lebenswegs (Leaflet mit OpenStreetMap).
 - **Erzählung:** eine ausformulierte Lebensgeschichte je Person, auf Wunsch vom Browser vorgelesen – in ganzen Sätzen, mit einstellbarem Tempo und wählbarer Stimme (beides merkt sich der Browser). Dazu die Texte aus dem webtrees-Modul „Geschichten“, wenn es aktiv ist.
 - **Historische Grenzen:** Auf der Karte des Lebenswegs erscheinen die Staatsgrenzen zur Zeit der jeweiligen Station, von 1700 bis heute.
@@ -130,9 +130,9 @@ Das Format ist dasselbe wie in der mitgelieferten Datei, eine Liste von Einträg
 
 ## Sprachen
 
-Die Oberfläche folgt der Sprache, die in webtrees eingestellt ist: Deutsch oder Englisch, jede andere Sprache bekommt Englisch. Weitere Sprachen lassen sich ergänzen: `resources/lang/en.json` kopieren (z. B. als `fr.json`) und die Werte übersetzen; die Schlüssel sind die deutschen Texte. Erzählungen in einer anderen Sprache kommen als `data/lebensbuehne/geschichten/<Baumname>.<sprache>.json` dazu, sonst wird die deutsche gezeigt.
+Die Oberfläche folgt der Sprache, die in webtrees eingestellt ist: Deutsch oder Englisch, jede andere Sprache bekommt Englisch; Ereignisnamen wie Geburt, Hochzeit und Tod und einige weitere Wörter kommen dann aus den Übersetzungen von webtrees selbst. Weitere Sprachen lassen sich ergänzen: `resources/lang/en.json` kopieren (z. B. als `fr.json`) und die Werte übersetzen; die Schlüssel sind die deutschen Texte. Erzählungen in einer anderen Sprache kommen als `data/lebensbuehne/geschichten/<Baumname>.<sprache>.json` dazu, sonst wird die deutsche gezeigt.
 
-*English: the interface follows the webtrees language (German or English; other languages fall back to English). Translations live in `resources/lang/<language>.json`, keyed by the German text.*
+*English: the interface follows the webtrees language (German or English; other languages fall back to English, with event names such as birth, marriage and death taken from the webtrees translations). Translations live in `resources/lang/<language>.json`, keyed by the German text.*
 
 ## Lizenz
 

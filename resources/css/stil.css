@@ -466,6 +466,10 @@ body[data-panel="voll"] .leiste-oben { right: min(580px, 100vw); }   /* Kopfleis
 .im-netz { opacity: 0.55; }
 .legende-netz { display: none; }
 body.netz .legende:not(.legende-netz) { display: none; }
+.netz-tiefe { display: none; align-items: center; gap: 6px; font-size: 13px; color: var(--text-2); }
+body.netz .netz-tiefe { display: inline-flex; }
+.netz-tiefe select { font: inherit; }
+.netz-anzahl { white-space: nowrap; }
 body.netz .legende-netz { display: flex; }
 @media (max-width: 1199px) { body.netz .legende-netz { display: none; } }
 .legende .namen { background: conic-gradient(#e38f8f, #e3d38f, #8fe39b, #8fc8e3, #c08fe3, #e38f8f); }

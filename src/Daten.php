@@ -11,6 +11,7 @@ declare(strict_types=1);
 namespace GregorWolf\Lebensbuehne;
 
 use Fisharebest\Webtrees\DB;
+use Fisharebest\Webtrees\I18N;
 use Fisharebest\Webtrees\Registry;
 use Fisharebest\Webtrees\Tree;
 use Fisharebest\Webtrees\Webtrees;
@@ -114,10 +115,19 @@ final class Daten
     ) {
     }
 
-    // Name eines Fakts in der Sprache der Oberfläche
+    // Name eines Fakts in der Sprache der Oberfläche; für Sprachen ohne eigene Übersetzung des Moduls die von webtrees
     private function faktName(string $tag): string
     {
-        return $this->sprache === 'de' ? self::FAKTEN[$tag] : self::FAKTEN_EN[$tag];
+        if ($this->sprache === 'de') {
+            return self::FAKTEN[$tag];
+        }
+        if (!str_starts_with(I18N::languageTag(), 'en')) {
+            $kontext = in_array($tag, ['MARR', 'DIV', 'ENGA'], true) ? 'FAM:' : 'INDI:';
+
+            return Registry::elementFactory()->make($kontext . $tag)->label();
+        }
+
+        return self::FAKTEN_EN[$tag];
     }
 
     /**

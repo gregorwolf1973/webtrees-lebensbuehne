@@ -2,7 +2,7 @@
 // die Tiefe ist die Zeit.
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { ladeDaten, ansicht, netz, phonetik, jahreKurz, verwandtschaft, zeitFuerAnsicht, JETZT } from 'lb/daten.js';
+import { ladeDaten, ansicht, netz, phonetik, jahreKurz, verwandtschaft, zeitFuerAnsicht, weltgeschehenZeigen, JETZT } from 'lb/daten.js';
 import { t, EN as SPRACHE_EN } from 'lb/text.js';
 import { Panel } from 'lb/panel.js';
 import * as klang from 'lb/klang.js';
@@ -183,6 +183,19 @@ const gruppe = new THREE.Group();
 scene.add(gruppe);
 let root = daten.start, modus = { vorfahren: true, nachkommen: false, partner: false, netz: false };
 let imBild = [], karten = [], linien = [];
+
+// Netz-Tiefe (Schritte über Eltern, Kinder, Partner) und Weltgeschehen; beides merkt sich der Browser
+const netzTiefeWahl = document.getElementById('netz-tiefe');
+let netzTiefe = Infinity;
+try {
+  const w = localStorage.getItem('lb-netztiefe');
+  if (w && [...netzTiefeWahl.options].some(o => o.value === w)) netzTiefeWahl.value = w;
+  else netzTiefeWahl.value = 'alle';
+} catch (e) { netzTiefeWahl.value = 'alle'; }
+netzTiefe = netzTiefeWahl.value === 'alle' ? Infinity : Number(netzTiefeWahl.value);
+let mitWelt = true;
+try { mitWelt = localStorage.getItem('lb-welt') !== '0'; } catch (e) { /* an */ }
+weltgeschehenZeigen(mitWelt);
 {
   const [id, m] = decodeURIComponent(location.hash.slice(1)).split('/');
   if (daten.byId.has(id)) root = daten.byId.get(id);
@@ -198,7 +211,9 @@ function baue() {
   }
   sim = null; netzKanten = null; netzHell = null; netzSterne = null;
   controls.autoRotate = false;
-  imBild = modus.netz ? netz(daten, root) : ansicht(daten, root, modus);
+  imBild = modus.netz ? netz(daten, root, netzTiefe) : ansicht(daten, root, modus);
+  if (modus.netz) document.getElementById('netz-anzahl').textContent =
+    t(imBild.gekuerzt ? '{n} Personen, gekürzt' : '{n} Personen', { n: imBild.length.toLocaleString(SPRACHE_EN ? 'en' : 'de') });
   kulisse.visible = !modus.netz;
   document.body.classList.toggle('netz', modus.netz);
   zeitAnsicht = zeitFuerAnsicht(imBild, zeit);
@@ -1215,6 +1230,27 @@ document.getElementById('modus-netz').addEventListener('click', () => {
   panel.schliesse();
   baue();
   ueberblick();
+});
+netzTiefeWahl.addEventListener('change', () => {
+  netzTiefe = netzTiefeWahl.value === 'alle' ? Infinity : Number(netzTiefeWahl.value);
+  try { localStorage.setItem('lb-netztiefe', netzTiefeWahl.value); } catch (e) { /* ohne Speicher */ }
+  if (!modus.netz) return;
+  stoppeAbspielen();
+  panel.schliesse();
+  baue();
+  ueberblick();
+});
+
+// Weltgeschehen ein/aus: allgemeine Ereignisse (Welt, Europa) im Lauftext, an den Zeitmarken und in der Einblendung
+const weltKnopf = document.getElementById('weltgeschehen');
+weltKnopf.setAttribute('aria-pressed', mitWelt);
+weltKnopf.addEventListener('click', () => {
+  mitWelt = !mitWelt;
+  weltKnopf.setAttribute('aria-pressed', mitWelt);
+  try { localStorage.setItem('lb-welt', mitWelt ? '1' : '0'); } catch (e) { /* ohne Speicher */ }
+  weltgeschehenZeigen(mitWelt);
+  zeitAnsicht = zeitFuerAnsicht(imBild, zeit);
+  baueZeitMarken();
 });
 
 // Suche über den ganzen Stammbaum; wer nicht in der Ansicht ist, wird Hauptperson

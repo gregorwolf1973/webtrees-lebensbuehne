@@ -111,19 +111,31 @@ export function ansicht(daten, root, { vorfahren = true, nachkommen = false, par
   return liste;
 }
 
-// Netz (wie die Ansicht „Lineage“): alle Personen, die über Eltern, Kinder oder Partner mit der Hauptperson verbunden
-// sind. Vorfahren, Nachkommen und Partner behalten ihre Rollen aus der Fächeransicht, die übrigen heißen „verwandt“.
-export function netz(daten, root) {
-  const liste = ansicht(daten, root, { vorfahren: true, nachkommen: true, partner: true });
-  const drin = new Set(liste);
+// Netz (wie die Ansicht „Lineage“): Personen, die über Eltern, Kinder oder Partner mit der Hauptperson verbunden sind,
+// höchstens `tiefe` Schritte entfernt und nie mehr als NETZ_HOECHSTENS, die nächsten zuerst – Stammbäume mit
+// Zehntausenden Personen überfordern sonst den Browser. Vorfahren, Nachkommen und Partner behalten ihre Rollen aus der
+// Fächeransicht, die übrigen heißen „verwandt“. `liste.gekuerzt` sagt, ob Verwandte weggelassen wurden.
+export const NETZ_HOECHSTENS = 2500;
+export function netz(daten, root, tiefe = Infinity) {
+  const abstand = new Map([[root, 0]]);
+  const liste = [root];
+  let gekuerzt = false;
   for (let i = 0; i < liste.length; i++) {
-    for (const y of [...liste[i].eltern, ...liste[i].kinderP, ...liste[i].partnerP]) {
-      if (drin.has(y)) continue;
-      drin.add(y);
-      Object.assign(y, { imBild: true, rolle: 'verwandt' });
+    const x = liste[i], d = abstand.get(x);
+    for (const y of [...x.eltern, ...x.kinderP, ...x.partnerP]) {
+      if (abstand.has(y)) continue;
+      if (d >= tiefe || liste.length >= NETZ_HOECHSTENS) { gekuerzt = true; continue; }
+      abstand.set(y, d + 1);
       liste.push(y);
     }
   }
+  ansicht(daten, root, { vorfahren: true, nachkommen: true, partner: true });
+  for (const p of daten.personen) {
+    if (!p.imBild) continue;
+    if (!abstand.has(p)) Object.assign(p, { imBild: false, rolle: null });
+  }
+  for (const y of liste) if (!y.imBild) Object.assign(y, { imBild: true, rolle: 'verwandt' });
+  liste.gekuerzt = gekuerzt;
   return liste;
 }
 
@@ -196,10 +208,15 @@ function passtRegion(r, z, p) {
     (r === 'rumaenien' && p.regionen.has('banat') && (z.bis ?? z.jahr) >= 1919);
 }
 
+// Allgemeines Welt- und Europageschehen (etwa der Kalte Krieg) lässt sich abschalten; regionale und eigene Einträge bleiben
+let mitWeltgeschehen = true;
+export function weltgeschehenZeigen(an) { mitWeltgeschehen = an; }
+
 // Gehört ein Eintrag zu einer Person? Welt und Europa immer, sonst über die Regionen ihrer Orte. Dorfgeschichte mit „orte“
 // (Namensteile wie „grossjetscha“) erscheint nur bei Personen, die dort gelebt haben.
 export function passtZeitgeschehen(z, p) {
   if (z.orte && !z.orte.some(o => p.orteText?.includes(ortSchluessel(o)))) return false;
+  if (!mitWeltgeschehen && !z.eigen) return z.regionen.some(r => r !== 'welt' && r !== 'europa' && passtRegion(r, z, p));
   return z.regionen.some(r => r === 'welt' || r === 'europa' || passtRegion(r, z, p));
 }
 

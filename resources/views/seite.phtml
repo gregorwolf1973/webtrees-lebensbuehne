@@ -56,6 +56,16 @@ $json = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HE
           <button id="modus-partner" aria-pressed="false"><?= e($t('Partner')) ?></button>
           <button id="modus-netz" aria-pressed="false" title="<?= e($t('Alle Verwandten als räumliches Netz: jede Familie ein Stern, die Eltern innen, die Kinder als Strahlen')) ?>"><?= e($t('Netz')) ?></button>
         </span>
+        <label class="netz-tiefe" title="<?= e($t('Wie viele Schritte über Eltern, Kinder und Partner das Netz von der Hauptperson aus reicht. Große Stammbäume brauchen sonst sehr viel Rechenleistung.')) ?>">
+          <?= e($t('Tiefe')) ?>
+          <select id="netz-tiefe">
+            <?php foreach ([2, 3, 4, 5, 6, 8, 10, 15] as $schritte) : ?>
+              <option value="<?= $schritte ?>"><?= $schritte ?></option>
+            <?php endforeach ?>
+            <option value="alle"><?= e($t('alle')) ?></option>
+          </select>
+          <span id="netz-anzahl" class="netz-anzahl"></span>
+        </label>
         <button id="spende-knopf" class="spende-knopf" aria-expanded="false" aria-controls="spende" title="<?= e($t('Die Lebensbühne unterstützen')) ?>">☕ <span class="spende-wort"><?= e($t('Unterstützen')) ?></span></button>
       </div>
     </div>
@@ -76,6 +86,7 @@ $json = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HE
     <button id="abspielen"><?= e($t('▶ Zeitreise')) ?></button>
     <label class="tempo" title="<?= e($t('Geschwindigkeit der Zeitreise')) ?>"><span class="lang"><?= e($t('Tempo')) ?></span> <input id="tempo" type="number" min="5" max="1200" step="5" value="60"> <span class="lang"><?= e($t('Jahre/min')) ?></span><span class="kurz"><?= e($t('J./min')) ?></span></label>
     <button id="kamera" class="schalter" aria-pressed="false" title="<?= e($t('Während der Zeitreise geht die Kamera mit und zeigt die gerade lebenden Personen')) ?>"><span class="lang"><?= e($t('Kamera folgt')) ?></span><span class="kurz"><?= e($t('Kamera')) ?></span></button>
+    <button id="weltgeschehen" class="schalter" aria-pressed="true" title="<?= e($t('Allgemeines Welt- und Europageschehen wie den Kalten Krieg zeigen. Ausgeschaltet bleiben nur Ereignisse aus den Regionen der Familie und eigene Einträge.')) ?>"><span class="lang"><?= e($t('Weltgeschehen')) ?></span><span class="kurz"><?= e($t('Welt')) ?></span></button>
     <div class="ton-box">
       <button id="ton" class="schalter" aria-expanded="false" aria-controls="ton-menue" title="<?= e($t('Lied und Geräusche einstellen')) ?>"><?= e($t('♪ Ton')) ?></button>
       <div id="ton-menue" class="ton-menue" hidden>

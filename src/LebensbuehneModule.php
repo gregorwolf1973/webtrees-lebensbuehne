@@ -98,7 +98,16 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
     use ModuleCustomTrait;
     use ModuleChartTrait;
 
-    public const string VERSION = '1.4.9';
+    public const string VERSION = '1.5.0';
+
+    // Oberflächenwörter des Moduls, die webtrees selbst in viele Sprachen übersetzt (deutscher Schlüssel => englische msgid)
+    private const array WEBTREES_WOERTER = [
+        'Geburt' => 'Birth', 'Tod' => 'Death', 'Hochzeit' => 'Marriage', 'Auswanderung' => 'Emigration',
+        'Einwanderung' => 'Immigration', 'Quelle' => 'Source', 'Schließen' => 'Close', 'Weiter' => 'Next',
+        'Zurück' => 'Previous', 'Vorfahren' => 'Ancestors', 'Nachkommen' => 'Descendants', 'Kind' => 'Child',
+        'Foto' => 'Photo', 'Dokument' => 'Document', 'Grab' => 'Tombstone', 'Zeitung' => 'Newspaper', 'Jahr' => 'Year',
+        'geboren' => 'born', 'verstorben' => 'died',
+    ];
 
     private const string ROUTE_SEITE   = 'lebensbuehne-seite';
     private const string ROUTE_DATEN   = 'lebensbuehne-daten';
@@ -296,7 +305,7 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
         $mitGeschichte = $this->geschichtenXrefs($tree, $user);
         $tiefen        = Webtrees::DATA_DIR . 'lebensbuehne/tiefen';
         $sprache       = $this->sprache();
-        $schluessel    = 'lebensbuehne-' . $tree->id() . '-' . $stufe . '-' . $sprache . '-' . ($stand->m ?? 0) . '-' . ($stand->a ?? 0) . '-' . self::VERSION
+        $schluessel    = 'lebensbuehne-' . $tree->id() . '-' . $stufe . '-' . $sprache . '-' . I18N::languageTag() . '-' . ($stand->m ?? 0) . '-' . ($stand->a ?? 0) . '-' . self::VERSION
             . '-' . md5(implode(',', array_keys($mitGeschichte)) . '|' . (is_dir($tiefen) ? (string) filemtime($tiefen) : ''));
 
         $json = Registry::cache()->file()->remember($schluessel, function () use ($tree, $stufe, $mitGeschichte, $sprache): string {
@@ -640,8 +649,16 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
             return [];
         }
         $texte = json_decode((string) file_get_contents($pfad), true);
+        $texte = is_array($texte) ? array_filter($texte, 'is_string') : [];
 
-        return is_array($texte) ? array_filter($texte, 'is_string') : [];
+        // Ohne eigene Übersetzung des Moduls (etwa Französisch, Schwedisch) übernehmen gängige Wörter die von webtrees
+        if ($sprache === 'en' && !str_starts_with(I18N::languageTag(), 'en')) {
+            foreach (self::WEBTREES_WOERTER as $de => $englisch) {
+                $texte[$de] = I18N::translate($englisch);
+            }
+        }
+
+        return $texte;
     }
 
     private function musikDatei(): ?string
