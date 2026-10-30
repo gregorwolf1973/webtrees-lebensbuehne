@@ -193,6 +193,15 @@ try {
   else netzTiefeWahl.value = 'alle';
 } catch (e) { netzTiefeWahl.value = 'alle'; }
 netzTiefe = netzTiefeWahl.value === 'alle' ? Infinity : Number(netzTiefeWahl.value);
+// Generationen des Fächers (von der Hauptperson aus); große Stammbäume brauchen sonst sehr viel Rechenleistung
+const generationenWahl = document.getElementById('generationen');
+// ohne gemerkte Wahl: kleine Stammbäume ganz, große mit 5 Generationen (so lädt auch ein Baum mit Zehntausenden Personen)
+const standardGenerationen = daten.personen.length <= 1500 ? 'alle' : '5';
+try {
+  const w = localStorage.getItem('lb-generationen');
+  generationenWahl.value = w && [...generationenWahl.options].some(o => o.value === w) ? w : standardGenerationen;
+} catch (e) { generationenWahl.value = standardGenerationen; }
+let generationen = generationenWahl.value === 'alle' ? Infinity : Number(generationenWahl.value);
 let mitWelt = true;
 try { mitWelt = localStorage.getItem('lb-welt') !== '0'; } catch (e) { /* an */ }
 weltgeschehenZeigen(mitWelt);
@@ -211,7 +220,9 @@ function baue() {
   }
   sim = null; netzKanten = null; netzHell = null; netzSterne = null;
   controls.autoRotate = false;
-  imBild = modus.netz ? netz(daten, root, netzTiefe) : ansicht(daten, root, modus);
+  imBild = modus.netz ? netz(daten, root, netzTiefe) : ansicht(daten, root, { ...modus, generationen });
+  if (!modus.netz) document.getElementById('faecher-anzahl').textContent =
+    t(imBild.gekuerzt ? '{n} Personen, weitere Generationen ausgeblendet' : '{n} Personen', { n: imBild.length.toLocaleString(SPRACHE_EN ? 'en' : 'de') });
   if (modus.netz) document.getElementById('netz-anzahl').textContent =
     t(imBild.gekuerzt ? '{n} Personen, gekürzt' : '{n} Personen', { n: imBild.length.toLocaleString(SPRACHE_EN ? 'en' : 'de') });
   kulisse.visible = !modus.netz;
@@ -1227,6 +1238,15 @@ for (const [knopf, schluessel, anderer] of [['modus-vorfahren', 'vorfahren', 'na
 document.getElementById('modus-netz').addEventListener('click', () => {
   stoppeAbspielen();
   modus.netz = !modus.netz;
+  panel.schliesse();
+  baue();
+  ueberblick();
+});
+generationenWahl.addEventListener('change', () => {
+  generationen = generationenWahl.value === 'alle' ? Infinity : Number(generationenWahl.value);
+  try { localStorage.setItem('lb-generationen', generationenWahl.value); } catch (e) { /* ohne Speicher */ }
+  if (modus.netz) return;
+  stoppeAbspielen();
   panel.schliesse();
   baue();
   ueberblick();

@@ -67,7 +67,8 @@ export async function ladeDaten() {
 let hauptperson = null;
 
 // Personen der Ansicht: die Hauptperson, ihre Vorfahren und/oder Nachkommen; setzt die Ansichtsfelder an den Personen
-export function ansicht(daten, root, { vorfahren = true, nachkommen = false, partner = false } = {}) {
+// `generationen` begrenzt, wie weit der Fächer von der Hauptperson (und vom Partner) aus reicht; `liste.gekuerzt` sagt, ob dadurch Personen fehlen
+export function ansicht(daten, root, { vorfahren = true, nachkommen = false, partner = false, generationen = Infinity } = {}) {
   for (const p of daten.personen) {
     p.imBild = false; p.rolle = null; p.generation = null; p.seite = null; p.partnerseite = false; p.bezug = null;
     p.sosa = null; p.zumStart = null; p.mannesstamm = false; p.zweig = null;
@@ -75,6 +76,7 @@ export function ansicht(daten, root, { vorfahren = true, nachkommen = false, par
   hauptperson = root;
   Object.assign(root, { imBild: true, rolle: 'start', generation: 0, seite: 'start', sosa: 1 });
   const liste = [root];
+  let gekuerzt = false;
   // Vorfahren einer Person (Hauptperson oder Partner); bei Partnern zählt die Verwandtschaft von ihnen aus
   const vorfahrenVon = (start, partnerseite) => {
     const reihe = [start];
@@ -82,6 +84,7 @@ export function ansicht(daten, root, { vorfahren = true, nachkommen = false, par
       const x = reihe.shift();
       [[x.vaterP, 0], [x.mutterP, 1]].forEach(([e, add]) => {
         if (!e || e.imBild) return;   // Ahnenschwund: jede Person nur einmal
+        if (x.generation >= generationen) { gekuerzt = true; return; }
         Object.assign(e, { imBild: true, rolle: 'vorfahr', generation: x.generation + 1, sosa: x.sosa * 2 + add, zumStart: x,
           seite: x === start ? (add ? 'mutter' : 'vater') : x.seite, partnerseite, bezug: partnerseite ? start : null,
           mannesstamm: !partnerseite && add === 0 && (x === start || x.mannesstamm) });
@@ -102,12 +105,14 @@ export function ansicht(daten, root, { vorfahren = true, nachkommen = false, par
       const x = reihe.shift();
       [...x.kinderP].sort((a, b) => a.jahrE - b.jahrE).forEach((c, i) => {
         if (c.imBild) return;
+        if ((x.rolle === 'partner' ? 0 : x.generation) >= generationen) { gekuerzt = true; return; }
         Object.assign(c, { imBild: true, rolle: 'nachkomme', generation: (x.rolle === 'partner' ? 0 : x.generation) + 1, zumStart: x, seite: 'nachkomme',
           zweig: x === root ? i : x.zweig });
         liste.push(c); reihe.push(c);
       });
     }
   }
+  liste.gekuerzt = gekuerzt;
   return liste;
 }
 

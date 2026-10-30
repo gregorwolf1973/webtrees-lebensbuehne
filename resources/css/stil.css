@@ -466,6 +466,9 @@ body[data-panel="voll"] .leiste-oben { right: min(580px, 100vw); }   /* Kopfleis
 .im-netz { opacity: 0.55; }
 .legende-netz { display: none; }
 body.netz .legende:not(.legende-netz) { display: none; }
+.faecher-tiefe { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-2); }
+body.netz .faecher-tiefe { display: none; }
+.faecher-tiefe select { font: inherit; }
 .netz-tiefe { display: none; align-items: center; gap: 6px; font-size: 13px; color: var(--text-2); }
 body.netz .netz-tiefe { display: inline-flex; }
 .netz-tiefe select { font: inherit; }
