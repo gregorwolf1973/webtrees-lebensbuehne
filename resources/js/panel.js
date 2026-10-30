@@ -539,6 +539,9 @@ class Lightbox {
   constructor() {
     this.el = document.createElement('div');
     this.el.className = 'lightbox';
+    this.el.setAttribute('role', 'dialog');
+    this.el.setAttribute('aria-modal', 'true');
+    this.el.setAttribute('aria-label', t('Bild'));
     this.el.hidden = true;
     this.el.innerHTML = `<button class="lb-zu" aria-label="${t('Schließen')}">✕</button><button class="lb-zurueck" aria-label="${t('Zurück')}">‹</button>
       <figure><img alt=""><figcaption></figcaption></figure><button class="lb-vor" aria-label="${t('Weiter')}">›</button>`;
@@ -549,15 +552,73 @@ class Lightbox {
     this.el.addEventListener('click', ev => { if (ev.target === this.el) this.zu(); });
     addEventListener('keydown', ev => {
       if (this.el.hidden) return;
+      if (ev.ctrlKey || ev.metaKey || ev.altKey) return;   // Strg/Cmd + / − / 0 bleibt der Browser-Zoom
       if (ev.key === 'Escape') { ev.preventDefault(); this.zu(); }
       if (ev.key === 'ArrowRight') this.gehe(1);
       if (ev.key === 'ArrowLeft') this.gehe(-1);
+      if (ev.key === '+' || ev.key === '=') this.zoomUm(1.25);
+      if (ev.key === '-') this.zoomUm(0.8);
+      if (ev.key === '0') this.zoomZurueck();
     });
+    this.zoomEinrichten();
   }
-  zeige(bilder, n) { this.bilder = bilder; this.n = n; this.el.hidden = false; this.male(); }
+  // Zoom: Mausrad (zum Mauszeiger hin), Ziehen verschiebt, Doppelklick vergrößert oder setzt zurück
+  zoomEinrichten() {
+    const img = this.el.querySelector('img');
+    img.title = t('Mausrad: zoomen · Ziehen: verschieben · Doppelklick: vergrößern');
+    this.s = 1; this.tx = 0; this.ty = 0;
+    this.el.addEventListener('wheel', ev => {
+      if (ev.target.closest('button')) return;
+      ev.preventDefault();
+      // Pinch auf dem Touchpad kommt als Strg + Mausrad mit kleinen Werten
+      const empfindlich = ev.ctrlKey ? 0.01 : ev.deltaMode === 1 ? 0.05 : 0.0015;
+      this.zoomUm(Math.exp(-ev.deltaY * empfindlich), ev.clientX, ev.clientY);
+    }, { passive: false });
+    img.addEventListener('dblclick', ev => {
+      if (this.s > 1.01) this.zoomZurueck(); else this.zoomUm(2.5, ev.clientX, ev.clientY);
+    });
+    let zieht = null;
+    img.addEventListener('pointerdown', ev => {
+      if (this.s <= 1.01 || ev.button !== 0) return;
+      zieht = { x: ev.clientX, y: ev.clientY, tx: this.tx, ty: this.ty };
+      img.setPointerCapture(ev.pointerId);
+      this.el.classList.add('zieht');
+      ev.preventDefault();
+    });
+    img.addEventListener('pointermove', ev => {
+      if (!zieht) return;
+      this.tx = zieht.tx + ev.clientX - zieht.x; this.ty = zieht.ty + ev.clientY - zieht.y;
+      this.anwenden();
+    });
+    const los = () => { zieht = null; this.el.classList.remove('zieht'); };
+    img.addEventListener('pointerup', los);
+    img.addEventListener('pointercancel', los);
+  }
+  anwenden() {
+    const img = this.el.querySelector('img');
+    // Verschiebung begrenzen: mindestens 80 px des Bildes bleiben im Fenster
+    const gx = img.offsetWidth * this.s / 2 + innerWidth / 2 - 80, gy = img.offsetHeight * this.s / 2 + innerHeight / 2 - 80;
+    this.tx = Math.max(-gx, Math.min(gx, this.tx)); this.ty = Math.max(-gy, Math.min(gy, this.ty));
+    img.style.transform = this.s === 1 ? '' : `translate(${this.tx}px, ${this.ty}px) scale(${this.s})`;
+    this.el.classList.toggle('gezoomt', this.s > 1.01);
+  }
+  // Faktor f um den Punkt (cx, cy) in Bildschirmkoordinaten (ohne Punkt: um die Bildmitte)
+  zoomUm(f, cx, cy) {
+    const img = this.el.querySelector('img'), r = img.getBoundingClientRect();
+    const mx = r.left + r.width / 2 - this.tx, my = r.top + r.height / 2 - this.ty;   // Mitte ohne Verschiebung
+    const s = Math.min(12, Math.max(1, this.s * f)), k = s / this.s;
+    const px = (cx ?? mx) - mx, py = (cy ?? my) - my;
+    this.tx = px - (px - this.tx) * k; this.ty = py - (py - this.ty) * k;
+    this.s = s;
+    if (s === 1) { this.tx = 0; this.ty = 0; }
+    this.anwenden();
+  }
+  zoomZurueck() { this.s = 1; this.tx = 0; this.ty = 0; this.anwenden(); }
+  zeige(bilder, n) { this.bilder = bilder; this.n = n; this.el.hidden = false; this.male(); this.el.querySelector('.lb-zu').focus({ preventScroll: true }); }
   gehe(d) { this.n = (this.n + d + this.bilder.length) % this.bilder.length; this.male(); }
   male() {
     const b = this.bilder[this.n];
+    this.zoomZurueck();
     this.el.querySelector('img').src = b.src;
     const titel = /\.(jpe?g|png|gif|tiff?|webp)$/i.test(b.titel) ? { foto: t('Foto'), urkunde: t('Dokument'), grab: t('Grab'), ort: t('Ortsbild'), zeitung: t('Zeitung') }[b.art] : b.titel;
     this.el.querySelector('figcaption').textContent = `${titel} · ${this.n + 1} / ${this.bilder.length}`;
