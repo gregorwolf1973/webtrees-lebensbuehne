@@ -279,7 +279,8 @@ function baue() {
     const mitte = a.clone().lerp(b, 0.5);
     mitte.add(new THREE.Vector3(mitte.x, mitte.y, 0).normalize().multiplyScalar(0.8));
     const kurve = new THREE.QuadraticBezierCurve3(a.clone(), mitte, b.clone());
-    const mat = new THREE.MeshBasicMaterial({ color: farbe(p), transparent: true, opacity: 0.45 });
+    // ohne Tiefe schreiben: die Karten (renderOrder 1) liegen immer darüber, auch wo die Röhre im Raum davor verläuft
+    const mat = new THREE.MeshBasicMaterial({ color: farbe(p), transparent: true, opacity: 0.45, depthWrite: false });
     const rohr = new THREE.Mesh(new THREE.TubeGeometry(kurve, 24, p.mannesstamm ? 0.06 : 0.035, 6, false), mat);
     rohr.userData = { von: p.zumStart, zu: p };
     gruppe.add(rohr);
