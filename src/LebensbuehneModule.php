@@ -105,7 +105,7 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
     use ModuleChartTrait;
     use ModuleGlobalTrait;
 
-    public const string VERSION = '1.9.2';
+    public const string VERSION = '1.9.3';
 
     // Oberflächenwörter des Moduls, die webtrees selbst in viele Sprachen übersetzt (deutscher Schlüssel => englische msgid)
     private const array WEBTREES_WOERTER = [

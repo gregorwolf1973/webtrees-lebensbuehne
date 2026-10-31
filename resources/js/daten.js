@@ -291,7 +291,8 @@ function passtRegion(r, z, p) {
     (r === 'rumaenien' && p.regionen.has('banat') && (z.bis ?? z.jahr) >= 1919);
 }
 
-// Allgemeines Welt- und Europageschehen (etwa der Kalte Krieg) lässt sich abschalten; regionale und eigene Einträge bleiben
+// Allgemeines Welt- und Europageschehen (etwa der Kalte Krieg) lässt sich abschalten; regionale und eigene Einträge bleiben,
+// nur die Bildgeschichte erzählt dann ganz ohne Zeitgeschehen
 let mitWeltgeschehen = true;
 export function weltgeschehenZeigen(an) { mitWeltgeschehen = an; }
 
@@ -526,8 +527,8 @@ export function kapitel(p, alleZeit) {
     }
     k.push({ typ: 'ereignis', art: e.art, jahr: e.jahr, titel: e.titel, datum: e.datum, text, ort: e.ort, bild: null });
   }
-  // Zeitgeschehen: regionale Ereignisse vorziehen, höchstens acht
-  let zg = zeitgeschehenFuer(p, alleZeit);
+  // Zeitgeschehen: regionale Ereignisse vorziehen, höchstens acht; ohne Weltgeschehen keins
+  let zg = mitWeltgeschehen ? zeitgeschehenFuer(p, alleZeit) : [];
   const allgemein = z => z.regionen.includes('europa') || z.regionen.includes('welt') ? 1 : 0;
   if (zg.length > 8) zg = [...zg].sort((a, b) => allgemein(a) - allgemein(b)).slice(0, 8);
   for (const z of zg) {
