@@ -31,8 +31,9 @@ class Atlas {
     this.leinwand = document.createElement('canvas');
     this.leinwand.width = this.W;
     this.leinwand.height = this.H;
+    // bewusst ohne sRGB-Kennung: Mipmaps einer sRGB-Textur rechnen manche Treiber auf dem Prozessor (Ruckeln beim
+    // Zoomen); die Umrechnung in lineare Farben macht der Shader (zuLinear)
     this.tex = new THREE.CanvasTexture(this.leinwand);
-    this.tex.colorSpace = THREE.SRGBColorSpace;
     this.tex.flipY = false;
     this.tex.anisotropy = 4;
     this.mitMip = mitMip;
@@ -105,9 +106,11 @@ const FRAGMENT = `
   varying vec2 vLicht;
   varying float vStufe;
   #include <fog_pars_fragment>
+  vec3 zuLinear(vec3 c) { return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(0.04045, c)); }
   void main() {
     vec4 a = texture2D(klein, vUv), b = texture2D(mittel, vUv), c = texture2D(gross, vUv);
     vec4 f = vStufe < 0.5 ? a : vStufe < 1.5 ? b : c;
+    f.rgb = zuLinear(f.rgb);
     f.rgb *= vLicht.y;
     f.a *= vLicht.x;
     if (f.a < 0.01) discard;
@@ -292,14 +295,20 @@ export class Kartenstapel {
     if (this.laden.has(src) || this.laden.size >= LADEN_GLEICHZEITIG) return;
     this.laden.add(src);
     const img = new Image();
+    let erledigt = false;
     const fertig = ok => {
+      if (erledigt) return;
+      erledigt = true;
       this.laden.delete(src);
       this.bilder.set(src, ok ? img : null);
       while (this.bilder.size > BILDER_MAX) this.bilder.delete(this.bilder.keys().next().value);
       this.neuGeladen = true;
     };
-    img.onload = () => fertig(true);
+    // erst nach dem Entpacken im Hintergrund melden – sonst entpackt drawImage das Bild auf dem Hauptfaden;
+    // hängt decode() einmal, gibt das Zeitlimit den Ladeplatz trotzdem frei
     img.onerror = () => fertig(false);
+    img.onload = () => img.decode().then(() => fertig(true), () => fertig(true));
+    setTimeout(() => fertig(img.complete && img.naturalWidth > 0), 20000);
     img.src = src;
   }
 
