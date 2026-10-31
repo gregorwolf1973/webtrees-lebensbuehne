@@ -579,8 +579,10 @@ function aktualisiereDarstellung() {
     }
     // Lichthof erst anlegen, wenn er gebraucht wird
     if (hof > 0.01 && !k.hof) {
-      k.hof = new THREE.Sprite(new THREE.SpriteMaterial({ map: hofTextur, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0 }));
+      k.hof = new THREE.Sprite(new THREE.SpriteMaterial({ map: hofTextur, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0,
+        polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -8 }));   // gleiche Tiefe wie die Karte: leicht nach vorn, sonst flimmert es
       k.hof.position.copy(p.pos);
+      k.hof.renderOrder = 2;   // über der Karte, damit sie aufleuchtet (die Karten zeichnet karten.js mit renderOrder 1)
       gruppe.add(k.hof);
     }
     if (k.hof) {

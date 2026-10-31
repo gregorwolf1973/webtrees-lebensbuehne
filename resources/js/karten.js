@@ -196,7 +196,8 @@ export class Kartenstapel {
       kugel.center.copy(k.p.pos);
       kugel.radius = k.basis.y * k.gross * 0.65;
       k.sichtbar = k.tiefe > 0 && this.frustum.intersectsSphere(kugel);
-      k.px = k.sichtbar ? k.basis.y * k.gross * f / k.tiefe : 0;
+      // ohne Vergrößerung (Aufleuchten bei Geburt, Maus): sonst wechselt die Stufe mitten in der Animation und die Karte blinkt
+      k.px = k.sichtbar ? k.basis.y * f / k.tiefe : 0;
       let w = 0;
       for (let s = STUFEN.length - 1; s > 0; s--) if (k.px >= STUFEN[s].ab * (k.wunsch >= s ? RUECK : 1)) { w = s; break; }
       k.wunsch = w;
