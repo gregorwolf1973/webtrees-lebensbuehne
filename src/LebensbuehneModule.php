@@ -105,7 +105,7 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
     use ModuleChartTrait;
     use ModuleGlobalTrait;
 
-    public const string VERSION = '1.8.0';
+    public const string VERSION = '1.9.0';
 
     // Oberflächenwörter des Moduls, die webtrees selbst in viele Sprachen übersetzt (deutscher Schlüssel => englische msgid)
     private const array WEBTREES_WOERTER = [
@@ -526,9 +526,14 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
         if ($person === null || !$person->canShow()) {
             throw new HttpNotFoundException();
         }
-        // Erzählung in der Sprache der Oberfläche, wenn es sie gibt (<Baum>.en.json), sonst die deutsche
+        // Erzählung in der Sprache der Oberfläche, wenn es sie gibt (<Baum>.<sprache>.json), sonst die englische
+        // (für andere Sprachen als Deutsch), sonst die deutsche
         $sprache      = $this->sprache();
         $uebersetzt   = $sprache !== 'de' ? $this->erzaehlungen($tree, $sprache) : [];
+        if ($sprache !== 'de' && $sprache !== 'en' && !is_string($uebersetzt[$xref] ?? null)) {
+            $sprache    = 'en';
+            $uebersetzt = $this->erzaehlungen($tree, 'en');
+        }
         $eigeneSprache = is_string($uebersetzt[$xref] ?? null);
         $erzaehlungen = $eigeneSprache ? $uebersetzt : $this->erzaehlungen($tree);
         $antwort      = [

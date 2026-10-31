@@ -240,6 +240,7 @@ function baue() {
   root.pos = new THREE.Vector3(0, 0, zVon(root.jahrE));
   if (modus.netz) netzStart();
   else {
+    for (const p of imBild) if (p !== root) p.pos = null;   // keine Lage aus einer früheren Ansicht übernehmen
     // mit Partner: eigene Vorfahren links, die des Partners rechts daneben
     const partner = imBild.filter(p => p.rolle === 'partner');
     if (modus.vorfahren || modus.geschwister) verteile(root, -WINKEL, partner.length ? -0.12 : WINKEL, elternIm);
@@ -257,7 +258,9 @@ function baue() {
       const enden = geschw.map(x => blaetter(x, geschwFolge)), summe = enden.reduce((a, b) => a + b, 0);
       let von = -WINKEL;
       geschw.forEach((x, i) => { const bis = von + 2 * WINKEL * enden[i] / summe; verteile(x, von, bis, geschwFolge, 1); von = bis; });
+      seitenlinienSetzen();
     }
+    for (const p of imBild) if (!p.pos) p.pos = (p.zumStart?.pos ?? root.pos).clone().add(new THREE.Vector3(0.8, 0.8, 0));   // Rückfall
     entzerren(imBild.filter(p => p !== root));
   }
 
@@ -278,7 +281,8 @@ function baue() {
   });
 
   if (modus.netz) netzLinienBauen();
-  const nachGeburt = [...imBild].filter(p => !modus.netz || p.rolle === 'vorfahr' || p.rolle === 'start')
+  // die direkte Linie läuft nie über Seitenverwandte (sonst ohne Auswahl über den ältesten Großonkel)
+  const nachGeburt = [...imBild].filter(p => modus.netz ? p.rolle === 'vorfahr' || p.rolle === 'start' : p.rolle !== 'seiten' && p.rolle !== 'angeheiratet')
     .sort((a, b) => (a.geburt ?? a.jahrE) - (b.geburt ?? b.jahrE) || b.mannesstamm - a.mannesstamm);
   linienBasis = modus.vorfahren || modus.partner || modus.geschwister || modus.netz ? nachGeburt[0] : nachGeburt[nachGeburt.length - 1];
   const jahre = imBild.map(p => p.jahrE);
@@ -326,16 +330,48 @@ const sternTextur = (() => {
 })();
 
 // Familien aus den Eltern der Kinder, dazu Paare ohne gemeinsame Kinder
+// Seitenlinien (Geschwister der Vorfahren und des Partners): neben ihrem Vorfahren auf dessen Ring, ältere links, jüngere
+// rechts; Partner und Nachkommen leicht nach außen versetzt – die Tiefe (Geburtsjahr) trennt die Generationen
+function seitenlinienSetzen() {
+  const polar = p => ({ r: Math.hypot(p.pos.x, p.pos.y / 0.82), w: Math.atan2(p.pos.x, p.pos.y / 0.82) });
+  const setze = (p, r, w) => {
+    w = Math.max(-WINKEL, Math.min(WINKEL, w));
+    p.pos = new THREE.Vector3(Math.sin(w) * r, Math.cos(w) * r * 0.82, zVon(p.jahrE));
+  };
+  const zweig = (x, r, w, schritt) => {
+    x.partnerP.filter(y => y.rolle === 'angeheiratet' && y.zumStart === x)
+      .forEach((y, i) => setze(y, r + 0.25 * RING_ABSTAND, w + (i + 1) * schritt * 0.5));
+    const kinder = x.kinderP.filter(c => c.rolle === 'seiten' && c.zumStart === x);
+    const rk = r + 0.55 * RING_ABSTAND, sk = Math.min(0.35, 1.3 / rk);
+    kinder.forEach((c, i) => { const wc = w + (i - (kinder.length - 1) / 2) * sk; setze(c, rk, wc); zweig(c, rk, wc, sk); });
+  };
+  for (const a of imBild.filter(x => x.pos && (x.rolle === 'vorfahr' || x.rolle === 'partner'))) {
+    const geschw = imBild.filter(s => s.kern === a);
+    if (!geschw.length) continue;
+    const { r, w } = polar(a), schritt = Math.min(0.45, 1.5 / Math.max(r, 1));
+    // ältere links (die älteste ganz außen), jüngere rechts; die Reihe als Ganzes in den Fächer schieben
+    const aelter = geschw.filter(s => s.jahrE < a.jahrE), juenger = geschw.filter(s => s.jahrE >= a.jahrE);
+    const winkel = [...aelter.map((s, i) => w - (aelter.length - i) * schritt), ...juenger.map((s, i) => w + (i + 1) * schritt)];
+    const verschub = Math.max(0, -WINKEL - Math.min(...winkel)) - Math.max(0, Math.max(...winkel) - WINKEL);
+    [...aelter, ...juenger].forEach((s, i) => {
+      setze(s, r, winkel[i] + verschub);
+      zweig(s, r, polar(s).w, schritt);
+    });
+  }
+}
+
 // Karten aus derselben Zeit, die im Fächer aufeinanderliegen – etwa eingeheiratete Vorfahren ohne eigene Vorfahren
 // auf den inneren Ringen –, auf ihrem Ring auseinanderschieben, bis eine Kartenbreite dazwischen ist; nur der Winkel ändert sich
 function entzerren(menge) {
   const ABSTAND = 2.6, ZEIT = 1.5;   // Kartenbreite 2,3, dazu etwas Luft; Karten mit mehr als etwa 6 Jahren Unterschied liegen ohnehin hintereinander
-  const k = menge.map(p => ({ p, r: Math.hypot(p.pos.x, p.pos.y / 0.82), w: Math.atan2(p.pos.x, p.pos.y / 0.82) }));
+  // nach Tiefe sortiert: nur Karten aus derselben Zeit werden verglichen (die Tiefe ändert sich hier nicht)
+  const k = menge.map(p => ({ p, r: Math.max(0.3, Math.hypot(p.pos.x, p.pos.y / 0.82)), w: Math.atan2(p.pos.x, p.pos.y / 0.82) }))
+    .sort((a, b) => a.p.pos.z - b.p.pos.z);
   for (let runde = 0; runde < 60; runde++) {
     let bewegt = false;
     for (let i = 0; i < k.length; i++) for (let j = i + 1; j < k.length; j++) {
       const a = k[i], b = k[j];
-      if (Math.abs(a.p.pos.z - b.p.pos.z) >= ZEIT) continue;
+      if (b.p.pos.z - a.p.pos.z >= ZEIT) break;
       const d = Math.hypot(a.p.pos.x - b.p.pos.x, a.p.pos.y - b.p.pos.y);
       if (d >= ABSTAND) continue;
       const schub = (ABSTAND - d) / Math.min(a.r, b.r) / 2 + 0.002;

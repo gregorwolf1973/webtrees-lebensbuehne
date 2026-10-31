@@ -20,7 +20,7 @@
   "Erster Weltkrieg (MG)": "Eerste Wereldoorlog (machinegeweren)",
   "Zweiter Weltkrieg (Stukas)": "Tweede Wereldoorlog (duikbommenwerpers)",
   "Luftalarm, Bomben": "Luchtalarm, bommen",
-  "Schießereien": "Schoten",
+  "Schießereien": "Schietpartijen",
   "Totenglocken im Krieg": "Dodenklokken in oorlogstijd",
   "Marschtritte": "Marspassen",
   "Hunger und Not": "Honger en ontbering",
@@ -149,5 +149,8 @@
   "Bilder/s": "fps",
   "B/s": "fps",
   "max": "max",
-  "Bilder pro Sekunde für Zeitreise, Drehen und Netz. Weniger entlastet Grafikkarte und Akku.": "Beelden per seconde voor tijdreis, draaien en netwerk. Lagere waarden ontlasten de grafische kaart en de accu."
+  "Bilder pro Sekunde für Zeitreise, Drehen und Netz. Weniger entlastet Grafikkarte und Akku.": "Beelden per seconde voor tijdreis, draaien en netwerk. Lagere waarden ontlasten de grafische kaart en de accu.",
+  "Geschwister": "Broers en zussen",
+  "Partner der Geschwister einblenden": "Partners van broers en zussen weergeven",
+  "Geschwister der Hauptperson mit Halbgeschwistern (gestrichelt), Nichten und Neffen; mit „Vorfahren“ auch Onkel, Tanten, Großonkel und Cousins; „Partner“ blendet die Partner der Geschwister ein": "Broers en zussen van de hoofdpersoon, inclusief halfbroers en halfzussen (gestreepte rand) en neefjes en nichtjes; met „Voorouders” ook ooms, tantes, oudooms en neven en nichten; „Partner” toont de partners van broers en zussen"
 }

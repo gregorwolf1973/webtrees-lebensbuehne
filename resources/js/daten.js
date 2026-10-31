@@ -71,7 +71,7 @@ let hauptperson = null;
 export function ansicht(daten, root, { vorfahren = true, nachkommen = false, partner = false, geschwister = false, generationen = Infinity } = {}) {
   for (const p of daten.personen) {
     p.imBild = false; p.rolle = null; p.generation = null; p.seite = null; p.partnerseite = false; p.bezug = null;
-    p.sosa = null; p.zumStart = null; p.mannesstamm = false; p.zweig = null; p.halb = false;
+    p.sosa = null; p.zumStart = null; p.mannesstamm = false; p.zweig = null; p.halb = false; p.k = null; p.kern = null;
   }
   hauptperson = root;
   Object.assign(root, { imBild: true, rolle: 'start', generation: 0, seite: 'start', sosa: 1 });
@@ -135,6 +135,46 @@ export function ansicht(daten, root, { vorfahren = true, nachkommen = false, par
       }
     }
   }
+  // Mit Vorfahren: auch die Geschwister aller Vorfahren (Onkel, Tanten, Großonkel …) und des Partners samt dessen
+  // Vorfahren, ihre Nachkommen bis zur Generation der Hauptperson (Cousins), mit „Partner“ auch ihre Partner.
+  // k = Generation des Vorfahren, an dem die Seitenlinie hängt; generation zählt wie überall von der Hauptperson aus.
+  // Läuft nach den Nachkommen (eigene Kinder bleiben Nachkommen) und höchstens SEITEN_HOECHSTENS, die nächsten zuerst.
+  const seitenlinien = () => {
+    let frei = SEITEN_HOECHSTENS;
+    const dazu = (x, werte) => {
+      if (frei <= 0) { gekuerzt = true; return false; }
+      Object.assign(x, werte);
+      liste.push(x);
+      frei--;
+      return true;
+    };
+    for (const a of liste.filter(x => (vorfahren && x.rolle === 'vorfahr') || x.rolle === 'partner')) {
+      const geschw = [...new Set([a.vaterP, a.mutterP].filter(Boolean).flatMap(e => e.kinderP))]
+        .filter(c => c !== a && !c.imBild).sort((x, y) => x.jahrE - y.jahrE);
+      const bezug = a.rolle === 'partner' ? a : a.bezug;
+      for (const s of geschw) {
+        if (s.imBild) continue;   // inzwischen schon als Kind oder Partner eines Geschwisters dabei
+        const halb = !!(a.vaterP && a.mutterP) && !(s.vaterP === a.vaterP && s.mutterP === a.mutterP);
+        const gemeinsam = [a.vaterP, a.mutterP].find(e => e && e.imBild && (s.vaterP === e || s.mutterP === e));
+        if (!dazu(s, { imBild: true, rolle: 'seiten', generation: a.generation, k: a.generation, seite: a.seite, partnerseite: a.partnerseite,
+          bezug, zumStart: gemeinsam ?? a, halb, kern: a })) return;
+        if (partner) for (const pa of s.partnerP) {
+          if (pa.imBild) continue;
+          if (!dazu(pa, { imBild: true, rolle: 'angeheiratet', generation: s.generation, k: s.k, seite: s.seite, partnerseite: s.partnerseite, bezug, zumStart: s })) return;
+        }
+        const reihe = [s];
+        while (reihe.length) {
+          const x = reihe.shift();
+          if (x.generation <= 0) continue;
+          for (const c of [...x.kinderP].sort((y, z) => y.jahrE - z.jahrE)) {
+            if (c.imBild) continue;
+            if (!dazu(c, { imBild: true, rolle: 'seiten', generation: x.generation - 1, k: s.k, seite: s.seite, partnerseite: s.partnerseite, bezug, zumStart: x })) return;
+            reihe.push(c);
+          }
+        }
+      }
+    }
+  };
   if (nachkommen) {
     const reihe = [root];
     while (reihe.length) {
@@ -148,6 +188,7 @@ export function ansicht(daten, root, { vorfahren = true, nachkommen = false, par
       });
     }
   }
+  if (geschwister) seitenlinien();
   liste.gekuerzt = gekuerzt;
   return liste;
 }
@@ -157,6 +198,7 @@ export function ansicht(daten, root, { vorfahren = true, nachkommen = false, par
 // Zehntausenden Personen überfordern sonst den Browser. Vorfahren, Nachkommen und Partner behalten ihre Rollen aus der
 // Fächeransicht, die übrigen heißen „verwandt“. `liste.gekuerzt` sagt, ob Verwandte weggelassen wurden.
 export const NETZ_HOECHSTENS = 2500;
+export const SEITEN_HOECHSTENS = 1500;   // Seitenverwandte in der Geschwister-Ansicht
 export function netz(daten, root, tiefe = Infinity) {
   const abstand = new Map([[root, 0]]);
   const liste = [root];
@@ -304,6 +346,17 @@ function verwandtschaftEigen(p) {
     const gross = s => s[0].toUpperCase() + s.slice(1);
     if (p.rolle === 'geschwister') return (p.halb ? 'Half-' : '') + (p.halb ? (m ? 'brother' : w ? 'sister' : 'sibling') : (m ? 'Brother' : w ? 'Sister' : 'Sibling'));
     if (p.rolle === 'schwager') return m ? 'Brother-in-law' : w ? 'Sister-in-law' : 'Sibling-in-law';
+    if (p.rolle === 'seiten' || p.rolle === 'angeheiratet') {
+      // Seitenlinien: Geschwister von Vorfahren und deren Nachkommen (Cousin-Zählung mit „removed“)
+      const k = p.k, grad = g === 0 ? k : k - g + 1, ord = n => ['first', 'second', 'third'][n - 1] ?? `${n}th`;
+      const mal = n => n === 1 ? 'once' : n === 2 ? 'twice' : `${n} times`;
+      let wort;
+      if (k === 0) wort = m ? 'Brother' : w ? 'Sister' : 'Sibling';
+      else if (g > 0 && grad === 1) wort = gross(great(g - 1) + (m ? 'uncle' : w ? 'aunt' : 'uncle/aunt'));
+      else wort = gross(`${ord(g === 0 ? grad : grad - 1)} cousin${g === 0 ? '' : ' ' + mal(g) + ' removed'}`);
+      if (p.halb) wort = 'Half-' + wort[0].toLowerCase() + wort.slice(1);
+      return p.rolle === 'angeheiratet' ? `${wort} (by marriage)` : wort;
+    }
     if (p.rolle === 'neffe') {
       const grund = m ? 'nephew' : w ? 'niece' : 'nibling';
       return gross(g === 1 ? grund : great(g - 2) + 'grand' + grund);
@@ -322,6 +375,21 @@ function verwandtschaftEigen(p) {
     return p.halb ? 'Halb' + grund.toLowerCase() : grund;
   }
   if (p.rolle === 'schwager') return m ? 'Schwager' : w ? 'Schwägerin' : 'Schwager/Schwägerin';
+  if (p.rolle === 'seiten' || p.rolle === 'angeheiratet') {
+    // Seitenlinien: Geschwister von Vorfahren (Onkel, Großonkel …) und deren Nachkommen; Grad wie üblich gezählt:
+    // Kind des Großonkels = Onkel 2. Grades, Enkel des Großonkels = Cousin 2. Grades
+    const k = p.k, grad = g === 0 ? k : k - g + 1;
+    let wort;
+    if (k === 0) wort = m ? 'Bruder' : w ? 'Schwester' : 'Geschwister';
+    else if (g === 0) wort = m ? 'Cousin' : w ? 'Cousine' : 'Cousin/Cousine';
+    else {
+      const stufe = grund => g === 1 ? grund : ur(g - 2) + (g === 2 ? 'Groß' : 'groß') + grund.toLowerCase();
+      wort = m ? stufe('Onkel') : w ? stufe('Tante') : `${stufe('Onkel')}/${stufe('Tante')}`;
+    }
+    if (grad >= 2 && k > 0) wort += ` ${grad}. Grades`;
+    if (p.halb) wort = /^\d/.test(wort) ? 'Halb-' + wort : 'Halb' + wort[0].toLowerCase() + wort.slice(1);   // nur Geschwister selbst sind „halb“
+    return p.rolle === 'angeheiratet' ? `${wort} (angeheiratet)` : wort;
+  }
   if (p.rolle === 'neffe') {
     const wort = grund => g === 1 ? grund : ur(g - 2) + (g === 2 ? 'Groß' : 'groß') + grund.toLowerCase();
     return m ? wort('Neffe') : w ? wort('Nichte') : `${wort('Neffe')}/${wort('Nichte')}`;
