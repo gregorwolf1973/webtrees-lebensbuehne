@@ -13,7 +13,10 @@ import { bildrateTiefe } from 'lb/tiefe.js';
 const FARBE = { vater: '#d6a24e', mutter: '#62b6a9', start: '#f2ede4' };
 const ZWEIGE = ['#c99be0', '#86aee6', '#e39a8b', '#a5d388', '#e8c872', '#86d6cf'];   // Nachkommen: je Kind der Hauptperson eine Farbe
 const PARTNER = '#e396b8';   // Partner und dessen Vorfahren
-const farbeFaecher = p => p.rolle === 'nachkomme' ? ZWEIGE[(p.zweig ?? 0) % ZWEIGE.length] : p.partnerseite ? PARTNER : FARBE[p.seite] ?? FARBE.start;
+// Geschwister, Nichten und Neffen: je Geschwister eine Zweigfarbe, gegen die eigenen Kinder um drei Farben versetzt
+const farbeFaecher = p => p.rolle === 'nachkomme' ? ZWEIGE[(p.zweig ?? 0) % ZWEIGE.length]
+  : p.rolle === 'geschwister' || p.rolle === 'neffe' ? ZWEIGE[((p.zweig ?? 0) + 3) % ZWEIGE.length]
+  : p.partnerseite ? PARTNER : FARBE[p.seite] ?? FARBE.start;
 // im Netz wie bei „Lineage“: Farbe nach dem Klang des Familiennamens (Kölner Phonetik), Farbton im goldenen Winkel verteilt
 const nameFarben = new Map();
 function nameFarbe(p) {
@@ -58,7 +61,10 @@ function zeichneKarte(g, p, img) {
   g.fillStyle = 'rgba(18,22,30,0.94)';
   rundRechteck(g, 4, 4, KW - 8, KH - 8, 22); g.fill();
   g.lineWidth = p.mannesstamm || p.rolle === 'start' ? 7 : 4;
-  g.strokeStyle = f; g.stroke();
+  g.strokeStyle = f;
+  if (p.halb) g.setLineDash([18, 11]);   // Halbgeschwister: gestrichelter Rahmen
+  g.stroke();
+  g.setLineDash([]);
   // Gesicht im Kreis
   const cx = KW / 2, cy = 118, r = 92;
   g.save(); g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.clip();
@@ -166,7 +172,7 @@ const hofTextur = (() => {
 // --- Familie der Hauptperson: wird bei jedem Wechsel neu aufgebaut ----------------------------------
 const gruppe = new THREE.Group();
 scene.add(gruppe);
-let root = daten.start, modus = { vorfahren: true, nachkommen: false, partner: false, netz: false };
+let root = daten.start, modus = { vorfahren: true, nachkommen: false, partner: false, geschwister: false, netz: false };
 let imBild = [], karten = [], linien = [];
 
 // Netz-Tiefe (Schritte über Eltern, Kinder, Partner) und Weltgeschehen; beides merkt sich der Browser
@@ -193,7 +199,7 @@ weltgeschehenZeigen(mitWelt);
 {
   const [id, m] = decodeURIComponent(location.hash.slice(1)).split('/');
   if (daten.byId.has(id)) root = daten.byId.get(id);
-  if (m) modus = { vorfahren: m.includes('v'), nachkommen: m.includes('n'), partner: m.includes('p'), netz: m.includes('x') };
+  if (m) modus = { vorfahren: m.includes('v'), nachkommen: m.includes('n'), partner: m.includes('p'), geschwister: m.includes('g'), netz: m.includes('x') };
 }
 
 function baue() {
@@ -236,12 +242,22 @@ function baue() {
   else {
     // mit Partner: eigene Vorfahren links, die des Partners rechts daneben
     const partner = imBild.filter(p => p.rolle === 'partner');
-    if (modus.vorfahren) verteile(root, -WINKEL, partner.length ? -0.12 : WINKEL, elternIm);
+    if (modus.vorfahren || modus.geschwister) verteile(root, -WINKEL, partner.length ? -0.12 : WINKEL, elternIm);
     partner.forEach((pa, i) => {
       const breite = (WINKEL - 0.12) / partner.length;
       verteile(pa, 0.12 + i * breite, 0.12 + (i + 1) * breite, elternIm, 0.7);
     });
     if (modus.nachkommen) verteile(root, -WINKEL, WINKEL, kinderIm);
+    if (modus.geschwister) {
+      // Geschwister auf dem ersten Ring in Geburtsreihenfolge, jedes mit so viel Winkel, wie es Partner und Enden
+      // (Nichten, Neffen, deren Kinder …) hat; die Partner stehen neben ihm, die Nachkommen weiter außen
+      const geschwFolge = p => [...(p.rolle === 'geschwister' ? p.partnerP.filter(x => x.rolle === 'schwager' && x.zumStart === p) : []),
+        ...p.kinderP.filter(c => c.rolle === 'neffe' && c.zumStart === p)];
+      const geschw = imBild.filter(p => p.rolle === 'geschwister');
+      const enden = geschw.map(x => blaetter(x, geschwFolge)), summe = enden.reduce((a, b) => a + b, 0);
+      let von = -WINKEL;
+      geschw.forEach((x, i) => { const bis = von + 2 * WINKEL * enden[i] / summe; verteile(x, von, bis, geschwFolge, 1); von = bis; });
+    }
     entzerren(imBild.filter(p => p !== root));
   }
 
@@ -264,7 +280,7 @@ function baue() {
   if (modus.netz) netzLinienBauen();
   const nachGeburt = [...imBild].filter(p => !modus.netz || p.rolle === 'vorfahr' || p.rolle === 'start')
     .sort((a, b) => (a.geburt ?? a.jahrE) - (b.geburt ?? b.jahrE) || b.mannesstamm - a.mannesstamm);
-  linienBasis = modus.vorfahren || modus.partner || modus.netz ? nachGeburt[0] : nachGeburt[nachGeburt.length - 1];
+  linienBasis = modus.vorfahren || modus.partner || modus.geschwister || modus.netz ? nachGeburt[0] : nachGeburt[nachGeburt.length - 1];
   const jahre = imBild.map(p => p.jahrE);
   document.getElementById('info-zahl').textContent =
     t(imBild.length === 1 ? '{n} Person · {von}–{bis} · {g} Gesichter' : '{n} Personen · {von}–{bis} · {g} Gesichter',
@@ -273,13 +289,17 @@ function baue() {
   document.getElementById('modus-vorfahren').setAttribute('aria-pressed', modus.vorfahren);
   document.getElementById('modus-nachkommen').setAttribute('aria-pressed', modus.nachkommen);
   document.getElementById('modus-partner').setAttribute('aria-pressed', modus.partner);
+  document.getElementById('modus-geschwister')?.setAttribute('aria-pressed', modus.geschwister);
   document.getElementById('modus-netz').setAttribute('aria-pressed', modus.netz);
-  for (const id of ['modus-vorfahren', 'modus-nachkommen', 'modus-partner']) document.getElementById(id).classList.toggle('im-netz', modus.netz);
-  document.getElementById('modus-partner').disabled = !root.partnerP.length;
-  document.getElementById('modus-partner').title = root.partnerP.length
+  for (const id of ['modus-vorfahren', 'modus-nachkommen', 'modus-partner', 'modus-geschwister']) document.getElementById(id)?.classList.toggle('im-netz', modus.netz);
+  // mit Geschwistern blendet „Partner“ auch die Partner der Geschwister ein
+  const geschwPartner = modus.geschwister && imBild.some(p => p.rolle === 'geschwister' && p.partnerP.length);
+  document.getElementById('modus-partner').disabled = !root.partnerP.length && !geschwPartner;
+  document.getElementById('modus-partner').title = (root.partnerP.length
     ? t(root.partnerP.length > 1 ? '{namen} und deren Vorfahren einblenden' : '{namen} und dessen Vorfahren einblenden', { namen: root.partnerP.map(x => x.name.voll).join(', ') })
-    : t('Keine Partner im Stammbaum');
-  history.replaceState(null, '', `#${root.id}/${modus.vorfahren ? 'v' : ''}${modus.nachkommen ? 'n' : ''}${modus.partner ? 'p' : ''}${modus.netz ? 'x' : ''}`);
+    : geschwPartner ? '' : t('Keine Partner im Stammbaum'))
+    + (geschwPartner ? (root.partnerP.length ? ' · ' : '') + t('Partner der Geschwister einblenden') : '');
+  history.replaceState(null, '', `#${root.id}/${modus.vorfahren ? 'v' : ''}${modus.nachkommen ? 'n' : ''}${modus.partner ? 'p' : ''}${modus.geschwister ? 'g' : ''}${modus.netz ? 'x' : ''}`);
   gewaehlt = null;
   aktualisiereDarstellung();
   letztesJahr = null;
@@ -1218,11 +1238,21 @@ for (const [knopf, schluessel, anderer] of [['modus-vorfahren', 'vorfahren', 'na
   document.getElementById(knopf).addEventListener('click', () => {
     if (modus.netz) modus.netz = false;   // aus dem Netz zurück in den Fächer, mit der bisherigen Auswahl
     else modus[schluessel] = !modus[schluessel];
-    if (!modus.vorfahren && !modus.nachkommen) modus[anderer] = true;   // eine Richtung bleibt immer an
+    if (!modus.vorfahren && !modus.nachkommen && !modus.geschwister) modus[anderer] = true;   // eine Richtung bleibt immer an
     panel.schliesse();
     baue();
     ueberblick();
   });
+
+// Geschwister (mit Halbgeschwistern, Nichten, Neffen; mit „Partner“ auch deren Partner), kombinierbar mit den anderen Ansichten
+document.getElementById('modus-geschwister')?.addEventListener('click', () => {
+  if (modus.netz) { modus.netz = false; modus.geschwister = true; }   // aus dem Netz in den Fächer mit Geschwistern
+  else modus.geschwister = !modus.geschwister;
+  if (!modus.vorfahren && !modus.nachkommen && !modus.geschwister) modus.vorfahren = true;
+  panel.schliesse();
+  baue();
+  ueberblick();
+});
 
 // Netz: alle Verwandten frei angeordnet, Linien zu Eltern, Kindern und Partnern (wie die Ansicht „Lineage“)
 document.getElementById('modus-netz').addEventListener('click', () => {

@@ -149,5 +149,8 @@
   "Bilder/s": "fps",
   "B/s": "fps",
   "max": "max",
-  "Bilder pro Sekunde für Zeitreise, Drehen und Netz. Weniger entlastet Grafikkarte und Akku.": "Frames per second for the time journey, rotation and network. Lower values ease the load on graphics card and battery."
+  "Bilder pro Sekunde für Zeitreise, Drehen und Netz. Weniger entlastet Grafikkarte und Akku.": "Frames per second for the time journey, rotation and network. Lower values ease the load on graphics card and battery.",
+  "Geschwister": "Siblings",
+  "Partner der Geschwister einblenden": "Show the siblings' partners",
+  "Geschwister der Hauptperson mit Halbgeschwistern (gestrichelt), Nichten und Neffen; „Partner“ blendet auch die Partner der Geschwister ein": "Siblings of the main person, including half-siblings (dashed), nieces and nephews; “Partner” also shows the siblings' partners"
 }

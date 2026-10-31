@@ -68,10 +68,10 @@ let hauptperson = null;
 
 // Personen der Ansicht: die Hauptperson, ihre Vorfahren und/oder Nachkommen; setzt die Ansichtsfelder an den Personen
 // `generationen` begrenzt, wie weit der Fächer von der Hauptperson (und vom Partner) aus reicht; `liste.gekuerzt` sagt, ob dadurch Personen fehlen
-export function ansicht(daten, root, { vorfahren = true, nachkommen = false, partner = false, generationen = Infinity } = {}) {
+export function ansicht(daten, root, { vorfahren = true, nachkommen = false, partner = false, geschwister = false, generationen = Infinity } = {}) {
   for (const p of daten.personen) {
     p.imBild = false; p.rolle = null; p.generation = null; p.seite = null; p.partnerseite = false; p.bezug = null;
-    p.sosa = null; p.zumStart = null; p.mannesstamm = false; p.zweig = null;
+    p.sosa = null; p.zumStart = null; p.mannesstamm = false; p.zweig = null; p.halb = false;
   }
   hauptperson = root;
   Object.assign(root, { imBild: true, rolle: 'start', generation: 0, seite: 'start', sosa: 1 });
@@ -98,6 +98,42 @@ export function ansicht(daten, root, { vorfahren = true, nachkommen = false, par
     Object.assign(pa, { imBild: true, rolle: 'partner', generation: 0, sosa: 1, seite: 'partner', partnerseite: true, zumStart: root });
     liste.push(pa);
     vorfahrenVon(pa, true);
+  }
+  // Geschwister: die Eltern gehören immer dazu (auch ohne Vorfahren), von ihnen aus fächern sich die Geschwister auf.
+  // Halbgeschwister (anderer Vater oder andere Mutter) sind gekennzeichnet und hängen am gemeinsamen Elternteil.
+  // Mit „Partner“ stehen die Partner der Geschwister daneben; darunter Nichten, Neffen und deren Nachkommen.
+  if (geschwister) {
+    [[root.vaterP, 0], [root.mutterP, 1]].forEach(([e, add]) => {
+      if (!e || e.imBild) return;
+      Object.assign(e, { imBild: true, rolle: 'vorfahr', generation: 1, sosa: 2 + add, zumStart: root, seite: add ? 'mutter' : 'vater', mannesstamm: add === 0 });
+      liste.push(e);
+    });
+    const kinder = [...new Set([root.vaterP, root.mutterP].filter(Boolean).flatMap(e => e.kinderP))]
+      .filter(c => c !== root && !c.imBild).sort((a, b) => a.jahrE - b.jahrE);
+    kinder.forEach((g, i) => {
+      // voll nur bei genau denselben beiden Eltern; kennt man nur einen Elternteil der Hauptperson, bleibt es offen (voll)
+      const halb = !!(root.vaterP && root.mutterP) && !(g.vaterP === root.vaterP && g.mutterP === root.mutterP);
+      const gemeinsam = g.vaterP && g.vaterP === root.vaterP ? root.vaterP : g.mutterP && g.mutterP === root.mutterP ? root.mutterP : root.vaterP ?? root.mutterP;
+      Object.assign(g, { imBild: true, rolle: 'geschwister', generation: 0, seite: 'geschwister', zumStart: gemeinsam, zweig: i, halb });
+      liste.push(g);
+    });
+    for (const g of kinder) {
+      if (partner) for (const pa of g.partnerP) {
+        if (pa.imBild) continue;
+        Object.assign(pa, { imBild: true, rolle: 'schwager', generation: 0, seite: 'partner', partnerseite: true, zumStart: g, zweig: g.zweig });
+        liste.push(pa);
+      }
+      const reihe = [g];
+      while (reihe.length) {
+        const x = reihe.shift();
+        [...x.kinderP].sort((a, b) => a.jahrE - b.jahrE).forEach(c => {
+          if (c.imBild) return;
+          if (x.generation >= generationen) { gekuerzt = true; return; }
+          Object.assign(c, { imBild: true, rolle: 'neffe', generation: x.generation + 1, seite: 'nachkomme', zumStart: x, zweig: g.zweig });
+          liste.push(c); reihe.push(c);
+        });
+      }
+    }
   }
   if (nachkommen) {
     const reihe = [root];
@@ -266,6 +302,12 @@ function verwandtschaftEigen(p) {
   if (EN) {
     const great = n => n <= 0 ? '' : n === 1 ? 'great-' : n === 2 ? 'great-great-' : `${n}× great-`;
     const gross = s => s[0].toUpperCase() + s.slice(1);
+    if (p.rolle === 'geschwister') return (p.halb ? 'Half-' : '') + (p.halb ? (m ? 'brother' : w ? 'sister' : 'sibling') : (m ? 'Brother' : w ? 'Sister' : 'Sibling'));
+    if (p.rolle === 'schwager') return m ? 'Brother-in-law' : w ? 'Sister-in-law' : 'Sibling-in-law';
+    if (p.rolle === 'neffe') {
+      const grund = m ? 'nephew' : w ? 'niece' : 'nibling';
+      return gross(g === 1 ? grund : great(g - 2) + 'grand' + grund);
+    }
     if (p.rolle === 'nachkomme') {
       if (g === 1) return m ? 'Son' : w ? 'Daughter' : 'Child';
       return gross(great(g - 2) + (m ? 'grandson' : w ? 'granddaughter' : 'grandchild'));
@@ -275,6 +317,15 @@ function verwandtschaftEigen(p) {
     return `${p.seite === 'vater' ? 'Paternal' : 'Maternal'} ${wort}`;
   }
   const ur = n => n <= 0 ? '' : n === 1 ? 'Ur' : n === 2 ? 'Urur' : `${n}× Ur`;
+  if (p.rolle === 'geschwister') {
+    const grund = m ? 'Bruder' : w ? 'Schwester' : 'Geschwister';
+    return p.halb ? 'Halb' + grund.toLowerCase() : grund;
+  }
+  if (p.rolle === 'schwager') return m ? 'Schwager' : w ? 'Schwägerin' : 'Schwager/Schwägerin';
+  if (p.rolle === 'neffe') {
+    const wort = grund => g === 1 ? grund : ur(g - 2) + (g === 2 ? 'Groß' : 'groß') + grund.toLowerCase();
+    return m ? wort('Neffe') : w ? wort('Nichte') : `${wort('Neffe')}/${wort('Nichte')}`;
+  }
   if (p.rolle === 'nachkomme') {
     if (g === 1) return m ? 'Sohn' : w ? 'Tochter' : 'Kind';
     const grund = m ? 'Enkel' : w ? 'Enkelin' : 'Enkelkind';
