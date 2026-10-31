@@ -24,10 +24,18 @@ a { color: var(--vater); }
 /* Videos zur Zeitgeschichte: hinter der durchsichtigen Bühne, gedimmt über die Deckkraft */
 #video-schicht { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; background: #0c0f15; }
 #video-schicht[hidden] { display: none; }
-#video-schicht .video { position: absolute; inset: 0; opacity: 0; transition: opacity 1.2s ease; }
+/* alle im selben 4:3-Rahmen (Archivfilme sind meist 4:3; Breitbild wird an den Seiten beschnitten, eingebaute
+   schwarze Balken fallen so weg). Die Ränder verlaufen in die Hintergrundfarbe – als Verlauf darüber statt als Maske,
+   weil Chrome Masken nicht auf eingebettete YouTube-Rahmen anwendet */
+#video-schicht .video { position: absolute; left: 50%; top: 50%; height: var(--video-hoehe, 100%); aspect-ratio: 4 / 3;
+  transform: translate(-50%, -50%); overflow: hidden; opacity: 0; transition: opacity 1.2s ease; }
+#video-schicht .video::after { content: ""; position: absolute; inset: -1px; z-index: 1; --rand: 20%;
+  background: linear-gradient(to right, #0c0f15, transparent var(--rand), transparent calc(100% - var(--rand)), #0c0f15),
+    linear-gradient(to bottom, #0c0f15, transparent var(--rand), transparent calc(100% - var(--rand)), #0c0f15); }
 #video-schicht .video.an { opacity: var(--video-deckkraft, 0.35); }
 #video-schicht video { width: 100%; height: 100%; object-fit: cover; }
-#video-schicht .yt iframe { position: absolute; top: 50%; left: 50%; width: max(100vw, 177.78vh); height: max(100vh, 56.25vw); transform: translate(-50%, -50%); border: 0; }
+/* YouTube liefert immer 16:9 (4:3-Filme mit Balken): mittig auf 4:3 zuschneiden */
+#video-schicht .yt iframe { position: absolute; top: 0; left: 50%; height: 100%; width: 133.34%; transform: translateX(-50%); border: 0; }
 body:not(.bereit) #buehne::after { content: "Stammbaum wird geladen …"; position: absolute; inset: 0; display: grid; place-items: center; color: var(--text-3); }
 
 /* --- Leisten ------------------------------------------------------------------------------- */

@@ -126,6 +126,7 @@ $json = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HE
         <label class="haken"><input type="checkbox" id="videos-an"> <?= e($t('während der Zeitreise zeigen')) ?></label>
         <label class="haken"><input type="checkbox" id="videos-ton"> <?= e($t('mit Ton')) ?></label>
         <label class="laut"><?= e($t('Deckkraft')) ?> <input type="range" id="videos-deckkraft" min="10" max="90"></label>
+        <label class="laut"><?= e($t('Größe')) ?> <input type="range" id="videos-groesse" min="50" max="160" step="5"></label>
         <p class="lied-tipp"><?= e($t('Ein Video läuft, solange die Zeitreise in seinen Jahren ist, mindestens aber 10 Sekunden. Passen mehrere, gewinnt das später beginnende. ▶ spielt es sofort zur Probe.')) ?></p>
         <ul id="video-liste" class="video-liste"></ul>
         <h3 id="video-form-titel"><?= e($t('Video hinzufügen')) ?></h3>

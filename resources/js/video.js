@@ -57,7 +57,7 @@ function youtube() {
 function laden() {
   let e = {};
   try { e = JSON.parse(localStorage.getItem('lb-videos') || '{}'); } catch (err) { /* Vorgaben */ }
-  return { an: e.an ?? true, ton: e.ton ?? false, deckkraft: e.deckkraft ?? 35, liste: Array.isArray(e.liste) ? e.liste : VORGABEN.map(v => ({ ...v, an: true })) };
+  return { an: e.an ?? true, ton: e.ton ?? false, deckkraft: e.deckkraft ?? 35, groesse: e.groesse ?? 100, liste: Array.isArray(e.liste) ? e.liste : VORGABEN.map(v => ({ ...v, an: true })) };
 }
 
 export class Videos {
@@ -74,6 +74,7 @@ export class Videos {
     this.fehler = {};       // id → Meldung, wenn ein Video nicht läuft
     this.durchsichtig = false;
     this.schicht.style.setProperty('--video-deckkraft', this.einst.deckkraft / 100);
+    this.schicht.style.setProperty('--video-hoehe', this.einst.groesse + '%');
   }
 
   speichern() {
@@ -202,6 +203,12 @@ export class Videos {
     this.schicht.style.setProperty('--video-deckkraft', wert / 100);
   }
 
+  /** Größe des gemeinsamen Rahmens in Prozent der Bühnenhöhe (über 100 ragt er oben und unten hinaus) */
+  groesse(wert) {
+    this.einst.groesse = wert; this.speichern();
+    this.schicht.style.setProperty('--video-hoehe', wert + '%');
+  }
+
   /** Untermenü: Schalter, Liste und Formular aus seite.phtml beleben */
   menue() {
     const $ = id => document.getElementById(id);
@@ -210,9 +217,11 @@ export class Videos {
     $('videos-an').checked = this.einst.an;
     $('videos-ton').checked = this.einst.ton;
     $('videos-deckkraft').value = this.einst.deckkraft;
+    $('videos-groesse').value = this.einst.groesse;
     $('videos-an').addEventListener('change', ev => { this.einst.an = ev.target.checked; this.speichern(); if (!this.einst.an) this.halt(); });
     $('videos-ton').addEventListener('change', ev => this.ton(ev.target.checked));
     $('videos-deckkraft').addEventListener('input', ev => this.deckkraft(+ev.target.value));
+    $('videos-groesse').addEventListener('input', ev => this.groesse(+ev.target.value));
     const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
     const zeige = () => {
       liste.innerHTML = [...this.einst.liste].sort((x, y) => x.von - y.von).map(e => {
