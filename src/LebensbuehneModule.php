@@ -45,6 +45,7 @@ use Throwable;
 
 use function array_filter;
 use function array_keys;
+use function array_map;
 use function array_values;
 use function basename;
 use function class_exists;
@@ -104,7 +105,7 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
     use ModuleChartTrait;
     use ModuleGlobalTrait;
 
-    public const string VERSION = '1.7.1';
+    public const string VERSION = '1.7.2';
 
     // Oberflächenwörter des Moduls, die webtrees selbst in viele Sprachen übersetzt (deutscher Schlüssel => englische msgid)
     private const array WEBTREES_WOERTER = [
@@ -188,9 +189,10 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
     }
 
     /**
-     * Icon für den Eintrag im Menü „Diagramme“. Die Themes setzen Icon, Einzug und Zeilenhöhe der Einträge über
-     * `.menu-chart-…:before`; ohne eigene Regel klebt der Text am linken Rand und die Zeile ist zu niedrig.
-     * Größe wie die Icons der Themes: 24 px (webtrees, fab, minimal), 22 px (clouds, colors, xenea).
+     * Icon für den Eintrag im Menü „Diagramme“. Die mitgelieferten Themes webtrees, clouds, colors und xenea setzen Icon,
+     * Einzug und Zeilenhöhe der Einträge über `.menu-chart-…:before`; ohne eigene Regel klebt der Text dort am linken Rand
+     * und die Zeile ist zu niedrig. Größe wie deren Icons: 24 px (webtrees), 22 px (clouds, colors, xenea). Themes ohne
+     * Icons im Menü (fab, minimal, eigene wie Primer) bleiben unberührt.
      */
     public function headContent(): string
     {
@@ -199,10 +201,10 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
         if ($svg === '') {
             return '';
         }
-        $url = static fn (int $px): string => 'url("data:image/svg+xml,' . rawurlencode(strtr(trim($svg), ['width="24" height="24"' => 'width="' . $px . '" height="' . $px . '"'])) . '")';
+        $url   = static fn (int $px): string => 'url("data:image/svg+xml,' . rawurlencode(strtr(trim($svg), ['width="24" height="24"' => 'width="' . $px . '" height="' . $px . '"'])) . '")';
+        $regel = static fn (array $themes, int $px): string => implode(',', array_map(static fn (string $theme): string => '.wt-theme-' . $theme . ' .menu-chart-lebensbuehne:before', $themes)) . '{content:' . $url($px) . '}';
 
-        return '<style>.menu-chart-lebensbuehne:before{content:' . $url(24) . '}'
-            . '.wt-theme-clouds .menu-chart-lebensbuehne:before,.wt-theme-colors .menu-chart-lebensbuehne:before,.wt-theme-xenea .menu-chart-lebensbuehne:before{content:' . $url(22) . '}</style>';
+        return '<style>' . $regel(['webtrees'], 24) . $regel(['clouds', 'colors', 'xenea'], 22) . '</style>';
     }
 
     public function chartBoxMenu(Individual $individual): Menu|null
