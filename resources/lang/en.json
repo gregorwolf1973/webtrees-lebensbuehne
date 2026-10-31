@@ -144,5 +144,10 @@
   "Wie viele Schritte über Eltern, Kinder und Partner das Netz von der Hauptperson aus reicht. Große Stammbäume brauchen sonst sehr viel Rechenleistung.": "How many steps via parents, children and partners the network reaches out from the main person. Large trees otherwise need a lot of computing power.",
   "Weltgeschehen": "World events",
   "Welt": "World",
-  "Allgemeines Welt- und Europageschehen wie den Kalten Krieg zeigen. Ausgeschaltet bleiben nur Ereignisse aus den Regionen der Familie und eigene Einträge.": "Show general world and European events such as the Cold War. When switched off, only events from the family’s regions and your own entries remain."
+  "Allgemeines Welt- und Europageschehen wie den Kalten Krieg zeigen. Ausgeschaltet bleiben nur Ereignisse aus den Regionen der Familie und eigene Einträge.": "Show general world and European events such as the Cold War. When switched off, only events from the family’s regions and your own entries remain.",
+  "Bildrate": "Frame rate",
+  "Bilder/s": "fps",
+  "B/s": "fps",
+  "max": "max",
+  "Bilder pro Sekunde für Zeitreise, Drehen und Netz. Weniger entlastet Grafikkarte und Akku.": "Frames per second for the time journey, rotation and network. Lower values ease the load on graphics card and battery."
 }

@@ -241,6 +241,7 @@ body:not(.bereit) #buehne::after { content: "Stammbaum wird geladen …"; positi
 .zr-voll:hover { border-color: var(--vater); }
 .tempo { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-3); white-space: nowrap; }
 .tempo input { width: 64px; background: var(--flaeche); border: 1px solid var(--linie); border-radius: 6px; color: var(--text); padding: 4px 6px; font: inherit; font-size: 13px; }
+.tempo select { background: var(--flaeche); border: 1px solid var(--linie); border-radius: 6px; color: var(--text); padding: 4px 4px; font: inherit; font-size: 13px; }
 .zr-bild img:not(.an) { pointer-events: none; }
 
 .leiste-unten .schalter { white-space: nowrap; }

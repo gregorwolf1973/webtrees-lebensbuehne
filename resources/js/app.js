@@ -7,6 +7,8 @@ import { t, EN as SPRACHE_EN } from 'lb/text.js';
 import { Panel } from 'lb/panel.js';
 import * as klang from 'lb/klang.js';
 import { baueHimmel } from 'lb/himmel.js';
+import { Kartenstapel, KW, KH } from 'lb/karten.js';
+import { bildrateTiefe } from 'lb/tiefe.js';
 
 const FARBE = { vater: '#d6a24e', mutter: '#62b6a9', start: '#f2ede4' };
 const ZWEIGE = ['#c99be0', '#86aee6', '#e39a8b', '#a5d388', '#e8c872', '#86d6cf'];   // Nachkommen: je Kind der Hauptperson eine Farbe
@@ -50,28 +52,8 @@ controls.dampingFactor = 0.08;
 controls.maxDistance = 260;
 controls.autoRotateSpeed = 0.45;
 
-// --- Porträtkarten ----------------------------------------------------------------------------
-const KW = 256, KH = 330;
-const bildLader = new Map();   // zuletzt benutzte Bilder; ältere fallen heraus und werden bei Bedarf neu geholt (Browser-Cache)
-function ladeBild(src) {
-  let p = bildLader.get(src);
-  if (p) bildLader.delete(src);
-  else p = new Promise(ok => {
-    const img = new Image();
-    img.onload = () => ok(img);
-    img.onerror = () => ok(null);
-    img.src = src;
-  });
-  bildLader.set(src, p);
-  while (bildLader.size > 60) bildLader.delete(bildLader.keys().next().value);
-  return p;
-}
-
-function zeichneKarte(p, img, s = 1) {
-  const c = document.createElement('canvas');
-  c.width = Math.round(KW * s); c.height = Math.round(KH * s);
-  const g = c.getContext('2d');
-  g.scale(s, s);
+// --- Porträtkarten (gezeichnet in KW × KH; Maßstab und Ablage im Atlas übernimmt karten.js) ------------------------
+function zeichneKarte(g, p, img) {
   const f = farbe(p);
   g.fillStyle = 'rgba(18,22,30,0.94)';
   rundRechteck(g, 4, 4, KW - 8, KH - 8, 22); g.fill();
@@ -99,8 +81,10 @@ function zeichneKarte(p, img, s = 1) {
   g.fillText(kuerze(g, p.name.nachname || '', KW - 28), cx, 277);
   g.font = '400 21px "Segoe UI", system-ui, sans-serif'; g.fillStyle = '#a9b0bc';
   g.fillText(jahreKurz(p), cx, 308);
-  return c;
 }
+const stapel = new Kartenstapel(renderer, zeichneKarte);
+let neuZeichnen = true;
+const zeichnen = () => { neuZeichnen = true; };   // nächstes Bild zeichnen (die Schleife zeichnet sonst nicht)
 
 function rundRechteck(g, x, y, w, h, r) {
   g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r);
@@ -150,6 +134,7 @@ kulisse.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.V
 const zeitMarken = [];
 const rauteGeo = new THREE.OctahedronGeometry(0.7);
 function baueZeitMarken() {
+  zeichnen();
   for (const m of zeitMarken.splice(0)) { scene.remove(m); m.material.dispose(); }
   if (modus.netz) return;   // im Netz gibt es keine Zeitachse am Boden
   for (const z of zeitAnsicht) {
@@ -161,7 +146,7 @@ function baueZeitMarken() {
   }
 }
 // Sternhimmel nur im Hintergrund (echte Sterne und Milchstraße), er geht mit der Kamera mit
-const himmelFolgt = baueHimmel(scene, (window.LEBENSBUEHNE || {}).sterne || 'data/sterne.json', renderer.getPixelRatio());
+const himmelFolgt = baueHimmel(scene, (window.LEBENSBUEHNE || {}).sterne || 'data/sterne.json', renderer.getPixelRatio(), () => zeichnen());
 
 // Lichthof für frisch Geborene (warmes, weiches Leuchten hinter der Karte)
 const hofTextur = (() => {
@@ -260,29 +245,10 @@ function baue() {
     entzerren(imBild.filter(p => p !== root));
   }
 
-  const aufloesung = modus.netz ? (matchMedia('(pointer: coarse)').matches ? 0.38 : 0.5) : 1;   // im Netz viele Karten: kleinere Texturen
-  karten = imBild.map(p => {
-    const tex = new THREE.CanvasTexture(zeichneKarte(p, null, aufloesung));
-    tex.colorSpace = THREE.SRGBColorSpace;
-    tex.anisotropy = 4;
-    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true }));
-    s.position.copy(p.pos);
+  karten = stapel.baue(imBild.map(p => {
     const groesse = (p.rolle === 'start' ? 1.35 : 1) * (modus.netz ? 0.8 : 1);
-    s.userData = { p, basis: new THREE.Vector2(2.3 * groesse, 2.96 * groesse), tex, gesichtSrc: p.gesicht, aufloesung };
-    s.scale.set(s.userData.basis.x, s.userData.basis.y, 1);
-    gruppe.add(s);
-    const hof = new THREE.Sprite(new THREE.SpriteMaterial({ map: hofTextur, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0 }));
-    hof.position.copy(p.pos);
-    hof.visible = false;
-    gruppe.add(hof);
-    s.userData.hof = hof;
-    if (p.gesicht) ladeBild(p.gesicht).then(img => {
-      if (!img || !s.parent) return;
-      tex.image = zeichneKarte(p, img, aufloesung);
-      tex.needsUpdate = true;
-    });
-    return s;
-  });
+    return { p, basis: new THREE.Vector2(2.3 * groesse, 2.96 * groesse) };
+  }), gruppe);
   linien = modus.netz ? [] : imBild.filter(p => p.zumStart).map(p => {
     const a = p.zumStart.pos, b = p.pos;
     const mitte = a.clone().lerp(b, 0.5);
@@ -493,7 +459,7 @@ function linienSetzen(l) {
   l.geometry.computeBoundingSphere();
 }
 function netzPositionen() {
-  for (const k of karten) { k.position.copy(k.userData.p.pos); k.userData.hof.position.copy(k.userData.p.pos); }
+  for (const k of karten) k.hof?.position.copy(k.p.pos);
   for (const l of netzKanten || []) linienSetzen(l);
   if (netzHell) linienSetzen(netzHell);
   if (netzSterne) {
@@ -603,26 +569,34 @@ const direkteLinie = () => linieZu(gewaehlt ?? linienBasis ?? root);
 function aktualisiereDarstellung() {
   const pfad = gewaehlt ? (modus.netz ? nachbarn(gewaehlt) : linieZu(gewaehlt)) : null;
   const direkt = !pfad || abspielen ? direkteLinie() : null;
+  zeichnen();
   for (const k of karten) {
-    const p = k.userData.p;
+    const p = k.p;
     let o = 1, hell = 1, gross = 1, hof = 0;
     if (zeitJahr != null) {
       const s = lebenslicht(p, zeitJahr);
       o = s.o; hell = s.hell; gross = s.gross; hof = s.hof;
     }
-    const h = k.userData.hof;
-    h.material.opacity = 0.9 * hof;
-    h.scale.setScalar(k.userData.basis.y * gross * 1.9);
-    h.visible = hof > 0.01;
+    // Lichthof erst anlegen, wenn er gebraucht wird
+    if (hof > 0.01 && !k.hof) {
+      k.hof = new THREE.Sprite(new THREE.SpriteMaterial({ map: hofTextur, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0 }));
+      k.hof.position.copy(p.pos);
+      gruppe.add(k.hof);
+    }
+    if (k.hof) {
+      k.hof.material.opacity = 0.9 * hof;
+      k.hof.scale.setScalar(k.basis.y * gross * 1.9);
+      k.hof.visible = hof > 0.01;
+    }
     if (k === hover) gross = Math.max(gross, 1.15);
-    k.scale.set(k.userData.basis.x * gross, k.userData.basis.y * gross, 1);
+    k.gross = gross;
     // ausgewählte Person: übrige dämpfen – nicht während der Zeitreise, dort zählt nur Leben und Tod
     if (!abspielen && pfad && !pfad.has(p) && p.zumStart !== gewaehlt) o = Math.min(o, 0.35);
     // Karten zwischen Kamera und gewählter Person fast durchsichtig, damit sie nicht verdecken
     if (!abspielen && gewaehlt && p.pos.z > gewaehlt.pos.z + 3) o = Math.min(o, 0.12);
     if (k === hover) { o = 1; hell = 1; }   // Maus über der Person: hell und voll sichtbar
-    k.material.color.setScalar(hell);
-    k.material.opacity = o;
+    k.hell = hell;
+    k.o = o;
   }
   for (const l of linien) {
     const { von, zu } = l.userData;
@@ -659,20 +633,16 @@ function lebenslicht(p, j) {
 }
 
 // altersgerechte Gesichter: in der Zeitreise das zuletzt aufgenommene Foto bis zum aktuellen Jahr; ohne Zeitreise
-// und am Ende (heute) wieder das Hauptbild aus webtrees
+// und am Ende (heute) wieder das Hauptbild aus webtrees. Die Kacheln schreibt karten.js nach, sobald die Karte zu sehen ist.
 function gesichterAnpassen(j) {
   for (const k of karten) {
-    const p = k.userData.p;
-    if (!p.gesichter?.length && k.userData.gesichtSrc === p.gesicht) continue;
+    const p = k.p;
+    if (!p.gesichter?.length && k.gesichtSrc === p.gesicht) continue;
     const passend = j == null || j >= JETZT - 0.5 ? null : [...(p.gesichter || [])].reverse().find(g => g.jahr <= j);
     const src = passend?.src ?? p.gesicht;
-    if (!src || src === k.userData.gesichtSrc) continue;
-    k.userData.gesichtSrc = src;
-    ladeBild(src).then(img => {
-      if (!img || k.userData.gesichtSrc !== src || !k.parent) return;
-      k.userData.tex.image = zeichneKarte(p, img, k.userData.aufloesung);
-      k.userData.tex.needsUpdate = true;
-    });
+    if (!src || src === k.gesichtSrc) continue;
+    k.gesichtSrc = src;
+    zeichnen();
   }
 }
 
@@ -710,6 +680,7 @@ function setzeHauptperson(p) {
 
 function setzeVersatz(px) {
   merkeKopf();
+  zeichnen();
   const el = document.getElementById('panel');
   const r = px > 0 && !el.hidden ? el.getBoundingClientRect() : null;
   if (r && r.height > innerHeight * 0.6 && r.left > innerWidth * 0.3) camera.setViewOffset(innerWidth, innerHeight, r.width / 2, 0, innerWidth, innerHeight);
@@ -902,6 +873,19 @@ tempoFeld.addEventListener('input', () => {
 });
 const tempo = () => Math.min(1200, Math.max(1, +tempoFeld.value || 60));
 
+// Bildrate für alles, was ohne Zutun läuft (Zeitreise, Drehen, Netz-Simulation, 2,5D-Porträt); merkt sich der Browser
+const bildrateWahl = document.getElementById('bildrate');
+let bildrate = 30;
+if (bildrateWahl) {
+  try { const w = localStorage.getItem('lb-bildrate'); if (w && [...bildrateWahl.options].some(o => o.value === w)) bildrateWahl.value = w; } catch (e) { /* Vorgabe */ }
+  const setzen = () => { bildrate = bildrateWahl.value === 'max' ? 0 : Number(bildrateWahl.value); bildrateTiefe(bildrate); };
+  setzen();
+  bildrateWahl.addEventListener('change', () => {
+    setzen();
+    try { localStorage.setItem('lb-bildrate', bildrateWahl.value); } catch (e) { /* ohne Speicher */ }
+  });
+} else bildrateTiefe(bildrate);
+
 let abspielen = null;
 function stoppeAbspielen() {
   if (!abspielen) return;
@@ -936,6 +920,8 @@ document.getElementById('abspielen').addEventListener('click', async e => {
   const schritt = now => {
     const a = abspielen;
     if (!a) return;
+    if (bildrate && now - (a.bild ?? 0) < 1000 / bildrate - 2) { a.raf = requestAnimationFrame(schritt); return; }
+    a.bild = now;
     if (a.lied) {
       a.j = a.von + (a.bis - a.von) * musik.currentTime / a.D;
       if (musik.ended || a.j >= a.bis) { setzeJahr(a.bis); return stoppeAbspielen(); }
@@ -976,11 +962,13 @@ function berechneFolgeZiel(j, aktuell) {
 }
 // weich nachführen: Blickpunkt mit etwa 4 s, Abstand mit etwa 6 s Zeitkonstante (unabhängig von der Bildrate)
 function kameraNachfuehren(dt) {
-  if (!kameraFolgt || zeitJahr == null || !folgeZiel || flug || nutzerZieht) return;
+  if (!kameraFolgt || zeitJahr == null || !folgeZiel || flug || nutzerZieht) return false;
   const versatz = camera.position.clone().sub(controls.target), laenge = versatz.length();   // Blickwinkel bleibt, wie eingestellt
   controls.target.lerp(folgeZiel.ziel, 1 - Math.exp(-dt / 4));
   if (performance.now() > zoomPause) versatz.setLength(laenge + (folgeZiel.d - laenge) * (1 - Math.exp(-dt / 6)));
+  const vorher = camera.position.clone();
   camera.position.copy(controls.target).add(versatz);
+  return camera.position.distanceToSquared(vorher) > 1e-6;   // die letzten Millimeter zählen nicht als Bewegung
 }
 renderer.domElement.addEventListener('pointerdown', () => { nutzerZieht = true; controls.autoRotate = false; });
 addEventListener('pointerup', () => { nutzerZieht = false; });
@@ -1299,8 +1287,11 @@ let runter = null;
 function treffer(ev) {
   maus.set(ev.clientX / innerWidth * 2 - 1, -(ev.clientY / innerHeight) * 2 + 1);
   ray.setFromCamera(maus, camera);
-  const hit = ray.intersectObjects([...karten, ...zeitMarken], false).find(h => h.object.userData.p || h.object.material.opacity > 0.2);
-  return hit ? hit.object : null;
+  // Karten (Instanzen im Atlas) rechnet karten.js selbst, die Zeitmarken der Raycaster; es gilt das Nächste
+  const karte = stapel.treffer(maus.x, maus.y, camera);
+  const marke = ray.intersectObjects(zeitMarken, false).find(h => h.object.material.opacity > 0.2);
+  if (marke && (!karte || marke.distance < karte.abstand)) return marke.object;
+  return karte ? karte.karte : null;
 }
 
 renderer.domElement.addEventListener('pointermove', ev => {
@@ -1310,7 +1301,7 @@ renderer.domElement.addEventListener('pointermove', ev => {
   if (vorher !== o) aktualisiereDarstellung();
   renderer.domElement.style.cursor = o ? 'pointer' : 'grab';
   if (!o) { tip.hidden = true; return; }
-  const p = o.userData.p, z = o.userData.zeit;
+  const p = o.p, z = o.userData?.zeit;
   tip.innerHTML = p ? `<b>${p.name.voll}</b><span>${jahreKurz(p)} · ${verwandtschaft(p)}</span>`
     : `<b>${z.titel}</b><span>${z.bis ? `${z.jahr}–${z.bis}` : z.jahr} · ${t('Zeitgeschehen')}</span>`;
   tip.style.left = Math.min(ev.clientX + 16, innerWidth - 300) + 'px';
@@ -1320,24 +1311,27 @@ renderer.domElement.addEventListener('pointermove', ev => {
 renderer.domElement.addEventListener('pointerdown', ev => { runter = { x: ev.clientX, y: ev.clientY }; flug = null; });
 renderer.domElement.addEventListener('dblclick', ev => {
   const o = treffer(ev);
-  if (o?.userData.p && o.userData.p !== root) { stoppeAbspielen(); setzeHauptperson(o.userData.p); }
+  if (o?.p && o.p !== root) { stoppeAbspielen(); setzeHauptperson(o.p); }
 });
 renderer.domElement.addEventListener('pointerup', ev => {
   if (!runter || Math.hypot(ev.clientX - runter.x, ev.clientY - runter.y) > 5) return;
   const o = treffer(ev);
-  if (o?.userData.p) { stoppeAbspielen(); waehle(o.userData.p); }
-  else if (o?.userData.zeit) { stoppeAbspielen(); setzeJahr(o.userData.zeit.jahr); }
+  if (o?.p) { stoppeAbspielen(); waehle(o.p); }
+  else if (o?.userData?.zeit) { stoppeAbspielen(); setzeJahr(o.userData.zeit.jahr); }
 });
 
 addEventListener('keydown', ev => {
   if (ev.key === 'Escape' && !ev.defaultPrevented) panel.schliesse();
 });
+// nach verlorenem WebGL-Kontext (vor allem auf Handys) die Karten neu aufbauen: die Atlanten liegen nur auf der Grafikkarte
+renderer.domElement.addEventListener('webglcontextrestored', () => baue());
 addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
   merkeKopf();
   setzeVersatz(panel.offen ? panel.breite() : 0);
+  zeichnen();
 });
 
 // --- Start und Schleife --------------------------------------------------------------------------------
@@ -1345,22 +1339,36 @@ baue();
 camera.position.set(-40, 60, 90);
 controls.target.set(0, 0, zVon(1880));
 ueberblick();
-let letzterRahmen = null;
+let letzterRahmen = null, letztesBild = 0;
 const glatt = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+// Gezeichnet wird nur, wenn sich etwas bewegt oder ändert; im Leerlauf hat die Grafikkarte Ruhe. Was nicht von Hand
+// gesteuert wird (Zeitreise, Drehen, Netz-Simulation), läuft mit der eingestellten Bildrate.
 renderer.setAnimationLoop(now => {
+  const dt = Math.min(0.1, (now - (letzterRahmen ?? now)) / 1000);
+  letzterRahmen = now;
+  let bewegt = false;
   if (flug) {
     const t = Math.min(1, (now - flug.t0) / flug.dauer), k = glatt(t);
     camera.position.lerpVectors(flug.von, flug.pos, k);
     controls.target.lerpVectors(flug.vonZiel, flug.ziel, k);
     if (t >= 1) flug = null;
+    bewegt = true;
   }
-  const dt = Math.min(0.1, (now - (letzterRahmen ?? now)) / 1000);
-  letzterRahmen = now;
-  for (const m of zeitMarken) m.rotation.y += 0.01;
-  if (sim && simSchritt()) { simSchritt(); netzPositionen(); }   // Netz kommt sanft zur Ruhe
-  kameraNachfuehren(dt);
+  const simLaeuft = !!sim && simSchritt();
+  if (simLaeuft) { simSchritt(); netzPositionen(); bewegt = true; }   // Netz kommt sanft zur Ruhe
+  if (kameraNachfuehren(dt)) bewegt = true;
   abspannRollen(dt);
-  controls.update();
+  if (controls.update()) bewegt = true;
+  if (bewegt) neuZeichnen = true;
+  if (!neuZeichnen && !stapel.offen) return;
+  const begrenzt = (abspielen || controls.autoRotate || simLaeuft) && !nutzerZieht && !flug;
+  if (begrenzt && bildrate && now - letztesBild < 1000 / bildrate - 2) return;
+  const neueKacheln = stapel.vorbereiten(camera, renderer.domElement.height);
+  if (!neuZeichnen && !neueKacheln) return;   // nur auf Gesichter gewartet
+  const dtBild = Math.min(0.1, (now - letztesBild) / 1000);
+  letztesBild = now;
+  neuZeichnen = false;
+  for (const m of zeitMarken) m.rotation.y += 0.6 * dtBild;
   himmelFolgt(camera, now);
   // Nebel mit dem Abstand mitführen: aus großer Entfernung (Hochformat) sollen die Karten nicht im Dunst verschwinden
   const abstandZiel = camera.position.distanceTo(controls.target);
@@ -1369,4 +1377,4 @@ renderer.setAnimationLoop(now => {
   renderer.render(scene, camera);
 });
 document.body.classList.add('bereit');
-window.__lb = { camera, controls, fliege, THREE, zVon, daten, himmel: himmelFolgt, karten: () => karten, waehle: id => waehle(daten.byId.get(id)), klang: () => klang.zustand() };  // zum Ausprobieren in der Konsole
+window.__lb = { camera, controls, fliege, THREE, zVon, daten, himmel: himmelFolgt, karten: () => karten, stapel, zeichnen, renderer, waehle: id => waehle(daten.byId.get(id)), klang: () => klang.zustand() };  // zum Ausprobieren in der Konsole

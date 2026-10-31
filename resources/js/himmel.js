@@ -127,8 +127,9 @@ function schimmer() {
 
 /**
  * Baut den Himmel in die Szene und gibt eine Funktion zurück, die ihn je Bild mit der Kamera mitführt.
+ * `fertig` wird gerufen, sobald die Sterne geladen sind (dann ist ein neues Bild fällig).
  */
-export function baueHimmel(scene, url, pixel) {
+export function baueHimmel(scene, url, pixel, fertig = () => {}) {
   const himmel = new THREE.Group();
   // Neigung so, dass die Milchstraße schräg über die Bühne zieht
   himmel.rotation.set(-0.35, 0.9, 0.25);
@@ -155,6 +156,7 @@ export function baueHimmel(scene, url, pixel) {
       materialien.push(p.material);
       himmel.add(p);
     }
+    fertig();
   }).catch(() => { /* ohne Sterne bleibt der Hintergrund dunkel */ });
   const folge = (kamera, zeit) => {
     himmel.position.copy(kamera.position);

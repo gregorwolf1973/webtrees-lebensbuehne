@@ -6,6 +6,10 @@ import * as THREE from 'three';
 
 const plaetze = new Map();
 let wolbung = null;
+let bildrate = 0;   // Bilder pro Sekunde, 0 = so oft wie der Bildschirm
+
+/** Bildrate der Porträts (die Einstellung der Bühne); 0 = unbegrenzt. */
+export function bildrateTiefe(n) { bildrate = n; }
 
 const ladeTextur = src => new Promise(ok => {
   if (!src) return ok(null);
@@ -90,10 +94,13 @@ function male(p, zeit) {
     p.aktiv = null;
     return;
   }
+  if (bildrate && zeit - (a.bild ?? 0) < 1000 / bildrate - 2) return;
+  const weich = 1 - Math.pow(0.92, Math.min(0.1, (zeit - (a.bild ?? zeit)) / 1000) * 60);   // wie 0,08 je Bild bei 60 Bildern/s
+  a.bild = zeit;
   const t = zeit / 1000, z = a.zeiger;
   // deutliches, langsames Schwenken plus Neigung zum Zeiger, weich nachgeführt
-  a.ry += ((Math.sin(t * 0.55) * 0.42 + z.x * 0.7) - a.ry) * 0.08;
-  a.rx += ((Math.sin(t * 0.37) * 0.17 + z.y * 0.5) - a.rx) * 0.08;
+  a.ry += ((Math.sin(t * 0.55) * 0.42 + z.x * 0.7) - a.ry) * weich;
+  a.rx += ((Math.sin(t * 0.37) * 0.17 + z.y * 0.5) - a.rx) * weich;
   p.netz.rotation.set(a.rx, a.ry, 0);
   const w = a.el.clientWidth, h = a.el.clientHeight;
   if (w && h && (w !== a.w || h !== a.h)) {
