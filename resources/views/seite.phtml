@@ -119,6 +119,27 @@ $json = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HE
         <input id="lied-datei" type="file" accept="audio/*" hidden>
       </div>
     </div>
+    <div class="ton-box">
+      <button id="videos" class="schalter" aria-expanded="false" aria-controls="video-menue" title="<?= e($t('Videos zur Zeitgeschichte halb durchsichtig hinter dem Stammbaum')) ?>"><?= e($t('🎬 Videos')) ?></button>
+      <div id="video-menue" class="ton-menue video-menue" hidden>
+        <h3><?= e($t('Videos zur Zeitgeschichte')) ?></h3>
+        <label class="haken"><input type="checkbox" id="videos-an"> <?= e($t('während der Zeitreise zeigen')) ?></label>
+        <label class="haken"><input type="checkbox" id="videos-ton"> <?= e($t('mit Ton')) ?></label>
+        <label class="laut"><?= e($t('Deckkraft')) ?> <input type="range" id="videos-deckkraft" min="10" max="90"></label>
+        <p class="lied-tipp"><?= e($t('Ein Video läuft, solange die Zeitreise in seinen Jahren ist, mindestens aber 10 Sekunden. Passen mehrere, gewinnt das später beginnende. ▶ spielt es sofort zur Probe.')) ?></p>
+        <ul id="video-liste" class="video-liste"></ul>
+        <h3 id="video-form-titel"><?= e($t('Video hinzufügen')) ?></h3>
+        <form id="video-form" class="video-form" autocomplete="off">
+          <input name="url" type="url" required placeholder="<?= e($t('YouTube-Link oder Videodatei (https://…)')) ?>" aria-label="<?= e($t('Adresse')) ?>">
+          <input name="titel" placeholder="<?= e($t('Titel')) ?>" aria-label="<?= e($t('Titel')) ?>">
+          <label><?= e($t('Jahre')) ?> <input name="von" type="number" min="1000" max="2100" required aria-label="<?= e($t('von')) ?>"> – <input name="bis" type="number" min="1000" max="2100" required aria-label="<?= e($t('bis')) ?>"></label>
+          <label><?= e($t('Ausschnitt')) ?> <input name="start" placeholder="0:00" aria-label="<?= e($t('Start')) ?>"> – <input name="ende" placeholder="<?= e($t('Ende')) ?>" aria-label="<?= e($t('Ende')) ?>"></label>
+          <div><button type="submit" class="klein"><?= e($t('Speichern')) ?></button> <button type="button" id="video-form-neu" class="klein" hidden><?= e($t('Abbrechen')) ?></button></div>
+        </form>
+        <button id="videos-vorgaben" class="klein"><?= e($t('Vorgaben wiederherstellen')) ?></button>
+        <p class="lied-tipp"><?= e($t('Vorgaben: gemeinfreie Filme von Wikimedia Commons. YouTube-Videos, deren Kanal das Einbetten verbietet, werden mit ⚠ markiert.')) ?></p>
+      </div>
+    </div>
     <div class="regler">
       <input id="jahr" type="range" min="1650" max="2026" step="1" value="1650" aria-label="<?= e($t('Jahr')) ?>">
       <div class="skala"><span>1650</span><span>1700</span><span>1750</span><span>1800</span><span>1850</span><span>1900</span><span>1950</span><span>2000</span></div>

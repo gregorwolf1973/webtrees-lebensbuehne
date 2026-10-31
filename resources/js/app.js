@@ -9,6 +9,7 @@ import * as klang from 'lb/klang.js';
 import { baueHimmel } from 'lb/himmel.js';
 import { Kartenstapel, KW, KH } from 'lb/karten.js';
 import { bildrateTiefe } from 'lb/tiefe.js';
+import { Videos } from 'lb/video.js';
 
 const FARBE = { vater: '#d6a24e', mutter: '#62b6a9', start: '#f2ede4' };
 const ZWEIGE = ['#c99be0', '#86aee6', '#e39a8b', '#a5d388', '#e8c872', '#86d6cf'];   // Nachkommen: je Kind der Hauptperson eine Farbe
@@ -40,7 +41,7 @@ let zeitAnsicht = zeit, klangAnsicht = daten.klangZeit;   // Zeitgeschehen, das 
 const JAHR_MIN = Math.min(...personen.map(p => p.jahrE));
 
 // --- Szene ---------------------------------------------------------------------------------
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });   // durchsichtig, wenn ein Video dahinter läuft
 // auf Touch-Geräten etwas gröber rendern: spart Grafikspeicher und Akku
 renderer.setPixelRatio(Math.min(devicePixelRatio, matchMedia('(pointer: coarse)').matches ? 1.5 : 2));
 renderer.setSize(innerWidth, innerHeight);
@@ -153,6 +154,13 @@ function baueZeitMarken() {
 }
 // Sternhimmel nur im Hintergrund (echte Sterne und Milchstraße), er geht mit der Kamera mit
 const himmelFolgt = baueHimmel(scene, (window.LEBENSBUEHNE || {}).sterne || 'data/sterne.json', renderer.getPixelRatio(), () => zeichnen());
+// Videos zur Zeitgeschichte hinter der Bühne: dann ohne eigenen Hintergrund und ohne Himmel (die Milchstraße deckt sonst ab)
+const hintergrundFarbe = scene.background;
+const videos = new Videos(document.getElementById('buehne'), an => {
+  scene.background = an ? null : hintergrundFarbe;
+  himmelFolgt.gruppe.visible = !an;
+  zeichnen();
+});
 
 // Lichthof für frisch Geborene (warmes, weiches Leuchten hinter der Karte)
 const hofTextur = (() => {
@@ -969,6 +977,7 @@ function stoppeAbspielen() {
   abspielen = null;
   musik.pause();
   klang.stille();
+  videos.halt();
   document.getElementById('abspielen').textContent = t('▶ Zeitreise');
 }
 document.getElementById('abspielen').addEventListener('click', async e => {
@@ -1007,6 +1016,7 @@ document.getElementById('abspielen').addEventListener('click', async e => {
       if (a.j >= JETZT) { setzeJahr(JETZT); return stoppeAbspielen(); }
     }
     setzeJahr(a.j);
+    videos.jahr(a.j);
     a.raf = requestAnimationFrame(schritt);
   };
   abspielen.raf = requestAnimationFrame(schritt);
@@ -1182,6 +1192,15 @@ dateiWahl.addEventListener('change', async () => {
 });
 
 // Menü aufbauen und bedienen
+const videoKnopf = document.getElementById('videos'), videoMenue = document.getElementById('video-menue');
+videos.menue();
+videoKnopf.addEventListener('click', ev => {
+  ev.stopPropagation();
+  videoMenue.hidden = !videoMenue.hidden;
+  videoKnopf.setAttribute('aria-expanded', !videoMenue.hidden);
+});
+addEventListener('click', ev => { if (!videoMenue.hidden && !videoMenue.contains(ev.target) && ev.target !== videoKnopf) { videoMenue.hidden = true; videoKnopf.setAttribute('aria-expanded', false); } });
+
 const tonKnopf = document.getElementById('ton'), tonMenue = document.getElementById('ton-menue');
 document.getElementById('klang-arten').innerHTML = ARTEN.map(([k, name]) =>
   `<label><input type="checkbox" data-art="${k}"${ton.arten[k] ? ' checked' : ''}> ${name}</label>`).join('');

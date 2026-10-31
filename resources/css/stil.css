@@ -20,7 +20,14 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: var(--grund)
 button { font: inherit; color: inherit; cursor: pointer; }
 a { color: var(--vater); }
 #buehne { position: fixed; inset: 0; }
-#buehne canvas { display: block; cursor: grab; }
+#buehne canvas { display: block; cursor: grab; position: relative; z-index: 1; }
+/* Videos zur Zeitgeschichte: hinter der durchsichtigen Bühne, gedimmt über die Deckkraft */
+#video-schicht { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; background: #0c0f15; }
+#video-schicht[hidden] { display: none; }
+#video-schicht .video { position: absolute; inset: 0; opacity: 0; transition: opacity 1.2s ease; }
+#video-schicht .video.an { opacity: var(--video-deckkraft, 0.35); }
+#video-schicht video { width: 100%; height: 100%; object-fit: cover; }
+#video-schicht .yt iframe { position: absolute; top: 50%; left: 50%; width: max(100vw, 177.78vh); height: max(100vh, 56.25vw); transform: translate(-50%, -50%); border: 0; }
 body:not(.bereit) #buehne::after { content: "Stammbaum wird geladen …"; position: absolute; inset: 0; display: grid; place-items: center; color: var(--text-3); }
 
 /* --- Leisten ------------------------------------------------------------------------------- */
@@ -481,3 +488,18 @@ body.netz .legende-netz { display: flex; }
 @media (max-width: 1199px) { body.netz .legende-netz { display: none; } }
 .legende .namen { background: conic-gradient(#e38f8f, #e3d38f, #8fe39b, #8fc8e3, #c08fe3, #e38f8f); }
 .legende .stern { background: radial-gradient(circle, #fff 0 18%, rgba(255,255,255,0.35) 40%, transparent 70%); }
+
+/* Untermenü Videos */
+.video-menue { width: 360px; }
+.video-liste { list-style: none; margin: 8px 0 4px; padding: 0; }
+.video-liste li { padding: 6px 0; border-top: 1px solid var(--linie); display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; align-items: center; }
+.video-liste li.laeuft span { color: var(--vater); }
+.video-liste small { grid-column: 1; color: var(--text-3); font-size: 12px; }
+.video-liste .knoepfe { grid-column: 2; grid-row: 1 / span 2; display: flex; gap: 4px; }
+.video-liste .warnung { color: #e08a6a; font-weight: 500; }
+.video-form { display: grid; gap: 6px; margin-top: 6px; }
+.video-form input { background: var(--flaeche); border: 1px solid var(--linie); border-radius: 6px; color: var(--text); padding: 4px 8px; font-size: 13px; min-width: 0; }
+.video-form label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-2); }
+.video-form label input { width: 76px; }
+.video-menue #videos-vorgaben { margin-top: 10px; }
+
