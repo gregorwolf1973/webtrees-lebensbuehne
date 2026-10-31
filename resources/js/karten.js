@@ -18,7 +18,9 @@ const KLEIN_PIXEL = 4096 * 4096; // höchstens so viele Pixel für die kleinen K
 const LADEN_GLEICHZEITIG = 8, BILDER_MAX = 80, BUDGET_MS = 6;
 
 class Atlas {
-  constructor(s, anzahl, maxSeite) {
+  // mitMip: nur die kleinen Kacheln brauchen Mipmaps (weit entfernte Karten); mittlere und große werden nur groß gezeigt.
+  // Mipmaps einer sRGB-Textur rechnet der Browser je nach Treiber auf dem Prozessor – das darf nicht je Bild passieren.
+  constructor(s, anzahl, maxSeite, mitMip) {
     this.kw = Math.round(KW * s);
     this.kh = Math.round(KH * s);
     this.s = s;
@@ -33,9 +35,12 @@ class Atlas {
     this.tex.colorSpace = THREE.SRGBColorSpace;
     this.tex.flipY = false;
     this.tex.anisotropy = 4;
+    this.mitMip = mitMip;
+    if (!mitMip) { this.tex.generateMipmaps = false; this.tex.minFilter = THREE.LinearFilter; }
     this.besitzer = new Array(anzahl).fill(null);   // je Kachel die Karte, die sie gerade hat
     this.kratz = null;
     this.mip = false;
+    this.letzteMip = 0;
   }
   ort(i) { return [(i % this.spalten) * this.kw, Math.floor(i / this.spalten) * this.kh]; }
   rechteck(i) { const [x, y] = this.ort(i); return [x / this.W, y / this.H, this.kw / this.W, this.kh / this.H]; }
@@ -66,9 +71,10 @@ class Atlas {
   }
   // Mipmaps einmal je Bild neu rechnen statt nach jeder Kachel
   mipmaps(renderer) {
-    if (!this.mip) return;
+    if (!this.mip || !this.mitMip) { this.mip = false; return; }
     this.binden(renderer).generateMipmap(renderer.getContext().TEXTURE_2D);
     this.mip = false;
+    this.letzteMip = performance.now();
   }
 }
 
@@ -121,6 +127,7 @@ export class Kartenstapel {
     this.atlanten = [];
     this.mesh = null;
     this.rest = false;         // Kacheln, deren Bild bereitliegt, mussten aufs nächste Bild warten
+    this.letzteScharf = 0;     // zuletzt geschriebene mittlere/große Kachel (in Bewegung höchstens alle 100 ms)
     this.neuGeladen = false;   // ein Gesicht ist angekommen
     this.frustum = new THREE.Frustum();
   }
@@ -139,7 +146,7 @@ export class Kartenstapel {
     };
     let s0 = STUFEN[0].s;
     while (s0 > 0.05 && zuGross(s0)) s0 *= 0.9;
-    this.atlanten = [new Atlas(s0, n, maxSeite), ...STUFEN.slice(1).map(st => new Atlas(st.s, Math.min(st.vorrat, n), maxSeite))];
+    this.atlanten = [new Atlas(s0, n, maxSeite, true), ...STUFEN.slice(1).map(st => new Atlas(st.s, Math.min(st.vorrat, n), maxSeite, false))];
     this.karten = liste.map(({ p, basis }, i) => ({
       p, basis, gross: 1, o: 1, hell: 1, gesichtSrc: p.gesicht ?? null,
       index: i, kachel: [i, null, null], inhalt: ['', null, null], wunsch: 0, ziel: 0, px: 0, tiefe: 0, sichtbar: false,
@@ -180,8 +187,9 @@ export class Kartenstapel {
   /**
    * Vor jedem Bild: sichtbare Karten bestimmen, Stufen verteilen, fällige Kacheln schreiben (mit Zeitbudget) und die
    * Instanzen von hinten nach vorn sortiert eintragen. Gibt true zurück, wenn neue Kacheln zu sehen sind.
+   * ruhig = false (Kamera bewegt sich): schärfere Kacheln erst, wenn sie stillsteht – sonst wird beim Zoomen jedes Bild teuer.
    */
-  vorbereiten(kamera, hoehe) {
+  vorbereiten(kamera, hoehe, ruhig = true) {
     if (!this.mesh) return false;
     this.neuGeladen = false;
     kamera.updateMatrixWorld();
@@ -236,6 +244,7 @@ export class Kartenstapel {
       const soll = k.gesichtSrc ?? '';
       for (const s of k.ziel ? [k.ziel, 0] : [0]) {
         if (k.inhalt[s] === soll) continue;
+        if (s > 0 && !ruhig && (neu || performance.now() - this.letzteScharf < 100)) { this.rest = true; continue; }
         let bild = null;
         if (soll) {
           if (!this.bilder.has(soll)) { this.lade(soll); continue; }
@@ -246,12 +255,21 @@ export class Kartenstapel {
         if (neu && performance.now() - t1 > BUDGET_MS) { this.rest = true; continue; }
         this.schreibe(k, s, bild);
         k.inhalt[s] = soll;
+        if (s > 0) this.letzteScharf = performance.now();
         neu = true;
       }
     }
-    for (const a of this.atlanten) a.mipmaps(this.renderer);
+    // Mipmaps der kleinen Kacheln höchstens alle 300 ms neu, die letzte Runde sofort
+    const jetzt = performance.now();
+    let mipNeu = false;
+    for (const a of this.atlanten) {
+      if (a.mip && a.mitMip && (this.rest || this.laden.size > 0) && jetzt - a.letzteMip < 300) continue;
+      if (a.mip && a.mitMip) mipNeu = true;
+      a.mipmaps(this.renderer);
+    }
+    if (this.atlanten.some(a => a.mip && a.mitMip)) this.rest = true;
     this.puffer(sicht);
-    return neu;
+    return neu || mipNeu;
   }
 
   schreibe(k, s, bild) {
@@ -260,6 +278,7 @@ export class Kartenstapel {
       atlas.kratz = document.createElement('canvas');
       atlas.kratz.width = atlas.kw;
       atlas.kratz.height = atlas.kh;
+      atlas.kratz.getContext('2d', { willReadFrequently: true });   // ohne Grafikbeschleunigung: billiger in die Textur zu kopieren
     }
     const g = atlas.kratz.getContext('2d');
     g.setTransform(1, 0, 0, 1, 0, 0);
@@ -291,8 +310,9 @@ export class Kartenstapel {
     sicht.forEach((k, i) => {
       // gezeigt wird die beste Kachel mit dem aktuellen Gesicht, sonst die beste vorhandene
       const soll = k.gesichtSrc ?? '';
+      // höchstens die Stufe, die die Karte auf dem Bildschirm braucht (ohne Mipmaps flimmerte eine große Kachel in der Ferne)
       let s = -1;
-      for (let t = STUFEN.length - 1; t >= 0 && s < 0; t--) if (k.kachel[t] != null && k.inhalt[t] === soll) s = t;
+      for (let t = Math.max(k.ziel, k.wunsch); t >= 0 && s < 0; t--) if (k.kachel[t] != null && k.inhalt[t] === soll) s = t;
       for (let t = STUFEN.length - 1; t >= 0 && s < 0; t--) if (k.kachel[t] != null && k.inhalt[t] != null) s = t;
       if (s < 0) s = 0;
       mitte.setXYZ(i, k.p.pos.x, k.p.pos.y, k.p.pos.z);

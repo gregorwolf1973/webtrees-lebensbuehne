@@ -74,12 +74,17 @@ function lade(x) {
   }).catch(() => { /* unlesbar */ }).finally(() => LAEDT.delete(x));
 }
 // Mono und höchstens MAX_SEK Sekunden; die volle Fassung gibt der Browser danach frei
+// (Kanalzahl einmal lesen: b.numberOfChannels ist ein Browser-Aufruf und kostete in der Schleife Hunderte Millisekunden)
 function verkleinere(b) {
-  const n = Math.min(b.length, Math.round(MAX_SEK * b.sampleRate)), m = ctx.createBuffer(1, n, b.sampleRate), d = m.getChannelData(0);
-  for (let c = 0; c < b.numberOfChannels; c++) {
+  const n = Math.min(b.length, Math.round(MAX_SEK * b.sampleRate)), kanaele = b.numberOfChannels;
+  if (kanaele === 1 && n === b.length) return b;
+  const m = ctx.createBuffer(1, n, b.sampleRate), d = m.getChannelData(0);
+  d.set(b.getChannelData(0).subarray(0, n));
+  for (let c = 1; c < kanaele; c++) {
     const q = b.getChannelData(c);
-    for (let i = 0; i < n; i++) d[i] += q[i] / b.numberOfChannels;
+    for (let i = 0; i < n; i++) d[i] += q[i];
   }
+  if (kanaele > 1) for (let i = 0, f = 1 / kanaele; i < n; i++) d[i] *= f;
   return m;
 }
 // zufällige geladene Aufnahme einer Art („kanone“, „kanone_2“ …); fehlende werden nachgeladen, bis dahin gilt der erzeugte Klang

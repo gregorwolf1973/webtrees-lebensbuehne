@@ -224,8 +224,9 @@ function baue() {
   // Fächer: jeder Zweig bekommt so viel Winkel, wie er Enden hat; Radius nach Generation, Tiefe nach Geburtsjahr
   const elternIm = p => p.eltern.filter(e => e.rolle === 'vorfahr' && e.zumStart === p);
   const kinderIm = p => p.kinderP.filter(c => c.rolle === 'nachkomme' && c.zumStart === p);
+  const ring = RING_ABSTAND * (modus.geschwister ? 1.6 : 1);   // mit Geschwistern weiter auseinander, sonst wird es eng
   const verteile = (p, von, bis, folge, plus = 0) => {
-    const r = (p.generation + plus) * RING_ABSTAND, w = (von + bis) / 2;
+    const r = (p.generation + plus) * ring, w = (von + bis) / 2;
     p.pos = new THREE.Vector3(Math.sin(w) * r, Math.cos(w) * r * 0.82, zVon(p.jahrE));
     const k = folge(p), enden = k.map(x => blaetter(x, folge)), summe = enden.reduce((a, b) => a + b, 0);
     let a = von;
@@ -254,18 +255,23 @@ function baue() {
       // (Nichten, Neffen, deren Kinder …) hat; die Partner stehen neben ihm, die Nachkommen weiter außen
       const geschwFolge = p => [...(p.rolle === 'geschwister' ? p.partnerP.filter(x => x.rolle === 'schwager' && x.zumStart === p) : []),
         ...p.kinderP.filter(c => c.rolle === 'neffe' && c.zumStart === p)];
+      // ältere Geschwister links, jüngere rechts von der Hauptperson (nicht oben drüber, wo sie sie verdecken würden)
       const geschw = imBild.filter(p => p.rolle === 'geschwister');
-      const enden = geschw.map(x => blaetter(x, geschwFolge)), summe = enden.reduce((a, b) => a + b, 0);
-      let von = -WINKEL;
-      geschw.forEach((x, i) => { const bis = von + 2 * WINKEL * enden[i] / summe; verteile(x, von, bis, geschwFolge, 1); von = bis; });
-      seitenlinienSetzen();
+      const seite = (liste, von, bis) => {
+        const enden = liste.map(x => blaetter(x, geschwFolge)), summe = enden.reduce((a, b) => a + b, 0);
+        liste.forEach((x, i) => { const b = von + (bis - von) * enden[i] / summe; verteile(x, von, b, geschwFolge, 1); von = b; });
+      };
+      seite(geschw.filter(x => x.jahrE < root.jahrE), -WINKEL, -0.35);
+      seite(geschw.filter(x => x.jahrE >= root.jahrE), 0.35, WINKEL);
+      seitenlinienSetzen(ring);
     }
     for (const p of imBild) if (!p.pos) p.pos = (p.zumStart?.pos ?? root.pos).clone().add(new THREE.Vector3(0.8, 0.8, 0));   // Rückfall
     entzerren(imBild.filter(p => p !== root));
   }
 
   karten = stapel.baue(imBild.map(p => {
-    const groesse = (p.rolle === 'start' ? 1.35 : 1) * (modus.netz ? 0.8 : 1);
+    const seiten = p.rolle === 'seiten' || p.rolle === 'angeheiratet';   // Seitenverwandte kleiner: die direkte Linie bleibt vorn
+    const groesse = (p.rolle === 'start' ? 1.35 : seiten ? 0.72 : 1) * (modus.netz ? 0.8 : 1);
     return { p, basis: new THREE.Vector2(2.3 * groesse, 2.96 * groesse) };
   }), gruppe);
   linien = modus.netz ? [] : imBild.filter(p => p.zumStart).map(p => {
@@ -330,33 +336,44 @@ const sternTextur = (() => {
 })();
 
 // Familien aus den Eltern der Kinder, dazu Paare ohne gemeinsame Kinder
-// Seitenlinien (Geschwister der Vorfahren und des Partners): neben ihrem Vorfahren auf dessen Ring, ältere links, jüngere
-// rechts; Partner und Nachkommen leicht nach außen versetzt – die Tiefe (Geburtsjahr) trennt die Generationen
-function seitenlinienSetzen() {
+// Seitenlinien (Geschwister der Vorfahren und des Partners) wie ein eigener kleiner Fächer: Jedes Geschwister bekommt
+// neben seinem Vorfahren (ältere links, jüngere rechts) so viel Winkel, wie es Enden hat (Nachkommen, Partner), seine Kinder
+// teilen sich diesen Bereich weiter außen; die Tiefe (Geburtsjahr) trennt die Generationen
+function seitenlinienSetzen(ring) {
   const polar = p => ({ r: Math.hypot(p.pos.x, p.pos.y / 0.82), w: Math.atan2(p.pos.x, p.pos.y / 0.82) });
   const setze = (p, r, w) => {
     w = Math.max(-WINKEL, Math.min(WINKEL, w));
     p.pos = new THREE.Vector3(Math.sin(w) * r, Math.cos(w) * r * 0.82, zVon(p.jahrE));
   };
-  const zweig = (x, r, w, schritt) => {
-    x.partnerP.filter(y => y.rolle === 'angeheiratet' && y.zumStart === x)
-      .forEach((y, i) => setze(y, r + 0.25 * RING_ABSTAND, w + (i + 1) * schritt * 0.5));
-    const kinder = x.kinderP.filter(c => c.rolle === 'seiten' && c.zumStart === x);
-    const rk = r + 0.55 * RING_ABSTAND, sk = Math.min(0.35, 1.3 / rk);
-    kinder.forEach((c, i) => { const wc = w + (i - (kinder.length - 1) / 2) * sk; setze(c, rk, wc); zweig(c, rk, wc, sk); });
+  const kinder = x => x.kinderP.filter(c => c.rolle === 'seiten' && c.zumStart === x);
+  const partner = x => x.partnerP.filter(y => y.rolle === 'angeheiratet' && y.zumStart === x);
+  const gezaehlt = new Map();
+  const enden = x => {
+    if (!gezaehlt.has(x)) gezaehlt.set(x, Math.max(1, kinder(x).reduce((n, c) => n + enden(c), 0)) + partner(x).length * 0.6);
+    return gezaehlt.get(x);
+  };
+  const ast = (x, r, von, bis, d) => {
+    const w = (von + bis) / 2;
+    setze(x, r, w);
+    partner(x).forEach((y, i) => setze(y, r + 0.2 * ring, w + d * 0.6 * (i + 1)));
+    const k = kinder(x), summe = k.reduce((n, c) => n + enden(c), 0);
+    let a = von;
+    for (const c of k) { const b = a + (bis - von) * enden(c) / summe; ast(c, r + 0.55 * ring, a, b, d); a = b; }
   };
   for (const a of imBild.filter(x => x.pos && (x.rolle === 'vorfahr' || x.rolle === 'partner'))) {
     const geschw = imBild.filter(s => s.kern === a);
     if (!geschw.length) continue;
-    const { r, w } = polar(a), schritt = Math.min(0.45, 1.5 / Math.max(r, 1));
-    // ältere links (die älteste ganz außen), jüngere rechts; die Reihe als Ganzes in den Fächer schieben
-    const aelter = geschw.filter(s => s.jahrE < a.jahrE), juenger = geschw.filter(s => s.jahrE >= a.jahrE);
-    const winkel = [...aelter.map((s, i) => w - (aelter.length - i) * schritt), ...juenger.map((s, i) => w + (i + 1) * schritt)];
-    const verschub = Math.max(0, -WINKEL - Math.min(...winkel)) - Math.max(0, Math.max(...winkel) - WINKEL);
-    [...aelter, ...juenger].forEach((s, i) => {
-      setze(s, r, winkel[i] + verschub);
-      zweig(s, r, polar(s).w, schritt);
-    });
+    const { r, w } = polar(a), aelter = geschw.filter(s => s.jahrE < a.jahrE), juenger = geschw.filter(s => s.jahrE >= a.jahrE);
+    const summe = n => n.reduce((m, s) => m + enden(s), 0);
+    // Winkel je Ende: etwa eine Kartenbreite auf dem Ring des Vorfahren, bei sehr großen Familien enger
+    let d = 2.4 / Math.max(r, 1);
+    d = Math.min(d, (2 * WINKEL * 0.9) / (summe(geschw) + 1));
+    const von = w - d / 2 - summe(aelter) * d, bis = w + d / 2 + summe(juenger) * d;
+    const verschub = Math.max(0, -WINKEL - von) - Math.max(0, bis - WINKEL);   // ganze Reihe in den Fächer schieben
+    let x0 = von + verschub;
+    for (const s of aelter) { const x1 = x0 + enden(s) * d; ast(s, r, x0, x1, d); x0 = x1; }
+    x0 = w + verschub + d / 2;
+    for (const s of juenger) { const x1 = x0 + enden(s) * d; ast(s, r, x0, x1, d); x0 = x1; }
   }
 }
 
@@ -1327,6 +1344,8 @@ weltKnopf.addEventListener('click', () => {
   weltgeschehenZeigen(mitWelt);
   zeitAnsicht = zeitFuerAnsicht(imBild, zeit);
   baueZeitMarken();
+  // Bildgeschichte und Lebenslauf neu filtern – nicht mitten in der Erzählung (würde das Vorlesen abbrechen)
+  if (panel.offen && panel.p && !panel.zrPerson && panel.aktiverTab !== 'erzaehlung') panel.zeige(panel.p);
 });
 
 // Suche über den ganzen Stammbaum; wer nicht in der Ansicht ist, wird Hauptperson
@@ -1436,7 +1455,7 @@ renderer.setAnimationLoop(now => {
   if (!neuZeichnen && !stapel.offen) return;
   const begrenzt = (abspielen || controls.autoRotate || simLaeuft) && !nutzerZieht && !flug;
   if (begrenzt && bildrate && now - letztesBild < 1000 / bildrate - 2) return;
-  const neueKacheln = stapel.vorbereiten(camera, renderer.domElement.height);
+  const neueKacheln = stapel.vorbereiten(camera, renderer.domElement.height, !bewegt);
   if (!neuZeichnen && !neueKacheln) return;   // nur auf Gesichter gewartet
   const dtBild = Math.min(0.1, (now - letztesBild) / 1000);
   letztesBild = now;
