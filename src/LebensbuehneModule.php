@@ -24,6 +24,8 @@ use Fisharebest\Webtrees\Module\ModuleChartInterface;
 use Fisharebest\Webtrees\Module\ModuleChartTrait;
 use Fisharebest\Webtrees\Module\ModuleCustomInterface;
 use Fisharebest\Webtrees\Module\ModuleCustomTrait;
+use Fisharebest\Webtrees\Module\ModuleGlobalInterface;
+use Fisharebest\Webtrees\Module\ModuleGlobalTrait;
 use Fisharebest\Webtrees\Module\ModuleTabInterface;
 use Fisharebest\Webtrees\Registry;
 use Fisharebest\Webtrees\Services\ModuleService;
@@ -77,6 +79,7 @@ use function mkdir;
 use function nl2br;
 use function pathinfo;
 use function preg_match;
+use function rawurlencode;
 use function redirect;
 use function rename;
 use function response;
@@ -85,7 +88,9 @@ use function str_starts_with;
 use function strip_tags;
 use function strlen;
 use function strtolower;
+use function strtr;
 use function substr;
+use function trim;
 use function view;
 
 /**
@@ -93,12 +98,13 @@ use function view;
  * für die Daten, die Gesichtsausschnitte und eigene Klänge. Alles ist nur für angemeldete Mitglieder des
  * Stammbaums erreichbar – Gäste werden zur Anmeldung geschickt.
  */
-final class LebensbuehneModule extends AbstractModule implements ModuleCustomInterface, ModuleChartInterface, RequestHandlerInterface
+final class LebensbuehneModule extends AbstractModule implements ModuleCustomInterface, ModuleChartInterface, ModuleGlobalInterface, RequestHandlerInterface
 {
     use ModuleCustomTrait;
     use ModuleChartTrait;
+    use ModuleGlobalTrait;
 
-    public const string VERSION = '1.7.0';
+    public const string VERSION = '1.7.1';
 
     // Oberflächenwörter des Moduls, die webtrees selbst in viele Sprachen übersetzt (deutscher Schlüssel => englische msgid)
     private const array WEBTREES_WOERTER = [
@@ -179,6 +185,24 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
     public function chartMenuClass(): string
     {
         return 'menu-chart-lebensbuehne';
+    }
+
+    /**
+     * Icon für den Eintrag im Menü „Diagramme“. Die Themes setzen Icon, Einzug und Zeilenhöhe der Einträge über
+     * `.menu-chart-…:before`; ohne eigene Regel klebt der Text am linken Rand und die Zeile ist zu niedrig.
+     * Größe wie die Icons der Themes: 24 px (webtrees, fab, minimal), 22 px (clouds, colors, xenea).
+     */
+    public function headContent(): string
+    {
+        $datei = $this->resourcesFolder() . 'css/menu-icon.svg';
+        $svg   = is_file($datei) ? (string) file_get_contents($datei) : '';
+        if ($svg === '') {
+            return '';
+        }
+        $url = static fn (int $px): string => 'url("data:image/svg+xml,' . rawurlencode(strtr(trim($svg), ['width="24" height="24"' => 'width="' . $px . '" height="' . $px . '"'])) . '")';
+
+        return '<style>.menu-chart-lebensbuehne:before{content:' . $url(24) . '}'
+            . '.wt-theme-clouds .menu-chart-lebensbuehne:before,.wt-theme-colors .menu-chart-lebensbuehne:before,.wt-theme-xenea .menu-chart-lebensbuehne:before{content:' . $url(22) . '}</style>';
     }
 
     public function chartBoxMenu(Individual $individual): Menu|null

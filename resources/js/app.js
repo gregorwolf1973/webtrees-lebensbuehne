@@ -1308,6 +1308,11 @@ renderer.domElement.addEventListener('pointermove', ev => {
   tip.style.top = ev.clientY + 14 + 'px';
   tip.hidden = false;
 });
+// Maus verlässt die Bühne (etwa in die Einblendung): Namensschild weg, sonst bliebe es über deren Bedienelementen stehen
+renderer.domElement.addEventListener('pointerleave', () => {
+  tip.hidden = true;
+  if (hover) { hover = null; aktualisiereDarstellung(); }
+});
 renderer.domElement.addEventListener('pointerdown', ev => { runter = { x: ev.clientX, y: ev.clientY }; flug = null; });
 renderer.domElement.addEventListener('dblclick', ev => {
   const o = treffer(ev);
