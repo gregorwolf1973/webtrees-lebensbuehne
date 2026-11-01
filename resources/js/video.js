@@ -9,6 +9,10 @@ const FRUEHE_VORSCHLAEGE = ['c-ellis', 'c-ww1', 'c-franzjoseph', 'c-aachen', 'c-
 const VORSCHLAG_IDS = new Set(VORSCHLAEGE.map(v => v.id));
 export const istVorschlag = e => VORSCHLAG_IDS.has(e.id);
 const MINDEST = 10000;   // so lange (ms) bleibt ein Video, bevor ein vorrangiges es ablöst, solange seine Jahre laufen
+const VORLAUF = 5;       // so viele Sekunden vor ihrem Einsatz werden die nächsten Videos unsichtbar geladen
+const VORRAT = 2;        // höchstens so viele zugleich, damit die Leitung frei bleibt
+// für den Hintergrund genügt bei Commons die 720p-Fassung: lädt schneller; fehlt sie, nimmt datei() das Original
+const leichter = url => url.replace(/\.(1080|1440|2160)p\.vp9\.webm$/, '.720p.vp9.webm');
 
 // Jedes Video gehört zu dem Land, in dem das Ereignis stattfand; ganze Regionen oder einzelne Länder lassen sich
 // abwählen (lb-videos.aus). Unbekannte Länder zählen zu „Welt“. Die Reihenfolge der Länder (lb-videos.reihenfolge,
@@ -97,7 +101,7 @@ export class Videos {
     this.hintergrund = hintergrund;
     this.schicht = document.createElement('div');
     this.schicht.id = 'video-schicht';
-    this.schicht.hidden = true;
+    this.schicht.classList.add('aus');
     this.schicht.setAttribute('aria-hidden', 'true');
     buehne.prepend(this.schicht);
     this.einst = laden();
@@ -105,6 +109,7 @@ export class Videos {
     this.aktiv = null;      // { e, huelle, player, seit, vorschau }
     this.fehler = {};       // id → Meldung, wenn ein Video nicht läuft
     this.durchsichtig = false;
+    this.vorrat = [];       // vorab geladene Spieler der nächsten Videos
     this.schicht.style.setProperty('--video-deckkraft', this.einst.deckkraft / 100);
     this.schicht.style.setProperty('--video-hoehe', this.einst.groesse + '%');
   }
@@ -142,17 +147,45 @@ export class Videos {
 
   /** Je Bild der Zeitreise aufrufen. Es läuft das vorrangige passende Video, genau in seinen Jahren: Es endet mit dem
    *  Jahr „bis“, wie in den Bahnen des Videofensters, und sein Ausschnitt wiederholt sich so lange. Ein vorrangiges,
-   *  das neu beginnt, löst das laufende frühestens nach 10 s ab. */
+   *  das neu beginnt, löst das laufende frühestens nach 10 s ab. Das nächste Video wird vorab geladen. */
   jahr(j) {
     if (!this.einst.an) return this.halt();
+    this.schaetzeTempo(j);
     const a = this.aktiv, k = this.kandidaten(j), n = k[0] ?? null;
-    if (a && !a.vorschau && (n === a.e || (k.includes(a.e) && performance.now() - a.seit < MINDEST))) return;
-    if (!a && !n) return;
-    this.wechsle(n);
+    const bleibt = a && !a.vorschau && (n === a.e || (k.includes(a.e) && performance.now() - a.seit < MINDEST));
+    if (!bleibt && (a || n)) this.wechsle(n);
+    this.vorausschauen(j);
   }
 
-  /** Zeitreise angehalten: Video ausblenden */
+  /** Jahre je Sekunde, geglättet aus den Aufrufen von jahr() */
+  schaetzeTempo(j) {
+    const jetzt = performance.now(), l = this.letztes;
+    if (l && jetzt - l.t > 50) {
+      const v = (j - l.j) / ((jetzt - l.t) / 1000);
+      if (v > 0 && v < 1000) this.tempo = this.tempo ? this.tempo * 0.8 + v * 0.2 : v;
+    }
+    if (!l || jetzt - l.t > 50) this.letztes = { j, t: jetzt };
+  }
+
+  /** Die Videos, die in den nächsten Sekunden drankommen, unsichtbar laden, an ihren Start springen und bereithalten */
+  vorausschauen(j) {
+    const jetzt = performance.now();
+    if (!this.tempo || jetzt - (this.geschaut || 0) < 500) return;
+    this.geschaut = jetzt;
+    const bis = j + this.tempo * VORLAUF, laeuft = this.aktiv?.e ?? null, kommen = [];
+    for (let y = Math.floor(j) + 1; y <= bis && kommen.length < VORRAT; y++) {
+      const n = this.waehle(y);
+      if (n && n !== laeuft && !kommen.includes(n)) kommen.push(n);
+    }
+    for (const a of this.vorrat.filter(a => !kommen.includes(a.e))) this.verwerfe(a);
+    this.vorrat = kommen.map(e => this.vorrat.find(a => a.e === e) ?? this.bereite(e));
+  }
+
+  /** Zeitreise angehalten: Video ausblenden, Vorrat verwerfen */
   halt() {
+    this.vorrat.forEach(a => this.verwerfe(a));
+    this.vorrat = [];
+    this.tempo = this.letztes = null;
     if (this.aktiv) this.wechsle(null);
   }
 
@@ -166,47 +199,78 @@ export class Videos {
     if (alt) {
       alt.huelle.classList.remove('an');
       setTimeout(() => {
-        try { alt.player?.destroy?.(); } catch (err) { /* schon weg */ }
-        alt.huelle.querySelector('video')?.removeAttribute('src');
-        alt.huelle.remove();
+        this.verwerfe(alt);
         if (!this.aktiv) this.durchsicht(false);
       }, BLENDE);
     }
     this.aktiv = null;
     if (!e) { if (!alt) this.durchsicht(false); return; }
     this.durchsicht(true);
+    // vorab geladen? dann ist es schon an seinem Start und läuft sofort
+    let a = this.vorrat.find(x => x.e === e);
+    if (a) this.vorrat = this.vorrat.filter(x => x !== a); else a = this.bereite(e);
+    Object.assign(a, { seit: performance.now(), vorschau });
+    this.aktiv = a;
+    this.starte(a);
+    this.melde?.();
+  }
+
+  /** Spieler für ein Video anlegen, noch unsichtbar und ohne abzuspielen */
+  bereite(e) {
     const huelle = document.createElement('div');
     huelle.className = 'video';
     this.schicht.appendChild(huelle);
-    const a = this.aktiv = { e, huelle, seit: performance.now(), vorschau };
+    const a = { e, huelle, los: false };
     const id = youtubeId(e.url);
     if (id) this.youtube(a, id); else this.datei(a);
-    this.melde?.();
+    return a;
+  }
+
+  starte(a) {
+    a.los = true;
+    if (a.video) {
+      a.video.muted = !this.einst.ton;
+      if (a.video.readyState >= 1) a.video.play().catch(() => {});
+    } else if (a.bereit) {
+      if (this.einst.ton) a.player.unMute(); else a.player.mute();
+      a.player.playVideo();
+    }
+  }
+
+  verwerfe(a) {
+    if (!a) return;
+    try { a.player?.destroy?.(); } catch (err) { /* schon weg */ }
+    if (a.video) { a.video.removeAttribute('src'); a.video.load(); }
+    a.huelle.remove();
   }
 
   durchsicht(an) {
     if (an === this.durchsichtig) return;
     this.durchsichtig = an;
-    this.schicht.hidden = !an;
+    this.schicht.classList.toggle('aus', !an);
     this.hintergrund(an);
   }
 
   datei(a) {
     const { e, huelle } = a, start = e.start || 0, ende = e.ende || 0;
     const v = document.createElement('video');
-    v.muted = !this.einst.ton;
+    v.muted = true;
     v.volume = this.einst.lautstaerke / 100;
     v.playsInline = true;
     v.preload = 'auto';
     v.addEventListener('loadedmetadata', () => {
       v.currentTime = Math.min(start, Math.max(0, v.duration - 1));
-      v.play().catch(() => {});
-    }, { once: true });
-    v.addEventListener('playing', () => huelle.classList.add('an'));
+      if (a.los) v.play().catch(() => {});
+    });
+    v.addEventListener('playing', () => { if (this.aktiv === a) huelle.classList.add('an'); });
     v.addEventListener('timeupdate', () => { if (ende && v.currentTime >= ende) v.currentTime = start; });
     v.addEventListener('ended', () => { v.currentTime = start; v.play().catch(() => {}); });
-    v.addEventListener('error', () => this.misslungen(a, t('Datei lässt sich nicht abspielen')));
-    v.src = e.url;
+    // fehlt die leichtere Fassung, das Original nehmen
+    v.addEventListener('error', () => {
+      if (v.src && v.getAttribute('src') !== e.url) { v.src = e.url; return; }
+      this.misslungen(a, t('Datei lässt sich nicht abspielen'));
+    });
+    v.src = leichter(e.url);
     huelle.appendChild(v);
     a.video = v;
   }
@@ -218,17 +282,25 @@ export class Videos {
     huelle.appendChild(ziel);
     let YT;
     try { YT = await youtubeApi(); } catch (err) { return this.misslungen(a, t('YouTube nicht erreichbar')); }
-    if (this.aktiv !== a) return;
+    if (!huelle.isConnected) return;
     const start = e.start || 0;
+    // stumm anspielen, damit YouTube puffert; im Vorrat danach am Start anhalten
     a.player = new YT.Player(ziel, {
       host: 'https://www.youtube-nocookie.com',
       videoId: id,
-      playerVars: { autoplay: 1, mute: this.einst.ton ? 0 : 1, controls: 0, disablekb: 1, fs: 0, iv_load_policy: 3,
+      playerVars: { autoplay: 1, mute: 1, controls: 0, disablekb: 1, fs: 0, iv_load_policy: 3,
         playsinline: 1, rel: 0, start, ...(e.ende ? { end: e.ende } : {}), origin: location.origin },
       events: {
-        onReady: ev => { ev.target.setVolume(this.einst.lautstaerke); if (this.einst.ton) ev.target.unMute(); else ev.target.mute(); ev.target.playVideo(); },
+        onReady: ev => {
+          a.bereit = true;
+          ev.target.setVolume(this.einst.lautstaerke);
+          if (a.los) this.starte(a); else ev.target.playVideo();
+        },
         onStateChange: ev => {
-          if (ev.data === YT.PlayerState.PLAYING) huelle.classList.add('an');
+          if (ev.data === YT.PlayerState.PLAYING) {
+            if (!a.los) { ev.target.pauseVideo(); ev.target.seekTo(start, true); }
+            else if (this.aktiv === a) huelle.classList.add('an');
+          }
           if (ev.data === YT.PlayerState.ENDED) { ev.target.seekTo(start, true); ev.target.playVideo(); }
         },
         onError: ev => this.misslungen(a, ytFehler(ev.data)),
@@ -238,6 +310,7 @@ export class Videos {
 
   misslungen(a, meldung) {
     this.fehler[a.e.id] = meldung;
+    if (this.vorrat.includes(a)) { this.verwerfe(a); this.vorrat = this.vorrat.filter(x => x !== a); }
     if (this.aktiv === a) this.wechsle(null);
     this.melde?.();
   }

@@ -23,7 +23,8 @@ a { color: var(--vater); }
 #buehne canvas { display: block; cursor: grab; position: relative; z-index: 1; }
 /* Videos zur Zeitgeschichte: hinter der durchsichtigen Bühne, gedimmt über die Deckkraft */
 #video-schicht { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; background: #0c0f15; }
-#video-schicht[hidden] { display: none; }
+/* ausgeblendet bleibt sie sichtbar für den Browser, damit das vorab geladene Video puffern kann */
+#video-schicht.aus { visibility: hidden; }
 /* alle im selben 4:3-Rahmen (Archivfilme sind meist 4:3; Breitbild wird an den Seiten beschnitten, eingebaute
    schwarze Balken fallen so weg). Die Ränder verlaufen in die Hintergrundfarbe – als Verlauf darüber statt als Maske,
    weil Chrome Masken nicht auf eingebettete YouTube-Rahmen anwendet */
