@@ -155,11 +155,11 @@ function baueZeitMarken() {
 }
 // Sternhimmel nur im Hintergrund (echte Sterne und Milchstraße), er geht mit der Kamera mit
 const himmelFolgt = baueHimmel(scene, (window.LEBENSBUEHNE || {}).sterne || 'data/sterne.json', renderer.getPixelRatio(), () => zeichnen());
-// Videos zur Zeitgeschichte hinter der Bühne: dann ohne eigenen Hintergrund und ohne Himmel (die Milchstraße deckt sonst ab)
+// Videos zur Zeitgeschichte hinter der Bühne: dann ohne eigenen Hintergrund; der Himmel zählt nur Licht dazu und
+// leuchtet so auf dem Video
 const hintergrundFarbe = scene.background;
 const videos = new Videos(document.getElementById('buehne'), an => {
   scene.background = an ? null : hintergrundFarbe;
-  himmelFolgt.gruppe.visible = !an;
   zeichnen();
 });
 

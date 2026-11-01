@@ -28,6 +28,14 @@ const ausGalaktisch = (l, b) => {
 };
 const normal = () => Math.sqrt(-2 * Math.log(1 - Math.random())) * Math.cos(2 * Math.PI * Math.random());
 
+// Licht dazuzählen, die Deckkraft der Bildfläche aber nicht anrühren: Läuft ein Video hinter der durchsichtigen Bühne,
+// leuchten Sterne und Milchstraße darauf, statt es zu verdecken
+const nurLicht = {
+  blending: THREE.CustomBlending, blendEquation: THREE.AddEquation,
+  blendSrc: THREE.SrcAlphaFactor, blendDst: THREE.OneFactor,
+  blendSrcAlpha: THREE.ZeroFactor, blendDstAlpha: THREE.OneFactor,
+};
+
 const material = pixel => new THREE.ShaderMaterial({
   uniforms: { pixel: { value: pixel }, zeit: { value: 0 } },
   vertexShader: `
@@ -56,7 +64,7 @@ const material = pixel => new THREE.ShaderMaterial({
     }`,
   transparent: true,
   depthWrite: false,
-  blending: THREE.AdditiveBlending,
+  ...nurLicht,
 });
 
 function punkte(liste, pixel) {
@@ -117,7 +125,7 @@ function schimmer() {
     side: THREE.BackSide,
     depthWrite: false,
     transparent: true,
-    blending: THREE.AdditiveBlending,
+    ...nurLicht,
   });
   const kugel = new THREE.Mesh(new THREE.SphereGeometry(R * 1.02, 96, 48), mat);
   kugel.renderOrder = -11;
