@@ -8,22 +8,24 @@ import { VORSCHLAEGE } from 'lb/videovorschlaege.js';
 const FRUEHE_VORSCHLAEGE = ['c-ellis', 'c-ww1', 'c-franzjoseph', 'c-aachen', 'c-truemmer', 'c-mond'];
 const VORSCHLAG_IDS = new Set(VORSCHLAEGE.map(v => v.id));
 export const istVorschlag = e => VORSCHLAG_IDS.has(e.id);
-const MINDEST = 10000;   // so lange (ms) bleibt ein Video, bevor ein anderes passendes es ablöst
-const WECHSEL = 20000;   // passen mehrere Videos, wechseln sie sich nach so langer Zeit ab
+const MINDEST = 10000;   // so lange (ms) bleibt ein Video, bevor ein vorrangiges es ablöst, solange seine Jahre laufen
 
 // Jedes Video gehört zu dem Land, in dem das Ereignis stattfand; ganze Regionen oder einzelne Länder lassen sich
-// abwählen (lb-videos.aus). Unbekannte Länder zählen zu „Welt“.
-export const REGIONEN = ['Deutschland', 'Europa', 'Nordamerika', 'Welt', 'Ohne Land'];
-const REGION_VON = { Deutschland: 'Deutschland', USA: 'Nordamerika', Kanada: 'Nordamerika', Mexiko: 'Nordamerika' };
+// abwählen (lb-videos.aus). Unbekannte Länder zählen zu „Welt“. Die Reihenfolge der Länder (lb-videos.reihenfolge,
+// im Videofenster per Ziehen) ist ihr Vorrang, wenn sich Videos überschneiden.
+export const REGIONEN = ['Europa', 'Nordamerika', 'Welt', 'Ohne Land'];
+const REGION_VON = { Deutschland: 'Europa' };
 for (const l of ['Österreich', 'Schweiz', 'Frankreich', 'Großbritannien', 'Irland', 'Niederlande', 'Belgien', 'Luxemburg',
   'Dänemark', 'Schweden', 'Norwegen', 'Polen', 'Tschechien', 'Slowakei', 'Ungarn', 'Rumänien', 'Serbien', 'Kroatien',
   'Italien', 'Spanien', 'Portugal', 'Griechenland', 'Russland', 'Ukraine']) REGION_VON[l] = 'Europa';
+for (const l of ['USA', 'Kanada', 'Mexiko']) REGION_VON[l] = 'Nordamerika';
 export const LAENDER = Object.keys(REGION_VON);
+// ohne eigene Reihenfolge: eigene Videos ohne Land zuerst, dann Deutschland, das übrige Europa, Nordamerika
+const STANDARD_REIHENFOLGE = ['Ohne Land', ...LAENDER];
 export const landVon = e => String(e.land || '').trim() || 'Ohne Land';
 export const regionVon = e => { const l = landVon(e); return l === 'Ohne Land' ? l : REGION_VON[l] || 'Welt'; };
-/** genauer = kürzere Spanne, bei Gleichstand das später beginnende, dann nach Region (Deutschland zuerst) */
-export const genauer = (x, y) => (x.bis - x.von) - (y.bis - y.von) || y.von - x.von
-  || REGIONEN.indexOf(regionVon(x)) - REGIONEN.indexOf(regionVon(y));
+/** genauer = kürzere Spanne, bei Gleichstand das später beginnende */
+export const genauer = (x, y) => (x.bis - x.von) - (y.bis - y.von) || y.von - x.von;
 const BLENDE = 1200;     // Ein- und Ausblenden (ms), passend zur CSS-Übergangszeit
 
 /** YouTube-Kennung aus einem Link (watch?v=, youtu.be/, shorts/, embed/, live/) oder null */
@@ -67,7 +69,8 @@ function laden() {
   const alt = Array.isArray(e.liste);
   const einst = { an: e.an ?? true, ton: e.ton ?? false, lautstaerke: e.lautstaerke ?? 70, deckkraft: e.deckkraft ?? 35, groesse: e.groesse ?? 100,
     liste: alt ? e.liste : [], gesehen: Array.isArray(e.gesehen) ? e.gesehen : alt ? [...FRUEHE_VORSCHLAEGE] : [],
-    aus: Array.isArray(e.aus) ? e.aus : [] };
+    aus: Array.isArray(e.aus) ? e.aus : [],
+    reihenfolge: Array.isArray(e.reihenfolge) ? e.reihenfolge : [] };
   // übernommene Vorschläge folgen dem Katalog (berichtigte Adressen, Jahre, Länder); nur selbst Geändertes bleibt
   einst.liste = einst.liste.map(x => {
     const v = VORSCHLAEGE.find(y => y.id === x.id);
@@ -101,7 +104,6 @@ export class Videos {
     this.aktiv = null;      // { e, huelle, player, seit, vorschau }
     this.fehler = {};       // id → Meldung, wenn ein Video nicht läuft
     this.durchsichtig = false;
-    this.gezeigt = new Map();   // id → Zeitpunkt, seit dem es in dieser Zeitreise lief
     this.schicht.style.setProperty('--video-deckkraft', this.einst.deckkraft / 100);
     this.schicht.style.setProperty('--video-hoehe', this.einst.groesse + '%');
   }
@@ -110,51 +112,46 @@ export class Videos {
     try { localStorage.setItem('lb-videos', JSON.stringify(this.einst)); } catch (e) { /* ohne Speicher */ }
   }
 
-  /** Ist das Land oder die Region des Videos abgewählt? Mit `region` zählt nur die Abwahl einzelner Länder. */
-  abgewaehlt(e, region) {
-    const aus = this.einst.aus, l = landVon(e), r = regionVon(e);
-    return (l !== r && aus.includes(l)) || (!region && aus.includes(r));
+  /** Ist das Land oder seine Region abgewählt? */
+  abgewaehlt(e) {
+    const aus = this.einst.aus;
+    return aus.includes(landVon(e)) || aus.includes(regionVon(e));
   }
 
-  /** Eingeschaltete Videos, deren Jahre laufen, das genaueste zuerst; eigene Videos gehen den Vorschlägen vor.
-   *  Mit `region` nur aus dieser Region, auch wenn sie abgewählt ist (für den Zeitstrahl im Videofenster). */
-  kandidaten(j, region) {
-    const k = this.einst.liste.filter(e => e.an && !this.fehler[e.id] && j >= e.von && j < e.bis + 1
-      && (!region || regionVon(e) === region) && !this.abgewaehlt(e, region));
-    return (k.some(e => !istVorschlag(e)) ? k.filter(e => !istVorschlag(e)) : k).sort(genauer);
+  /** Alle Länder in der Reihenfolge ihres Vorrangs: die gewählte, dann die übrigen wie vorgegeben */
+  reihenfolge() {
+    const r = this.einst.reihenfolge.filter((l, i, a) => a.indexOf(l) === i);
+    const rest = [...new Set([...STANDARD_REIHENFOLGE, ...this.einst.liste.map(landVon), ...VORSCHLAEGE.map(landVon)])];
+    return [...r, ...rest.filter(l => !r.includes(l))];
   }
 
-  waehle(j, region) {
-    return this.kandidaten(j, region)[0] ?? null;
+  /** Eingeschaltete Videos, deren Jahre laufen, das vorrangige zuerst: das Land weiter oben, im selben Land eigene
+   *  Videos vor Vorschlägen, dann das genaueste. Mit `land` nur aus diesem Land, auch wenn es abgewählt ist (für die
+   *  Bahnen im Videofenster). */
+  kandidaten(j, land) {
+    const rang = new Map(this.reihenfolge().map((l, i) => [l, i]));
+    return this.einst.liste.filter(e => e.an && !this.fehler[e.id] && j >= e.von && j < e.bis + 1
+      && (land ? landVon(e) === land : !this.abgewaehlt(e)))
+      .sort((x, y) => rang.get(landVon(x)) - rang.get(landVon(y)) || istVorschlag(x) - istVorschlag(y) || genauer(x, y));
   }
 
-  /** Je Bild der Zeitreise aufrufen. Ein Video läuft genau in seinen Jahren und endet mit dem Jahr „bis“, wie im
-   *  Zeitstrahl des Videofensters; sein Ausschnitt wiederholt sich so lange. Passen mehrere, etwa aus Deutschland und
-   *  den USA, wechseln sie sich alle 20 s ab, und ein genaueres neues löst nach 10 s ab. */
+  waehle(j, land) {
+    return this.kandidaten(j, land)[0] ?? null;
+  }
+
+  /** Je Bild der Zeitreise aufrufen. Es läuft das vorrangige passende Video, genau in seinen Jahren: Es endet mit dem
+   *  Jahr „bis“, wie in den Bahnen des Videofensters, und sein Ausschnitt wiederholt sich so lange. Ein vorrangiges,
+   *  das neu beginnt, löst das laufende frühestens nach 10 s ab. */
   jahr(j) {
     if (!this.einst.an) return this.halt();
-    const a = this.aktiv, k = this.kandidaten(j);
-    if (a && !a.vorschau && k.includes(a.e)) {
-      const t = performance.now() - a.seit;
-      if (t < MINDEST) return;
-      const genaueresNeues = k.some(e => !this.gezeigt.has(e.id) && genauer(e, a.e) < 0);
-      if (!genaueresNeues && (k.length === 1 || t < WECHSEL)) return;
-    }
-    const n = this.naechstes(k, a?.vorschau ? null : a?.e);
-    if ((!a && !n) || (a && !a.vorschau && n === a.e)) return;
+    const a = this.aktiv, k = this.kandidaten(j), n = k[0] ?? null;
+    if (a && !a.vorschau && (n === a.e || (k.includes(a.e) && performance.now() - a.seit < MINDEST))) return;
+    if (!a && !n) return;
     this.wechsle(n);
   }
 
-  /** zuerst noch nicht gezeigte (das genaueste zuerst), sonst das am längsten nicht gezeigte */
-  naechstes(k, jetzt) {
-    const andere = k.filter(e => e !== jetzt);
-    return andere.find(e => !this.gezeigt.has(e.id))
-      ?? andere.sort((x, y) => this.gezeigt.get(x.id) - this.gezeigt.get(y.id))[0] ?? k[0] ?? null;
-  }
-
-  /** Zeitreise angehalten: Video ausblenden; die nächste Zeitreise beginnt wieder mit den genauesten */
+  /** Zeitreise angehalten: Video ausblenden */
   halt() {
-    this.gezeigt.clear();
     if (this.aktiv) this.wechsle(null);
   }
 
@@ -181,7 +178,6 @@ export class Videos {
     huelle.className = 'video';
     this.schicht.appendChild(huelle);
     const a = this.aktiv = { e, huelle, seit: performance.now(), vorschau };
-    this.gezeigt.set(e.id, a.seit);
     const id = youtubeId(e.url);
     if (id) this.youtube(a, id); else this.datei(a);
     this.melde?.();

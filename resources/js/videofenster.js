@@ -1,5 +1,6 @@
-// Videofenster: Videos zur Zeitgeschichte aussuchen, ansehen und zuschneiden. Oben zeigt je Region eine Bahn, welches
-// Video in welchem Jahr läuft; Regionen und Länder lassen sich dort abwählen. Links die Liste mit Länderfilter
+// Videofenster: Videos zur Zeitgeschichte aussuchen, ansehen und zuschneiden. Oben zeigt je Land eine Bahn, welches
+// Video in welchem Jahr dran wäre; die Reihenfolge der Bahnen (per Ziehen) ist der Vorrang bei Überschneidungen,
+// Regionen und Länder lassen sich abwählen. Links die Liste mit Länderfilter
 // (✕ löscht, gelöschte Vorschläge lassen sich einblenden und mit ＋ zurückholen), rechts die Vorschau mit Filmstreifen
 // und Zeitleiste: ein Klick setzt den Start, Umschalt+Klick oder Rechtsklick das Ende, die Griffe lassen sich ziehen.
 // Gestrichelt ist, was der 4:3-Rahmen im Hintergrund abschneidet.
@@ -9,8 +10,6 @@ import { VORSCHLAEGE } from 'lb/videovorschlaege.js';
 
 const STREIFEN = 10;   // Einzelbilder im Filmstreifen
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
-// Land für ein neues Video, wenn es über die Bahn einer Region angelegt wird
-const LAND_DER_REGION = { Deutschland: 'Deutschland', Nordamerika: 'USA' };
 
 /** Vorschau für Videodateien und YouTube mit gemeinsamer Bedienung */
 class Abspieler {
@@ -108,9 +107,23 @@ export class VideoFenster {
         <button class="klein vf-zu" data-tun="zu" aria-label="${esc(t('Schließen'))}">✕</button>
       </header>
       <div class="vf-strahl-box">
+        <div class="vf-regionen-zeile">
+          <span class="vf-regionen"></span>
+          <button class="klein vf-info" data-tun="info" aria-expanded="false" title="${esc(t('Wie die Zeitreise das Video wählt'))}">ⓘ ${esc(t('Regel'))}</button>
+        </div>
+        <div class="vf-regel" hidden>
+          <p><b>${esc(t('So wählt die Zeitreise das Video:'))}</b></p>
+          <ul>
+            <li>${esc(t('Es laufen nur eingeschaltete Videos (Haken in der Liste) aus Ländern und Regionen mit Haken.'))}</li>
+            <li>${esc(t('Ein Video läuft genau in seinen Jahren „von–bis“ und endet mit dem Jahr „bis“. Sein Ausschnitt wiederholt sich so lange.'))}</li>
+            <li>${esc(t('Überschneiden sich Videos, gewinnt das Land, das hier weiter oben steht. Zum Ändern eine Bahn am ⠿ nach oben oder unten ziehen (oder ⠿ anklicken und die Pfeiltasten nehmen).'))}</li>
+            <li>${esc(t('Im selben Land gehen eigene Videos den Vorschlägen vor, sonst gewinnt das genaueste – das mit den wenigsten Jahren, etwa Magdeburg 1631 im Dreißigjährigen Krieg.'))}</li>
+            <li>${esc(t('Beginnt ein vorrangiges Video, löst es das laufende frühestens nach 10 Sekunden ab, damit nichts flackert.'))}</li>
+            <li>${esc(t('Jede Bahn zeigt, welches Video dieses Landes in welchem Jahr dran wäre. Ein Klick auf einen Abschnitt öffnet das Video, ein Klick auf eine Lücke legt eins für diese Jahre an.'))}</li>
+          </ul>
+        </div>
         <div class="vf-bahnen"></div>
-        <div class="vf-bahn"><span></span><div class="vf-skala"></div></div>
-        <div class="vf-laender"></div>
+        <div class="vf-bahn vf-skala-zeile"><span></span><span></span><div class="vf-skala"></div></div>
         <p class="vf-luecken"><span></span> <button class="klein" data-tun="fuellen" hidden>${esc(t('Lücken mit Vorschlägen füllen'))}</button></p>
       </div>
       <div class="vf-haupt">
@@ -170,7 +183,7 @@ export class VideoFenster {
     const q = s => el.querySelector(s);
     this.liste = q('.vf-liste');
     this.bahnen = q('.vf-bahnen');
-    this.laender = q('.vf-laender');
+    this.regionen = q('.vf-regionen');
     this.form = q('.vf-felder');
     this.zl = q('.vf-zeitleiste');
     this.streifen = q('.vf-streifen');
@@ -193,7 +206,8 @@ export class VideoFenster {
       if (lauf?.dataset.id) return this.waehleAus(this.v.einst.liste.find(e => e.id === lauf.dataset.id));
       if (lauf?.dataset.luecke) {
         const [a, b] = lauf.dataset.luecke.split('-').map(Number);
-        return this.neu(a, b, LAND_DER_REGION[lauf.closest('.vf-bahn')?.dataset.region] || '');
+        const land = lauf.closest('.vf-bahn')?.dataset.land;
+        return this.neu(a, b, land === 'Ohne Land' ? '' : land);
       }
       const loeschen = ev.target.closest('[data-loeschen]');
       if (loeschen) return this.loesche(this.v.einst.liste.find(e => e.id === loeschen.dataset.loeschen));
@@ -237,6 +251,53 @@ export class VideoFenster {
     this.form.addEventListener('submit', ev => ev.preventDefault());
     this.form.addEventListener('change', ev => this.feldGeaendert(ev.target.name));
     this.zeitleisteEinrichten();
+    this.bahnenEinrichten();
+  }
+
+  /** Bahnen am ⠿ ziehen (oder mit den Pfeiltasten verschieben): ihre Reihenfolge ist der Vorrang der Länder */
+  bahnenEinrichten() {
+    const merken = () => {
+      const sichtbar = [...this.bahnen.querySelectorAll('.vf-bahn')].map(b => b.dataset.land);
+      // nicht sichtbare Länder behalten ihren Platz hinter den sichtbaren
+      this.v.einst.reihenfolge = [...sichtbar, ...this.v.reihenfolge().filter(l => !sichtbar.includes(l))];
+      this.v.speichern();
+      this.zeichne();
+    };
+    this.bahnen.addEventListener('pointerdown', ev => {
+      const griff = ev.target.closest('.vf-zieh');
+      if (!griff || ev.button !== 0) return;
+      ev.preventDefault();
+      const bahn = griff.closest('.vf-bahn');
+      bahn.classList.add('zieht');
+      const ziehen = e2 => {
+        const andere = [...this.bahnen.querySelectorAll('.vf-bahn:not(.zieht)')];
+        const vor = andere.find(b => { const r = b.getBoundingClientRect(); return e2.clientY < r.top + r.height / 2; });
+        if (vor) { if (bahn.nextElementSibling !== vor) this.bahnen.insertBefore(bahn, vor); }
+        else if (this.bahnen.lastElementChild !== bahn) this.bahnen.appendChild(bahn);
+      };
+      const los = () => {
+        removeEventListener('pointermove', ziehen);
+        removeEventListener('pointerup', los);
+        removeEventListener('pointercancel', los);
+        bahn.classList.remove('zieht');
+        merken();
+        this.bahnen.querySelector(`.vf-bahn[data-land="${CSS.escape(bahn.dataset.land)}"] .vf-zieh`)?.focus();
+      };
+      addEventListener('pointermove', ziehen);
+      addEventListener('pointerup', los);
+      addEventListener('pointercancel', los);
+    });
+    this.bahnen.addEventListener('keydown', ev => {
+      const griff = ev.target.closest('.vf-zieh');
+      if (!griff || (ev.key !== 'ArrowUp' && ev.key !== 'ArrowDown')) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      const bahn = griff.closest('.vf-bahn'), nachbar = ev.key === 'ArrowUp' ? bahn.previousElementSibling : bahn.nextElementSibling;
+      if (!nachbar) return;
+      if (ev.key === 'ArrowUp') this.bahnen.insertBefore(bahn, nachbar); else this.bahnen.insertBefore(nachbar, bahn);
+      merken();
+      this.bahnen.querySelector(`.vf-bahn[data-land="${CSS.escape(bahn.dataset.land)}"] .vf-zieh`)?.focus();
+    });
   }
 
   oeffne(jahr) {
@@ -278,7 +339,7 @@ export class VideoFenster {
 
   neu(von, bis, land) {
     const j = +document.getElementById('jahr')?.value || 1900;
-    if (land == null) land = this.filter.startsWith('l:') ? this.filter.slice(2) : LAND_DER_REGION[this.filter.slice(2)] || '';
+    if (land == null) land = this.filter.startsWith('l:') ? this.filter.slice(2) : '';
     this.wahl = { e: { id: 'v' + Date.now().toString(36), url: '', titel: '', land, von: von ?? j, bis: bis ?? von ?? j, start: 0, ende: 0, an: true }, art: 'neu' };
     this.zeigeEditor();
     this.lade();
@@ -502,6 +563,12 @@ export class VideoFenster {
     if (was === 'zu') return this.zu();
     if (was === 'neu') return this.neu();
     if (was === 'fuellen') return this.fuellen();
+    if (was === 'info') {
+      const r = this.el.querySelector('.vf-regel'), k = this.el.querySelector('.vf-info');
+      r.hidden = !r.hidden;
+      k.setAttribute('aria-expanded', !r.hidden);
+      return;
+    }
     if (was === 'rueckgaengig' && this.geloescht) {
       const { e: x, i } = this.geloescht;
       this.geloescht = null;
@@ -595,11 +662,13 @@ export class VideoFenster {
     const L = this.v.einst.liste, wid = this.wahl?.e.id, aus = this.v.einst.aus;
     const fehlen = VORSCHLAEGE.filter(v => !L.some(x => x.id === v.id));
 
-    // Länder und Regionen, die in Liste oder Vorschlägen vorkommen, mit Anzahl
+    // Länder (in der Reihenfolge ihres Vorrangs) und Regionen der Liste, mit Anzahl
     const zahl = {};
     for (const e of L) { zahl[regionVon(e)] = (zahl[regionVon(e)] || 0) + 1; zahl['l:' + landVon(e)] = (zahl['l:' + landVon(e)] || 0) + 1; }
-    const regionen = REGIONEN.filter(r => zahl[r] || fehlen.some(v => regionVon(v) === r));
-    const laenderIn = r => [...new Set([...L, ...fehlen].filter(e => regionVon(e) === r).map(landVon))].filter(l => l !== r).sort();
+    const laender = this.v.reihenfolge().filter(l => zahl['l:' + l]);
+    const regionen = REGIONEN.filter(r => zahl[r]);
+    const regionDes = l => regionVon({ land: l === 'Ohne Land' ? '' : l });
+    const laenderIn = r => laender.filter(l => regionDes(l) === r && l !== r);
 
     // Liste: nach Land gefiltert; gelöschte Vorschläge nur auf Wunsch, blass mit ＋
     const passt = e => !this.filter || (this.filter.startsWith('r:') ? regionVon(e) === this.filter.slice(2) : landVon(e) === this.filter.slice(2));
@@ -628,7 +697,7 @@ export class VideoFenster {
     filter.value = this.filter;
     if (filter.value !== this.filter) { this.filter = ''; filter.value = ''; }
 
-    // Zeitstrahl: je Region eine Bahn mit dem dort jeweils genauesten Video; abgewählte Regionen blass
+    // Zeitstrahl: je Land eine Bahn mit dem dort jeweils vorrangigen Video; abgewählte Länder und Regionen blass
     const jetzt = new Date().getFullYear();
     const A = Math.min(1600, ...L.map(e => e.von)), B = Math.max(jetzt, ...L.map(e => e.bis)) + 1;
     const pos = j => (j - A) / (B - A) * 100;
@@ -648,16 +717,20 @@ export class VideoFenster {
         return `<button class="vf-lauf${n++ % 2 ? ' b' : ''}${l.e.id === wid ? ' gewaehlt' : ''}" style="${stil}" data-id="${esc(l.e.id)}" title="${esc(`${jahre} · ${l.e.titel || l.e.url} (${landVon(l.e)})`)}"></button>`;
       }).join('');
     };
-    this.bahnen.innerHTML = regionen.map(r => `<div class="vf-bahn${aus.includes(r) ? ' aus' : ''}" data-region="${esc(r)}">
-      <label class="haken" title="${esc(t('Region während der Zeitreise zeigen'))}"><input type="checkbox" data-aus="${esc(r)}"${aus.includes(r) ? '' : ' checked'}> ${esc(t(r))}</label>
-      <div class="vf-strahl">${bahn(r)}</div></div>`).join('');
+    this.bahnen.innerHTML = laender.map(l => {
+      const r = regionDes(l), regionAus = r !== l && aus.includes(r);
+      return `<div class="vf-bahn${aus.includes(l) || regionAus ? ' aus' : ''}" data-land="${esc(l)}">
+        <button class="vf-zieh" title="${esc(t('Ziehen oder Pfeiltasten: Vorrang dieses Landes ändern'))}" aria-label="${esc(t('Vorrang von {land} ändern', { land: t(l) }))}">⠿</button>
+        <label class="haken" title="${esc(t('Videos dieses Landes während der Zeitreise zeigen'))}"><input type="checkbox" data-aus="${esc(l)}"${aus.includes(l) ? '' : ' checked'}${regionAus ? ' disabled' : ''}> ${esc(t(l))} <small>${zahl['l:' + l]}</small></label>
+        <div class="vf-strahl">${bahn(l)}</div></div>`;
+    }).join('');
     const marken = [];
     for (let j = Math.ceil(A / 50) * 50; j < B; j += 50) marken.push(`<span style="left:${pos(j)}%">${j}</span>`);
     this.el.querySelector('.vf-skala').innerHTML = marken.join('');
-    // einzelne Länder der Regionen mit mehreren Ländern
-    this.laender.innerHTML = regionen.filter(r => laenderIn(r).length).map(r => `<span class="vf-gruppe${aus.includes(r) ? ' aus' : ''}">${esc(t(r))}:`
-      + laenderIn(r).map(l => ` <label class="haken"><input type="checkbox" data-aus="${esc(l)}"${aus.includes(l) ? '' : ' checked'}${aus.includes(r) ? ' disabled' : ''}> ${esc(l)}</label>`).join('')
-      + '</span>').join('');
+    // ganze Regionen ab- und zuwählen (eine Region mit nur einem gleichnamigen Land braucht keinen eigenen Haken)
+    const mitHaken = regionen.filter(r => laenderIn(r).length);
+    this.regionen.innerHTML = mitHaken.length ? `<span>${esc(t('Regionen:'))}</span>` + mitHaken.map(r =>
+      `<label class="haken"><input type="checkbox" data-aus="${esc(r)}"${aus.includes(r) ? '' : ' checked'}> ${esc(t(r))}</label>`).join('') : '';
 
     // was die Zeitreise mit der jetzigen Auswahl abdeckt
     const luecken = laeufe(j => this.v.waehle(j)).filter(l => !l.e);

@@ -511,12 +511,27 @@ body.netz .legende-netz { display: flex; }
 .vf-oben h2 { margin: 0; flex: 1; font: 600 21px var(--serif); }
 .vf-zu { font-size: 15px !important; }
 .vf-strahl-box { padding: 0 18px 10px; }
-.vf-bahn { display: grid; grid-template-columns: 124px minmax(0, 1fr); gap: 10px; align-items: center; margin-bottom: 3px; }
-.vf-bahn .haken { font-size: 12.5px; color: var(--text-2); gap: 6px; white-space: nowrap; }
-.vf-bahn input, .vf-laender input { accent-color: var(--vater); width: 14px; height: 14px; margin: 0; }
+.vf-regionen-zeile { display: flex; align-items: center; gap: 16px; margin-bottom: 6px; font-size: 12.5px; color: var(--text-3); }
+.vf-regionen { display: flex; flex-wrap: wrap; gap: 4px 16px; flex: 1; }
+.vf-regionen .haken { display: inline-flex; align-items: center; gap: 5px; color: var(--text-2); }
+.vf-regionen input { accent-color: var(--vater); width: 14px; height: 14px; margin: 0; }
+.vf-info[aria-expanded="true"] { border-color: var(--vater); }
+.vf-regel { margin: 0 0 8px; padding: 8px 14px; border: 1px solid var(--linie); border-radius: 8px; background: rgba(255, 255, 255, 0.03); font-size: 13px; color: var(--text-2); }
+.vf-regel p { margin: 0 0 4px; }
+.vf-regel ul { margin: 0; padding-left: 18px; }
+.vf-regel li + li { margin-top: 2px; }
+.vf-bahnen { max-height: 30vh; overflow-y: auto; }
+.vf-bahn { display: grid; grid-template-columns: 16px 132px minmax(0, 1fr); gap: 6px; align-items: center; margin-bottom: 2px; }
+.vf-bahn .haken { display: flex; align-items: center; font-size: 12px; color: var(--text-2); gap: 6px; white-space: nowrap; overflow: hidden; }
+.vf-bahn .haken small { color: var(--text-3); }
+.vf-bahn input { accent-color: var(--vater); width: 13px; height: 13px; margin: 0; flex: none; }
+.vf-zieh { background: none; border: 0; padding: 0; width: 16px; color: var(--text-3); cursor: grab; font-size: 13px; line-height: 1; touch-action: none; }
+.vf-zieh:hover, .vf-zieh:focus-visible { color: var(--vater); }
+.vf-bahn.zieht { background: rgba(214, 162, 78, 0.12); border-radius: 4px; }
+.vf-bahn.zieht .vf-zieh { cursor: grabbing; }
 .vf-bahn.aus .vf-strahl { opacity: 0.3; }
 .vf-bahn.aus .haken { color: var(--text-3); }
-.vf-strahl { position: relative; height: 18px; border-radius: 5px; background: rgba(255, 255, 255, 0.04); overflow: hidden; }
+.vf-strahl { position: relative; height: 14px; border-radius: 4px; background: rgba(255, 255, 255, 0.04); overflow: hidden; }
 .vf-lauf { position: absolute; top: 0; bottom: 0; border: 0; border-right: 1px solid var(--flaeche-fest); padding: 0; border-radius: 0; background: rgba(214, 162, 78, 0.5); }
 .vf-lauf.b { background: rgba(98, 182, 169, 0.5); }
 .vf-lauf:hover { filter: brightness(1.35); }
@@ -525,11 +540,6 @@ body.netz .legende-netz { display: flex; }
 .vf-lauf.luecke:hover { background: repeating-linear-gradient(135deg, rgba(224, 138, 106, 0.45) 0 4px, transparent 4px 8px); filter: none; }
 .vf-skala { position: relative; height: 16px; font-size: 11px; color: var(--text-3); }
 .vf-skala span { position: absolute; top: 1px; transform: translateX(-50%); }
-.vf-laender { display: flex; flex-wrap: wrap; gap: 4px 18px; margin-top: 6px; font-size: 12.5px; color: var(--text-3); }
-.vf-laender:empty { display: none; }
-.vf-gruppe { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
-.vf-gruppe .haken { display: inline-flex; align-items: center; gap: 5px; color: var(--text-2); }
-.vf-gruppe.aus .haken { color: var(--text-3); }
 .vf-luecken { margin: 4px 0 0; font-size: 12.5px; color: var(--text-3); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .vf-haupt { display: grid; grid-template-columns: minmax(280px, 400px) minmax(0, 1fr); min-height: 0; border-top: 1px solid var(--linie); }
 .vf-links { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--linie); }
@@ -595,6 +605,6 @@ body.netz .legende-netz { display: flex; }
   .vf { height: 100%; border-radius: 0; }
   .vf-haupt { grid-template-columns: minmax(0, 1fr); grid-template-rows: 30vh minmax(0, 1fr); }
   .vf-links { border-right: 0; border-bottom: 1px solid var(--linie); }
-  .vf-bahn { grid-template-columns: 96px minmax(0, 1fr); }
+  .vf-bahn { grid-template-columns: 16px 96px minmax(0, 1fr); }
   .vf-felder { grid-template-columns: minmax(0, 1fr); }
 }

@@ -1047,9 +1047,10 @@ function berechneFolgeZiel(j, aktuell) {
   const hochkant = Math.min(1, camera.aspect / 1.2);   // im Hochformat weiter weg, sonst laufen die Seiten aus dem Bild
   return { ziel, d: Math.min(90, Math.max(26, r * 1.7 + 10)) / hochkant };
 }
-// weich nachführen: Blickpunkt mit etwa 4 s, Abstand mit etwa 6 s Zeitkonstante (unabhängig von der Bildrate)
+// weich nachführen: Blickpunkt mit etwa 4 s, Abstand mit etwa 6 s Zeitkonstante (unabhängig von der Bildrate);
+// nur beim Abspielen – Ziehen am Jahresregler oder ein angehaltenes Jahr bewegen die Kamera nicht
 function kameraNachfuehren(dt) {
-  if (!kameraFolgt || zeitJahr == null || !folgeZiel || flug || nutzerZieht) return false;
+  if (!kameraFolgt || !abspielen || zeitJahr == null || !folgeZiel || flug || nutzerZieht) return false;
   const versatz = camera.position.clone().sub(controls.target), laenge = versatz.length();   // Blickwinkel bleibt, wie eingestellt
   controls.target.lerp(folgeZiel.ziel, 1 - Math.exp(-dt / 4));
   if (performance.now() > zoomPause) versatz.setLength(laenge + (folgeZiel.d - laenge) * (1 - Math.exp(-dt / 6)));
