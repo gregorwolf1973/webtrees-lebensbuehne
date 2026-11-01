@@ -8,7 +8,7 @@ import { VORSCHLAEGE } from 'lb/videovorschlaege.js';
 const FRUEHE_VORSCHLAEGE = ['c-ellis', 'c-ww1', 'c-franzjoseph', 'c-aachen', 'c-truemmer', 'c-mond'];
 const VORSCHLAG_IDS = new Set(VORSCHLAEGE.map(v => v.id));
 export const istVorschlag = e => VORSCHLAG_IDS.has(e.id);
-const MINDEST = 10000;   // ein Video läuft mindestens so lange (ms), auch wenn die Zeitreise seine Jahre schneller verlässt
+const MINDEST = 10000;   // so lange (ms) bleibt ein Video, bevor ein anderes passendes es ablöst
 const WECHSEL = 20000;   // passen mehrere Videos, wechseln sie sich nach so langer Zeit ab
 
 // Jedes Video gehört zu dem Land, in dem das Ereignis stattfand; ganze Regionen oder einzelne Länder lassen sich
@@ -128,16 +128,17 @@ export class Videos {
     return this.kandidaten(j, region)[0] ?? null;
   }
 
-  /** Je Bild der Zeitreise aufrufen. Ein Video bleibt, solange seine Jahre laufen (mindestens 10 s); passen mehrere,
-   *  etwa aus Deutschland und den USA, wechseln sie sich alle 20 s ab, und ein genaueres neues kommt gleich dran. */
+  /** Je Bild der Zeitreise aufrufen. Ein Video läuft genau in seinen Jahren und endet mit dem Jahr „bis“, wie im
+   *  Zeitstrahl des Videofensters; sein Ausschnitt wiederholt sich so lange. Passen mehrere, etwa aus Deutschland und
+   *  den USA, wechseln sie sich alle 20 s ab, und ein genaueres neues löst nach 10 s ab. */
   jahr(j) {
     if (!this.einst.an) return this.halt();
     const a = this.aktiv, k = this.kandidaten(j);
-    if (a && !a.vorschau) {
-      const t = performance.now() - a.seit, drin = k.includes(a.e);
+    if (a && !a.vorschau && k.includes(a.e)) {
+      const t = performance.now() - a.seit;
       if (t < MINDEST) return;
       const genaueresNeues = k.some(e => !this.gezeigt.has(e.id) && genauer(e, a.e) < 0);
-      if (drin && !genaueresNeues && (k.length === 1 || t < WECHSEL)) return;
+      if (!genaueresNeues && (k.length === 1 || t < WECHSEL)) return;
     }
     const n = this.naechstes(k, a?.vorschau ? null : a?.e);
     if ((!a && !n) || (a && !a.vorschau && n === a.e)) return;
