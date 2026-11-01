@@ -38,6 +38,19 @@ const JAHR_NULL = 1973, TIEFE_PRO_JAHR = 0.24, RING_ABSTAND = 3.2, WINKEL = Math
 const FENSTER_ZEIT = 6, FENSTER_FAMILIE = 4;   // so viele Jahre vor und nach dem Regler werden Einträge eingeblendet
 const zVon = jahr => (jahr - JAHR_NULL) * TIEFE_PRO_JAHR;
 
+// Ohne WebGL (im Browser abgeschaltet oder vom Grafiktreiber gesperrt) gibt es keine Bühne: das klar sagen,
+// statt bei „Stammbaum wird geladen“ stehen zu bleiben (Issue #3)
+function ohneWebGL() {
+  document.getElementById('buehne').dataset.meldung = t('Die Lebensbühne braucht WebGL (3D-Grafik im Browser), aber dieser Browser stellt es nicht bereit: Entweder ist WebGL in den Einstellungen abgeschaltet oder der Grafiktreiber wird nicht unterstützt.\nBitte WebGL bzw. die Hardwarebeschleunigung des Browsers einschalten und die Seite neu laden.');
+  document.getElementById('info-zahl').textContent = t('WebGL nicht verfügbar');
+  throw new Error('Lebensbühne: WebGL nicht verfügbar');
+}
+{
+  const gl = document.createElement('canvas').getContext('webgl2') || document.createElement('canvas').getContext('webgl');
+  if (!gl) ohneWebGL();
+  gl.getExtension('WEBGL_lose_context')?.loseContext();   // Probe sofort freigeben, Browser erlauben nur wenige Kontexte
+}
+
 const daten = await ladeDaten();
 for (const p of daten.personen) bildwahlAnwenden(p);   // gewählte Bilder und Reihenfolge je Person (Reiter „Bilder“)
 const { personen, zeit } = daten;
@@ -45,7 +58,10 @@ let zeitAnsicht = zeit, klangAnsicht = daten.klangZeit;   // Zeitgeschehen, das 
 const JAHR_MIN = Math.min(...personen.map(p => p.jahrE));
 
 // --- Szene ---------------------------------------------------------------------------------
-const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });   // durchsichtig, wenn ein Video dahinter läuft
+const renderer = (() => {
+  try { return new THREE.WebGLRenderer({ antialias: true, alpha: true }); }   // durchsichtig, wenn ein Video dahinter läuft
+  catch (e) { console.error(e); ohneWebGL(); }
+})();
 // auf Touch-Geräten etwas gröber rendern: spart Grafikspeicher und Akku
 renderer.setPixelRatio(Math.min(devicePixelRatio, matchMedia('(pointer: coarse)').matches ? 1.5 : 2));
 renderer.setSize(innerWidth, innerHeight);

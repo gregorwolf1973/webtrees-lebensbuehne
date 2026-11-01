@@ -96,9 +96,9 @@
   "Ansicht": "Weergave",
   "Vorfahren": "Voorouders",
   "Nachkommen": "Nakomelingen",
-  "väterlicherseits": "vaderlijke lijn",
-  "mütterlicherseits": "moederlijke lijn",
-  "Partnerseite": "partnerzijde",
+  "Väterlicherseits": "Vaderlijke lijn",
+  "Mütterlicherseits": "Moederlijke lijn",
+  "Partnerseite": "Partnerzijde",
   "Geschwindigkeit der Zeitreise": "Snelheid van de tijdreis",
   "Tempo": "Tempo",
   "Jahre/min": "jaar/min",
@@ -282,5 +282,8 @@
   "Groß ansehen": "Groot bekijken",
   "Haken: Bild in Bildgeschichte und Zeitreise zeigen · Ziehen: Reihenfolge ändern · Klick: groß ansehen": "Vinkje: afbeelding in beeldverhaal en tijdreis tonen · Slepen: volgorde wijzigen · Klik: groot bekijken",
   "Reihenfolge wie in webtrees": "Volgorde zoals in webtrees",
-  "{n} von {m} gezeigt": "{n} van {m} getoond"
+  "{n} von {m} gezeigt": "{n} van {m} getoond",
+  "Stammbaum wird geladen …": "Stamboom wordt geladen …",
+  "Die Lebensbühne braucht WebGL (3D-Grafik im Browser), aber dieser Browser stellt es nicht bereit: Entweder ist WebGL in den Einstellungen abgeschaltet oder der Grafiktreiber wird nicht unterstützt.\nBitte WebGL bzw. die Hardwarebeschleunigung des Browsers einschalten und die Seite neu laden.": "De Lebensbühne vereist WebGL (3D-graphics in de browser), maar deze browser ondersteunt het niet: WebGL is uitgeschakeld in de instellingen of het grafische stuurprogramma wordt niet ondersteund.\nSchakel WebGL of de hardwareversnelling van de browser in en laad de pagina opnieuw.",
+  "WebGL nicht verfügbar": "WebGL niet beschikbaar"
 }
