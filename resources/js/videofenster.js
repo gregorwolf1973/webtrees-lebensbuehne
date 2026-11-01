@@ -1,20 +1,22 @@
-// Videofenster: Videos zur Zeitgeschichte aussuchen, ansehen und zuschneiden. Oben zeigt ein Zeitstrahl, welches
-// Video in welchem Jahr läuft und wo Lücken sind; links die Liste (entfernte Vorschläge blass mit ＋), rechts die
-// Vorschau mit Filmstreifen und Zeitleiste: ein Klick setzt den Start, Umschalt+Klick oder Rechtsklick das Ende,
-// die Griffe lassen sich ziehen. Gestrichelt ist, was der 4:3-Rahmen im Hintergrund abschneidet.
+// Videofenster: Videos zur Zeitgeschichte aussuchen, ansehen und zuschneiden. Oben zeigt je Region eine Bahn, welches
+// Video in welchem Jahr läuft; Regionen und Länder lassen sich dort abwählen. Links die Liste mit Länderfilter
+// (✕ löscht, gelöschte Vorschläge lassen sich einblenden und mit ＋ zurückholen), rechts die Vorschau mit Filmstreifen
+// und Zeitleiste: ein Klick setzt den Start, Umschalt+Klick oder Rechtsklick das Ende, die Griffe lassen sich ziehen.
+// Gestrichelt ist, was der 4:3-Rahmen im Hintergrund abschneidet.
 import { t } from 'lb/text.js';
-import { youtubeId, youtubeApi, ytFehler, sekunden, uhr, istVorschlag } from 'lb/video.js';
+import { youtubeId, youtubeApi, ytFehler, sekunden, uhr, istVorschlag, REGIONEN, LAENDER, landVon, regionVon } from 'lb/video.js';
 import { VORSCHLAEGE } from 'lb/videovorschlaege.js';
 
 const STREIFEN = 10;   // Einzelbilder im Filmstreifen
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
-const VERGLEICH = ['url', 'titel', 'von', 'bis', 'start', 'ende'];
+// Land für ein neues Video, wenn es über die Bahn einer Region angelegt wird
+const LAND_DER_REGION = { Deutschland: 'Deutschland', Nordamerika: 'USA' };
 
 /** Vorschau für Videodateien und YouTube mit gemeinsamer Bedienung */
 class Abspieler {
   constructor(ziel) { this.ziel = ziel; this.nr = 0; }
 
-  lade(e, { stumm, start, beiFehler }) {
+  lade(e, { stumm, start, lautstaerke, beiFehler }) {
     this.weg();
     const nr = this.nr, id = youtubeId(e.url);
     const fehler = m => { if (nr === this.nr) beiFehler(m); };
@@ -29,7 +31,7 @@ class Abspieler {
           playerVars: { autoplay: 1, mute: 1, controls: 0, disablekb: 1, fs: 0, iv_load_policy: 3, playsinline: 1, rel: 0,
             start: Math.floor(start), origin: location.origin },
           events: {
-            onReady: ev => { this.bereit = true; if (stumm) ev.target.mute(); else ev.target.unMute(); ev.target.playVideo(); },
+            onReady: ev => { this.bereit = true; ev.target.setVolume(lautstaerke); if (stumm) ev.target.mute(); else ev.target.unMute(); ev.target.playVideo(); },
             onError: ev => fehler(ytFehler(ev.data)),
           },
         });
@@ -37,6 +39,7 @@ class Abspieler {
     } else {
       const v = this.v = document.createElement('video');
       v.muted = stumm;
+      v.volume = lautstaerke / 100;
       v.playsInline = true;
       v.preload = 'auto';
       v.addEventListener('loadedmetadata', () => { this.bereit = true; v.currentTime = Math.min(start, Math.max(0, v.duration - 1)); v.play().catch(() => {}); }, { once: true });
@@ -64,6 +67,7 @@ class Abspieler {
   pause() { if (this.v) this.v.pause(); else this.yt?.pauseVideo?.(); }
   springe(s, fertig = true) { if (this.v) this.v.currentTime = s; else this.yt?.seekTo?.(s, fertig); }
   stumm(an) { if (this.v) this.v.muted = an; else if (this.yt?.mute) { if (an) this.yt.mute(); else this.yt.unMute(); } }
+  lautstaerke(w) { if (this.v) this.v.volume = w / 100; else this.yt?.setVolume?.(w); }
 }
 
 /** Titel aus dem Dateinamen einer Videoadresse */
@@ -79,7 +83,10 @@ export class VideoFenster {
   constructor(videos, beimOeffnen) {
     this.v = videos;
     this.beimOeffnen = beimOeffnen;
-    this.wahl = null;      // { e, art: 'liste' | 'vorschlag' (entfernt) | 'neu' }
+    this.wahl = null;      // { e, art: 'liste' | 'vorschlag' (gelöscht) | 'neu' }
+    this.filter = '';      // Liste nur für eine Region ('r:Europa') oder ein Land ('l:USA')
+    this.geloeschteZeigen = false;
+    this.geloescht = null; // { e, i } zum Rückgängigmachen
     this.stumm = true;
     this.dauer = 0;
     this.streifenNr = 0;
@@ -96,16 +103,24 @@ export class VideoFenster {
     el.innerHTML = `<div class="vf">
       <header class="vf-oben">
         <h2>${esc(t('Videos zur Zeitgeschichte'))}</h2>
+        <button class="klein" data-tun="rueckgaengig" hidden></button>
         <button class="klein" data-tun="neu">${esc(t('＋ Eigenes Video'))}</button>
         <button class="klein vf-zu" data-tun="zu" aria-label="${esc(t('Schließen'))}">✕</button>
       </header>
       <div class="vf-strahl-box">
-        <div class="vf-strahl"></div>
-        <div class="vf-skala"></div>
+        <div class="vf-bahnen"></div>
+        <div class="vf-bahn"><span></span><div class="vf-skala"></div></div>
+        <div class="vf-laender"></div>
         <p class="vf-luecken"><span></span> <button class="klein" data-tun="fuellen" hidden>${esc(t('Lücken mit Vorschlägen füllen'))}</button></p>
       </div>
       <div class="vf-haupt">
-        <ul class="vf-liste"></ul>
+        <div class="vf-links">
+          <div class="vf-listenkopf">
+            <select class="vf-filter" aria-label="${esc(t('Liste nach Land filtern'))}"></select>
+            <label class="haken"><input type="checkbox" class="vf-geloeschte"> ${esc(t('gelöschte Vorschläge'))}</label>
+          </div>
+          <ul class="vf-liste"></ul>
+        </div>
         <section class="vf-rechts">
           <p class="vf-leer">${esc(t('Wähle links ein Video, klicke oben auf ein Jahr oder füge ein eigenes Video hinzu.'))}</p>
           <div class="vf-editor" hidden>
@@ -129,20 +144,23 @@ export class VideoFenster {
               <button class="klein" data-tun="ende-hier" title="${esc(t('Ende auf die gerade gezeigte Stelle'))}">${esc(t('Ende hier ⇥'))}</button>
               <button class="klein" data-tun="ganz">${esc(t('Ganzes Video'))}</button>
               <button class="klein" data-tun="ton" aria-label="${esc(t('Ton der Vorschau'))}">🔇</button>
+              <input type="range" class="vf-laut" min="0" max="100" aria-label="${esc(t('Lautstärke der Videos'))}" title="${esc(t('Lautstärke der Videos, auch während der Zeitreise'))}">
             </div>
             <form class="vf-felder" autocomplete="off">
               <label class="vf-breit">${esc(t('Adresse'))} <input name="url" type="url" placeholder="${esc(t('YouTube-Link oder Videodatei (https://…)'))}"></label>
               <label class="vf-breit">${esc(t('Titel'))} <input name="titel"></label>
               <label>${esc(t('Jahre'))} <input name="von" type="number" min="1000" max="2100" aria-label="${esc(t('von'))}"> – <input name="bis" type="number" min="1000" max="2100" aria-label="${esc(t('bis'))}"></label>
               <label>${esc(t('Ausschnitt'))} <input name="start" placeholder="0:00" aria-label="${esc(t('Start'))}"> – <input name="ende" placeholder="${esc(t('Ende'))}" aria-label="${esc(t('Ende'))}"></label>
-              <label class="haken vf-breit"><input type="checkbox" name="an"> ${esc(t('während der Zeitreise zeigen'))}</label>
+              <label title="${esc(t('Land, in dem das Ereignis stattfand'))}">${esc(t('Land'))} <input name="land" list="vf-laender-liste" placeholder="${esc(t('z. B. Deutschland'))}"></label>
+              <label class="haken"><input type="checkbox" name="an"> ${esc(t('während der Zeitreise zeigen'))}</label>
+              <datalist id="vf-laender-liste">${LAENDER.map(l => `<option value="${esc(l)}">`).join('')}</datalist>
             </form>
             <p class="vf-quelle"></p>
             <div class="vf-aktionen">
               <button class="klein" data-tun="dazu"></button>
               <button class="klein" data-tun="hintergrund">${esc(t('Im Hintergrund ansehen'))}</button>
               <button class="klein" data-tun="zuruecksetzen">${esc(t('Vorschlag zurücksetzen'))}</button>
-              <button class="klein vf-weg" data-tun="weg">${esc(t('Entfernen'))}</button>
+              <button class="klein vf-weg" data-tun="weg">${esc(t('Löschen'))}</button>
             </div>
           </div>
         </section>
@@ -151,11 +169,20 @@ export class VideoFenster {
     document.body.appendChild(el);
     const q = s => el.querySelector(s);
     this.liste = q('.vf-liste');
-    this.strahl = q('.vf-strahl');
+    this.bahnen = q('.vf-bahnen');
+    this.laender = q('.vf-laender');
     this.form = q('.vf-felder');
     this.zl = q('.vf-zeitleiste');
     this.streifen = q('.vf-streifen');
     this.spieler = new Abspieler(q('.vf-video'));
+    // dieselbe Lautstärke wie während der Zeitreise; lauter stellen schaltet den Ton der Vorschau ein
+    q('.vf-laut').addEventListener('input', ev => {
+      const w = +ev.target.value;
+      this.v.lautstaerke(w);
+      document.getElementById('videos-lautstaerke').value = w;
+      this.spieler.lautstaerke(w);
+      if (this.stumm && w > 0) this.tun('ton');
+    });
 
     el.addEventListener('click', ev => {
       if (ev.target === el) return this.zu();
@@ -164,7 +191,12 @@ export class VideoFenster {
       if (ev.target.closest('.vf-bild')) return this.tun('spiel');
       const lauf = ev.target.closest('.vf-lauf');
       if (lauf?.dataset.id) return this.waehleAus(this.v.einst.liste.find(e => e.id === lauf.dataset.id));
-      if (lauf?.dataset.luecke) { const [a, b] = lauf.dataset.luecke.split('-').map(Number); return this.neu(a, b); }
+      if (lauf?.dataset.luecke) {
+        const [a, b] = lauf.dataset.luecke.split('-').map(Number);
+        return this.neu(a, b, LAND_DER_REGION[lauf.closest('.vf-bahn')?.dataset.region] || '');
+      }
+      const loeschen = ev.target.closest('[data-loeschen]');
+      if (loeschen) return this.loesche(this.v.einst.liste.find(e => e.id === loeschen.dataset.loeschen));
       const dazu = ev.target.closest('[data-dazu]');
       if (dazu) {
         const v = VORSCHLAEGE.find(x => x.id === dazu.dataset.dazu);
@@ -185,6 +217,17 @@ export class VideoFenster {
       if (e === this.wahl?.e) this.form.an.checked = e.an;
       this.zeichne();
     });
+    // Regionen und Länder ab- und wieder zuwählen
+    this.el.querySelector('.vf-strahl-box').addEventListener('change', ev => {
+      const name = ev.target.dataset.aus;
+      if (name == null) return;
+      const aus = this.v.einst.aus;
+      if (ev.target.checked) aus.splice(aus.indexOf(name), 1); else if (!aus.includes(name)) aus.push(name);
+      this.v.speichern();
+      this.zeichne();
+    });
+    q('.vf-filter').addEventListener('change', ev => { this.filter = ev.target.value; this.zeichne(); });
+    q('.vf-geloeschte').addEventListener('change', ev => { this.geloeschteZeigen = ev.target.checked; this.zeichne(); });
     el.addEventListener('keydown', ev => {
       if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); return this.zu(); }
       if (ev.ctrlKey || ev.metaKey || ev.altKey || ev.target.closest('input, button, select, textarea')) return;
@@ -202,6 +245,7 @@ export class VideoFenster {
     this.v.halt();
     this.v.melde = () => this.zeichne();
     this.el.hidden = false;
+    this.el.querySelector('.vf-laut').value = this.v.einst.lautstaerke;
     this.el.focus();
     const L = this.v.einst.liste;
     const e = (this.wahl?.art === 'liste' && L.includes(this.wahl.e) && this.wahl.e) || this.v.waehle(jahr)
@@ -218,6 +262,7 @@ export class VideoFenster {
     this.streifenNr++;
     this.zieht = null;
     this.v.melde = null;
+    this.geloescht = null;
     document.getElementById('videos')?.focus();
   }
 
@@ -231,9 +276,10 @@ export class VideoFenster {
     this.liste.querySelector('.gewaehlt')?.scrollIntoView({ block: 'nearest' });
   }
 
-  neu(von, bis) {
+  neu(von, bis, land) {
     const j = +document.getElementById('jahr')?.value || 1900;
-    this.wahl = { e: { id: 'v' + Date.now().toString(36), url: '', titel: '', von: von ?? j, bis: bis ?? von ?? j, start: 0, ende: 0, an: true }, art: 'neu' };
+    if (land == null) land = this.filter.startsWith('l:') ? this.filter.slice(2) : LAND_DER_REGION[this.filter.slice(2)] || '';
+    this.wahl = { e: { id: 'v' + Date.now().toString(36), url: '', titel: '', land, von: von ?? j, bis: bis ?? von ?? j, start: 0, ende: 0, an: true }, art: 'neu' };
     this.zeigeEditor();
     this.lade();
     this.zeichne();
@@ -248,7 +294,7 @@ export class VideoFenster {
     this.meldung(null);
     this.leiste();
     if (!e?.url) { this.spieler.weg(); return; }
-    this.spieler.lade(e, { stumm: this.stumm, start: e.start || 0, beiFehler: m => this.fehlschlag(m) });
+    this.spieler.lade(e, { stumm: this.stumm, start: e.start || 0, lautstaerke: this.v.einst.lautstaerke, beiFehler: m => this.fehlschlag(m) });
   }
 
   meldung(text) {
@@ -378,8 +424,9 @@ export class VideoFenster {
   setzeStart(s, ziehen = false) {
     const e = this.wahl.e;
     s = Math.max(0, Math.min(Math.round(s), Math.floor(this.dauer) - 1));
-    if (e.ende && s > e.ende - 2) { if (ziehen) s = e.ende - 2; else e.ende = 0; }
+    if (e.ende && s > e.ende - 2) { if (ziehen) s = e.ende - 2; else { e.ende = 0; this.merke('ende'); } }
     e.start = s;
+    this.merke('start');
     this.leiste();
     this.spieler.springe(s, !ziehen);
     if (!ziehen) { this.spieler.spiele(); this.uebernehmen(); }
@@ -391,26 +438,38 @@ export class VideoFenster {
     s = Math.round(s);
     if (s < start + 2) { if (!ziehen) return; s = start + 2; }
     e.ende = s >= this.dauer - 0.5 ? 0 : s;
+    this.merke('ende');
     this.leiste();
     this.spieler.springe(ziehen ? s : Math.max(start, s - 3), !ziehen);
     if (!ziehen) { this.spieler.spiele(); this.uebernehmen(); }
   }
 
+  /** Eigene Änderung an einem Vorschlag merken: dieses Feld folgt dann nicht mehr dem Katalog */
+  merke(feld) {
+    const e = this.wahl?.e;
+    if (!e || !istVorschlag(e)) return;
+    e.geaendert ??= [];
+    if (!e.geaendert.includes(feld)) e.geaendert.push(feld);
+  }
+
   feldGeaendert(name) {
     const e = this.wahl?.e, f = this.form;
     if (!e) return;
+    if (name !== 'an') this.merke(name === 'von' || name === 'bis' ? 'von' : name);
+    if (name === 'von' || name === 'bis') this.merke('bis');
     if (name === 'url') {
       const url = f.url.value.trim();
       if (url === e.url) return;
       e.url = url;
       // ein YouTube-Link mit Zeitmarke (t=90, t=1m30s) setzt den Start
       const m = /[?&#](?:t|start)=([\dhms]+)/.exec(url);
-      if (m && !e.start) e.start = sekunden(m[1]);
+      if (m && !e.start) { e.start = sekunden(m[1]); this.merke('start'); }
       if (!e.titel && url && !youtubeId(url)) e.titel = f.titel.value = dateiTitel(url);
       delete this.v.fehler[e.id];
       this.lade();
     }
     if (name === 'titel') e.titel = f.titel.value.trim();
+    if (name === 'land') e.land = f.land.value.trim();
     if (name === 'von' || name === 'bis') {
       e.von = Math.round(+f.von.value) || e.von;
       e.bis = Math.max(e.von, Math.round(+f.bis.value) || e.von);
@@ -443,12 +502,19 @@ export class VideoFenster {
     if (was === 'zu') return this.zu();
     if (was === 'neu') return this.neu();
     if (was === 'fuellen') return this.fuellen();
+    if (was === 'rueckgaengig' && this.geloescht) {
+      const { e: x, i } = this.geloescht;
+      this.geloescht = null;
+      if (!L.some(y => y.id === x.id)) L.splice(Math.min(i, L.length), 0, x);
+      this.v.speichern();
+      return this.waehleAus(x);
+    }
     if (!e) return;
     if (was === 'spiel') { if (sp.laeuft) sp.pause(); else sp.spiele(); }
     if (was === '-5' || was === '+5') sp.springe(Math.max(0, Math.min(this.dauer || Infinity, sp.zeit + +was)));
     if (was === 'start-hier' && this.dauer) this.setzeStart(sp.zeit);
     if (was === 'ende-hier' && this.dauer) this.setzeEnde(sp.zeit);
-    if (was === 'ganz') { e.start = 0; e.ende = 0; this.leiste(); this.uebernehmen(); }
+    if (was === 'ganz') { e.start = 0; e.ende = 0; this.merke('start'); this.merke('ende'); this.leiste(); this.uebernehmen(); }
     if (was === 'ton') {
       this.stumm = !this.stumm;
       sp.stumm(this.stumm);
@@ -459,11 +525,7 @@ export class VideoFenster {
       L.push(e); w.art = 'liste';
       this.v.speichern(); this.zeichne(); this.zeigeEditor();
     }
-    if (was === 'weg') {
-      this.v.einst.liste = L.filter(x => x !== e); this.v.speichern();
-      if (istVorschlag(e)) { w.art = 'vorschlag'; this.zeichne(); this.zeigeEditor(); }
-      else { this.wahl = null; this.spieler.weg(); this.zeigeEditor(); this.zeichne(); }
-    }
+    if (was === 'weg') this.loesche(e);
     if (was === 'zuruecksetzen') {
       const neu = { ...VORSCHLAEGE.find(x => x.id === e.id), an: e.an };
       L[L.indexOf(e)] = neu;
@@ -473,14 +535,29 @@ export class VideoFenster {
     if (was === 'hintergrund') { this.zu(); this.v.vorschau(e); }
   }
 
-  /** Entfernte Vorschläge wieder aufnehmen, soweit sie in Jahre ohne Video fallen */
+  /** Video löschen; ein gelöschter Vorschlag kommt nicht von selbst wieder, lässt sich aber einblenden und zurückholen */
+  loesche(e) {
+    const L = this.v.einst.liste, i = L.indexOf(e);
+    if (i < 0) return;
+    L.splice(i, 1);
+    this.v.speichern();
+    this.geloescht = { e, i };
+    if (this.wahl?.e === e) {
+      if (istVorschlag(e) && this.geloeschteZeigen) this.wahl.art = 'vorschlag';
+      else { this.wahl = null; this.spieler.weg(); }
+    }
+    this.zeigeEditor();
+    this.zeichne();
+  }
+
+  /** Gelöschte Vorschläge wieder aufnehmen, soweit sie in Jahre ohne Video fallen */
   fuellen() {
     const L = this.v.einst.liste;
     for (const v of VORSCHLAEGE) {
       if (L.some(x => x.id === v.id)) continue;
       let frei = false;
       for (let j = v.von; j <= v.bis && !frei; j++) frei = !this.v.waehle(j);
-      if (frei) L.push({ ...v, an: true });
+        if (frei && !this.v.abgewaehlt(v)) L.push({ ...v, an: true });
     }
     this.v.speichern();
     if (this.wahl?.art === 'vorschlag') { const e = L.find(x => x.id === this.wahl.e.id); if (e) this.wahl = { e, art: 'liste' }; }
@@ -492,17 +569,20 @@ export class VideoFenster {
     const w = this.wahl, e = w?.e, f = this.form, q = s => this.el.querySelector(s);
     q('.vf-leer').hidden = !!w;
     q('.vf-editor').hidden = !w;
+    const r = q('[data-tun="rueckgaengig"]');
+    r.hidden = !this.geloescht;
     if (!w) return;
     if (document.activeElement?.form !== f) {
       f.url.value = e.url; f.titel.value = e.titel || ''; f.von.value = e.von; f.bis.value = e.bis; f.an.checked = e.an !== false;
+      f.land.value = e.land || '';
     }
+    if (this.geloescht) r.textContent = t('↶ „{titel}“ wiederherstellen', { titel: (this.geloescht.e.titel || t('Video')).slice(0, 40) });
     this.leiste();
     const dazu = q('[data-tun="dazu"]');
     dazu.hidden = w.art === 'liste';
     dazu.textContent = w.art === 'neu' ? t('Hinzufügen') : t('Wieder aufnehmen');
     q('[data-tun="weg"]').hidden = w.art !== 'liste';
-    const v = istVorschlag(e) && VORSCHLAEGE.find(x => x.id === e.id);
-    q('[data-tun="zuruecksetzen"]').hidden = !(w.art === 'liste' && v && VERGLEICH.some(k => (v[k] || 0) !== (e[k] || 0)));
+    q('[data-tun="zuruecksetzen"]').hidden = !(w.art === 'liste' && istVorschlag(e) && e.geaendert?.length);
     q('[data-tun="hintergrund"]').hidden = !e.url;
     const id = youtubeId(e.url);
     const quelle = e.quelle || (id ? `https://www.youtube.com/watch?v=${id}` : e.url);
@@ -512,45 +592,78 @@ export class VideoFenster {
 
   zeichne() {
     if (!this.el || this.el.hidden) return;
-    const L = this.v.einst.liste, wid = this.wahl?.e.id;
+    const L = this.v.einst.liste, wid = this.wahl?.e.id, aus = this.v.einst.aus;
     const fehlen = VORSCHLAEGE.filter(v => !L.some(x => x.id === v.id));
-    // Liste: eigene und übernommene Videos, dazwischen blass die entfernten Vorschläge
-    const zeilen = [...L.map(e => ({ e, drin: true })), ...fehlen.map(e => ({ e, drin: false }))]
+
+    // Länder und Regionen, die in Liste oder Vorschlägen vorkommen, mit Anzahl
+    const zahl = {};
+    for (const e of L) { zahl[regionVon(e)] = (zahl[regionVon(e)] || 0) + 1; zahl['l:' + landVon(e)] = (zahl['l:' + landVon(e)] || 0) + 1; }
+    const regionen = REGIONEN.filter(r => zahl[r] || fehlen.some(v => regionVon(v) === r));
+    const laenderIn = r => [...new Set([...L, ...fehlen].filter(e => regionVon(e) === r).map(landVon))].filter(l => l !== r).sort();
+
+    // Liste: nach Land gefiltert; gelöschte Vorschläge nur auf Wunsch, blass mit ＋
+    const passt = e => !this.filter || (this.filter.startsWith('r:') ? regionVon(e) === this.filter.slice(2) : landVon(e) === this.filter.slice(2));
+    const zeilen = [...L.map(e => ({ e, drin: true })), ...(this.geloeschteZeigen ? fehlen.map(e => ({ e, drin: false })) : [])]
+      .filter(z => passt(z.e) || z.e.id === wid)
       .sort((x, y) => x.e.von - y.e.von || x.e.bis - y.e.bis);
     this.liste.innerHTML = zeilen.map(({ e, drin }) => {
-      const info = [youtubeId(e.url) ? 'YouTube' : t('Datei')];
+      const abgewaehlt = this.v.abgewaehlt(e);
+      const info = [youtubeId(e.url) ? 'YouTube' : t('Datei'), landVon(e) === 'Ohne Land' ? t('ohne Land') : landVon(e)];
       if (e.start || e.ende) info.push(`${uhr(e.start)}–${e.ende ? uhr(e.ende) : t('Ende')}`);
-      if (istVorschlag(e)) info.push(drin ? t('Vorschlag') : t('Vorschlag, entfernt'));
+      if (istVorschlag(e)) info.push(drin ? t('Vorschlag') : t('gelöscht'));
+      if (abgewaehlt) info.push(t('Land abgewählt'));
       const f = this.v.fehler[e.id];
-      return `<li class="vf-zeile${e.id === wid ? ' gewaehlt' : ''}${drin && e.an ? '' : ' blass'}" data-id="${esc(e.id)}">
+      return `<li class="vf-zeile${e.id === wid ? ' gewaehlt' : ''}${drin && e.an && !abgewaehlt ? '' : ' blass'}" data-id="${esc(e.id)}">
         ${drin ? `<input type="checkbox" data-an="${esc(e.id)}"${e.an ? ' checked' : ''} aria-label="${esc(t('während der Zeitreise zeigen'))}">`
           : `<button class="vf-dazu" data-dazu="${esc(e.id)}" title="${esc(t('Wieder aufnehmen'))}">＋</button>`}
         <span class="vf-jahre">${e.von}–${e.bis}</span><span class="vf-name">${esc(e.titel || e.url)}</span>
+        ${drin ? `<button class="vf-loeschen" data-loeschen="${esc(e.id)}" title="${esc(t('Löschen'))}" aria-label="${esc(t('Löschen'))}">✕</button>` : ''}
         <small>${esc(info.join(' · '))}${f ? ` · <b class="warnung">⚠ ${esc(f)}</b>` : ''}</small></li>`;
-    }).join('') || `<li class="vf-zeile blass">${esc(t('Noch keine Videos.'))}</li>`;
+    }).join('') || `<li class="vf-zeile blass">${esc(this.filter ? t('Keine Videos für dieses Land.') : t('Noch keine Videos.'))}</li>`;
 
-    // Zeitstrahl: welches Video in welchem Jahr läuft, Lücken schraffiert
+    const filter = this.el.querySelector('.vf-filter');
+    filter.innerHTML = `<option value="">${esc(t('Alle Länder'))} (${L.length})</option>` + regionen.map(r =>
+      `<option value="r:${esc(r)}">${esc(t(r))} (${zahl[r] || 0})</option>`
+      + laenderIn(r).map(l => `<option value="l:${esc(l)}">  · ${esc(l)} (${zahl['l:' + l] || 0})</option>`).join('')).join('');
+    filter.value = this.filter;
+    if (filter.value !== this.filter) { this.filter = ''; filter.value = ''; }
+
+    // Zeitstrahl: je Region eine Bahn mit dem dort jeweils genauesten Video; abgewählte Regionen blass
     const jetzt = new Date().getFullYear();
     const A = Math.min(1600, ...L.map(e => e.von)), B = Math.max(jetzt, ...L.map(e => e.bis)) + 1;
     const pos = j => (j - A) / (B - A) * 100;
-    const laeufe = [];
-    for (let j = A; j < B; j++) {
-      const e = this.v.waehle(j), l = laeufe.at(-1);
-      if (l && l.e === e) l.bis = j; else laeufe.push({ e, von: j, bis: j });
-    }
-    let n = 0;
-    this.strahl.innerHTML = laeufe.map(l => {
-      const stil = `left:${pos(l.von)}%;width:${pos(l.bis + 1) - pos(l.von)}%`, jahre = l.von === l.bis ? l.von : `${l.von}–${l.bis}`;
-      if (!l.e) return `<button class="vf-lauf luecke" style="${stil}" data-luecke="${l.von}-${l.bis}" title="${esc(t('Lücke {jahre} – Klick: Video für diese Jahre hinzufügen', { jahre }))}"></button>`;
-      return `<button class="vf-lauf${n++ % 2 ? ' b' : ''}${l.e.id === wid ? ' gewaehlt' : ''}" style="${stil}" data-id="${esc(l.e.id)}" title="${esc(`${jahre} · ${l.e.titel || l.e.url}`)}"></button>`;
-    }).join('');
+    const laeufe = waehle => {
+      const r = [];
+      for (let j = A; j < B; j++) {
+        const e = waehle(j), l = r.at(-1);
+        if (l && l.e === e) l.bis = j; else r.push({ e, von: j, bis: j });
+      }
+      return r;
+    };
+    const bahn = r => {
+      let n = 0;
+      return laeufe(j => this.v.waehle(j, r)).map(l => {
+        const stil = `left:${pos(l.von)}%;width:${pos(l.bis + 1) - pos(l.von)}%`, jahre = l.von === l.bis ? l.von : `${l.von}–${l.bis}`;
+        if (!l.e) return `<button class="vf-lauf luecke" style="${stil}" data-luecke="${l.von}-${l.bis}" title="${esc(t('{jahre} ohne Video – Klick: Video für diese Jahre hinzufügen', { jahre }))}"></button>`;
+        return `<button class="vf-lauf${n++ % 2 ? ' b' : ''}${l.e.id === wid ? ' gewaehlt' : ''}" style="${stil}" data-id="${esc(l.e.id)}" title="${esc(`${jahre} · ${l.e.titel || l.e.url} (${landVon(l.e)})`)}"></button>`;
+      }).join('');
+    };
+    this.bahnen.innerHTML = regionen.map(r => `<div class="vf-bahn${aus.includes(r) ? ' aus' : ''}" data-region="${esc(r)}">
+      <label class="haken" title="${esc(t('Region während der Zeitreise zeigen'))}"><input type="checkbox" data-aus="${esc(r)}"${aus.includes(r) ? '' : ' checked'}> ${esc(t(r))}</label>
+      <div class="vf-strahl">${bahn(r)}</div></div>`).join('');
     const marken = [];
     for (let j = Math.ceil(A / 50) * 50; j < B; j += 50) marken.push(`<span style="left:${pos(j)}%">${j}</span>`);
     this.el.querySelector('.vf-skala').innerHTML = marken.join('');
-    const luecken = laeufe.filter(l => !l.e);
+    // einzelne Länder der Regionen mit mehreren Ländern
+    this.laender.innerHTML = regionen.filter(r => laenderIn(r).length).map(r => `<span class="vf-gruppe${aus.includes(r) ? ' aus' : ''}">${esc(t(r))}:`
+      + laenderIn(r).map(l => ` <label class="haken"><input type="checkbox" data-aus="${esc(l)}"${aus.includes(l) ? '' : ' checked'}${aus.includes(r) ? ' disabled' : ''}> ${esc(l)}</label>`).join('')
+      + '</span>').join('');
+
+    // was die Zeitreise mit der jetzigen Auswahl abdeckt
+    const luecken = laeufe(j => this.v.waehle(j)).filter(l => !l.e);
     this.el.querySelector('.vf-luecken span').textContent = luecken.length
-      ? t('Ohne Video: {jahre}', { jahre: luecken.map(l => l.von === l.bis ? l.von : `${l.von}–${l.bis}`).join(', ') })
-      : t('Lückenlos von {a} bis {b}.', { a: A, b: B - 1 });
-    this.el.querySelector('[data-tun="fuellen"]').hidden = !fehlen.some(v => luecken.some(l => v.von <= l.bis && v.bis >= l.von));
+      ? t('Zeitreise ohne Video: {jahre}', { jahre: luecken.map(l => l.von === l.bis ? l.von : `${l.von}–${l.bis}`).join(', ') })
+      : t('Die Zeitreise hat von {a} bis {b} in jedem Jahr ein Video.', { a: A, b: B - 1 });
+    this.el.querySelector('[data-tun="fuellen"]').hidden = !fehlen.some(v => !this.v.abgewaehlt(v) && luecken.some(l => v.von <= l.bis && v.bis >= l.von));
   }
 }
