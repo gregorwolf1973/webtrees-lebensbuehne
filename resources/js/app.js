@@ -1006,6 +1006,8 @@ document.getElementById('abspielen').addEventListener('click', async e => {
     if (mitLied) { musik.loop = true; if (musik.ended) musik.currentTime = 0; }
   }
   abspielen.epoche = epoche;
+  // Jahre ohne Epochenstück (vor allem nach 1950): das gewählte Lied
+  epochen.ersatz = epoche && musikQuelle ? { id: 'ersatz', titel: musikQuelle.name, url: musikQuelle.url, von: -1e9, bis: 1e9 } : null;
   if (mitLied) { try { await musik.play(); } catch (err) { stoppeAbspielen(); return; } }
   const schritt = now => {
     const a = abspielen;
@@ -1475,12 +1477,30 @@ function treffer(ev) {
   return karte ? karte.karte : null;
 }
 
+// Hover höchstens einmal je Bild auswerten und gar nicht, solange das Mausrad zoomt: Liegt der Zeiger auf einer Person,
+// stotterte sonst bei manchen Mäusen und Touchpads der Zoom. Das Mausrad bricht auch einen laufenden Kameraflug ab.
+let mausEv = null, mausBild = 0, radBis = 0, radNachher = 0;
 renderer.domElement.addEventListener('pointermove', ev => {
+  mausEv = ev;
+  if (!mausBild) mausBild = requestAnimationFrame(hoverAuswerten);
+});
+renderer.domElement.addEventListener('wheel', () => {
+  radBis = performance.now() + 250;
+  flug = null;
+  if (hover) { hover = null; tip.hidden = true; aktualisiereDarstellung(); }
+  clearTimeout(radNachher);
+  radNachher = setTimeout(hoverAuswerten, 260);
+}, { passive: true });
+function hoverAuswerten() {
+  mausBild = 0;
+  const ev = mausEv;
+  if (!ev || performance.now() < radBis) return;
   const o = treffer(ev);
   const vorher = hover;
   hover = o;
   if (vorher !== o) aktualisiereDarstellung();
-  renderer.domElement.style.cursor = o ? 'pointer' : 'grab';
+  const zeiger = o ? 'pointer' : 'grab';
+  if (renderer.domElement.style.cursor !== zeiger) renderer.domElement.style.cursor = zeiger;
   if (!o) { tip.hidden = true; return; }
   const p = o.p, z = o.userData?.zeit;
   tip.innerHTML = p ? `<b>${p.name.voll}</b><span>${jahreKurz(p)} · ${verwandtschaft(p)}</span>`
@@ -1488,9 +1508,10 @@ renderer.domElement.addEventListener('pointermove', ev => {
   tip.style.left = Math.min(ev.clientX + 16, innerWidth - 300) + 'px';
   tip.style.top = ev.clientY + 14 + 'px';
   tip.hidden = false;
-});
+}
 // Maus verlässt die Bühne (etwa in die Einblendung): Namensschild weg, sonst bliebe es über deren Bedienelementen stehen
 renderer.domElement.addEventListener('pointerleave', () => {
+  mausEv = null;
   tip.hidden = true;
   if (hover) { hover = null; aktualisiereDarstellung(); }
 });

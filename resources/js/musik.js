@@ -63,10 +63,11 @@ export class Epochenmusik {
     this.spur = null;      // { e, audio, seit }
     this.vorrat = null;    // { e, audio }
     this.liste = EPOCHEN;
+    this.ersatz = null;    // gewähltes Lied für Jahre ohne Epochenstück
   }
 
   waehle(j) {
-    return this.liste.filter(e => j >= e.von && j < e.bis + 1).sort(genauer)[0] ?? null;
+    return this.liste.filter(e => j >= e.von && j < e.bis + 1).sort(genauer)[0] ?? this.ersatz;
   }
 
   /** Je Bild der Zeitreise aufrufen */
