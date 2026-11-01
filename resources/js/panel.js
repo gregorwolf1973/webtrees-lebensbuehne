@@ -4,6 +4,9 @@ import { belebe } from 'lb/tiefe.js';
 import { t, EN } from 'lb/text.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+// OpenStreetMap sperrt Kacheln ohne Referer (403); webtrees 2.2 verbietet ihn mit „Referrer-Policy: same-origin“.
+// Für die Kacheln gilt darum ausdrücklich: nur die Adresse der Website mitschicken, nicht die der Seite.
+const OSM_REFERRER = 'strict-origin-when-cross-origin';
 
 // --- Vorlesen ---------------------------------------------------------------------------------------
 // Gesprochener Text: Zeichen und Abkürzungen ausschreiben, damit die Stimme flüssig liest (die Anzeige bleibt, wie sie ist)
@@ -445,7 +448,7 @@ export class Panel {
     this.karte = karte;
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 18, attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-      className: 'alte-karte',
+      className: 'alte-karte', referrerPolicy: OSM_REFERRER,
     }).addTo(karte);
     const pts = stationen.map(e => [e.ort.lat, e.ort.lon]);
     // gleiche Orte leicht versetzen, damit alle Nummern sichtbar bleiben
@@ -525,7 +528,7 @@ function kartenKachel(lat, lon, name, z = 8) {
   const tx = Math.floor(x / 256), ty = Math.floor(y / 256);
   let kacheln = '';
   for (let j = -1; j <= 1; j++) for (let i = -2; i <= 2; i++)
-    kacheln += `<img src="https://tile.openstreetmap.org/${z}/${tx + i}/${ty + j}.png" style="left:${(i + 2) * 256}px;top:${(j + 1) * 256}px" alt="">`;
+    kacheln += `<img src="https://tile.openstreetmap.org/${z}/${tx + i}/${ty + j}.png" referrerpolicy="${OSM_REFERRER}" style="left:${(i + 2) * 256}px;top:${(j + 1) * 256}px" alt="">`;
   const dx = x - (tx - 2) * 256, dy = y - (ty - 1) * 256;
   return `<div class="kachelkarte"><div class="kacheln" style="left:calc(50% - ${dx}px);top:calc(50% - ${dy}px)">${kacheln}</div>
     <div class="pin"></div><div class="ortsmarke">${esc(name)}</div><span class="osm">© OpenStreetMap</span></div>`;
