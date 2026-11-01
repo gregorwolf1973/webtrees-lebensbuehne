@@ -11,6 +11,7 @@ import { Kartenstapel, KW, KH } from 'lb/karten.js';
 import { bildrateTiefe } from 'lb/tiefe.js';
 import { Videos } from 'lb/video.js';
 import { VideoFenster } from 'lb/videofenster.js';
+import { Epochenmusik, sucheLieder, herunterladen } from 'lb/musik.js';
 
 const FARBE = { vater: '#d6a24e', mutter: '#62b6a9', start: '#f2ede4' };
 const ZWEIGE = ['#c99be0', '#86aee6', '#e39a8b', '#a5d388', '#e8c872', '#86d6cf'];   // Nachkommen: je Kind der Hauptperson eine Farbe
@@ -977,6 +978,7 @@ function stoppeAbspielen() {
   cancelAnimationFrame(abspielen.raf);
   abspielen = null;
   musik.pause();
+  epochen.halt();
   klang.stille();
   videos.halt();
   document.getElementById('abspielen').textContent = t('▶ Zeitreise');
@@ -986,7 +988,8 @@ document.getElementById('abspielen').addEventListener('click', async e => {
   if (geraeuscheAn) klang.bereit();
   e.target.textContent = t('❚❚ Anhalten');
   const geburten = imBild.map(p => p.geburt ?? p.jahrE);
-  const mitLied = liedAn && musikQuelle;
+  const epoche = liedAn && ton.musikArt === 'epoche';   // Musik der jeweiligen Epoche statt eines Liedes
+  const mitLied = liedAn && musikQuelle && !epoche;
   if (mitLied && !musik.duration) await new Promise(ok => musik.addEventListener('loadedmetadata', ok, { once: true }));
   abspannStart();
   if (mitLied && ton.liedTempo) {
@@ -1002,6 +1005,7 @@ document.getElementById('abspielen').addEventListener('click', async e => {
     abspielen = { lied: false, j: zeitJahr == null || zeitJahr >= JETZT ? start : zeitJahr, letzt: performance.now() };
     if (mitLied) { musik.loop = true; if (musik.ended) musik.currentTime = 0; }
   }
+  abspielen.epoche = epoche;
   if (mitLied) { try { await musik.play(); } catch (err) { stoppeAbspielen(); return; } }
   const schritt = now => {
     const a = abspielen;
@@ -1018,6 +1022,7 @@ document.getElementById('abspielen').addEventListener('click', async e => {
     }
     setzeJahr(a.j);
     videos.jahr(a.j);
+    if (a.epoche) epochen.jahr(a.j);
     a.raf = requestAnimationFrame(schritt);
   };
   abspielen.raf = requestAnimationFrame(schritt);
@@ -1070,7 +1075,7 @@ const ARTEN = [
   ['not', t('Hunger und Not')], ['kaelte', t('Kälte')], ['wasser', t('Wasser, Auswanderung')], ['flut', t('Flut')],
   ['zug', t('Eisenbahn')], ['jubel', t('Jubel')], ['unruhe', t('Unruhe')], ['glocken', t('Glockengeläut')], ['strom', t('Strom')],
 ];
-const ton = { lied: false, liedTempo: true, geraeusche: true, volLied: 85, volGeraeusche: 50, arten: Object.fromEntries(ARTEN.map(([k]) => [k, true])) };
+const ton = { lied: false, musikArt: 'lied', commons: null, liedTempo: true, geraeusche: true, volLied: 85, volGeraeusche: 50, arten: Object.fromEntries(ARTEN.map(([k]) => [k, true])) };
 try {
   const gespeichert = JSON.parse(localStorage.getItem('lb-ton') || '{}');
   if (!localStorage.getItem('lb-ton')) {   // Einstellungen der ersten Fassung übernehmen
@@ -1109,6 +1114,7 @@ function klingen(j) {
 const musik = new Audio();
 musik.preload = 'auto';
 musik.volume = ton.volLied / 100;
+const epochen = new Epochenmusik(ton.volLied / 100);
 klang.lautstaerke(ton.volGeraeusche / 100);
 let musikQuelle = null;
 const dateiWahl = document.getElementById('lied-datei');
@@ -1152,17 +1158,18 @@ const liedAuswahl = document.getElementById('lied-wahl');
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 function baueLiedAuswahl() {
   liedAuswahl.innerHTML = `<option value="eigen">${eigenesLied ? esc(t('Eigenes Lied: {name}', { name: eigenesLied.name })) : esc(t('Eigenes Lied (keins gewählt)'))}</option>`
+    + (ton.commons ? `<option value="com">${esc(t('Gefunden: {titel}', { titel: ton.commons.titel }))}</option>` : '')
     + liederMit.map(l => `<option value="mit:${esc(l.datei)}">${esc(liedTitel(l))}</option>`).join('');
-  liedAuswahl.hidden = !liederMit.length;
+  liedAuswahl.hidden = !liederMit.length && !ton.commons;
 }
 // gewähltes Lied: eigenes, sonst das erste mitgelieferte
 function waehleLied() {
   let wahl = ton.liedWahl;
-  if (!wahl || (wahl === 'eigen' && !eigenesLied) || (wahl.startsWith('mit:') && !liederMit.some(l => 'mit:' + l.datei === wahl)))
+  if (!wahl || (wahl === 'eigen' && !eigenesLied) || (wahl === 'com' && !ton.commons) || (wahl.startsWith('mit:') && !liederMit.some(l => 'mit:' + l.datei === wahl)))
     wahl = eigenesLied ? 'eigen' : liederMit.length ? 'mit:' + liederMit[0].datei : 'eigen';
   liedAuswahl.value = wahl;
-  const mit = liederMit.find(l => 'mit:' + l.datei === wahl);
-  setzeLied(mit ? { url: mit.url, name: liedTitel(mit), lied: mit } : eigenesLied);
+  const mit = liederMit.find(l => 'mit:' + l.datei === wahl), com = wahl === 'com' && ton.commons;
+  setzeLied(com ? { url: com.url, name: com.titel, lied: com } : mit ? { url: mit.url, name: liedTitel(mit), lied: mit } : eigenesLied);
 }
 function setzeLied(q) {
   musikQuelle = q;
@@ -1170,7 +1177,12 @@ function setzeLied(q) {
   document.getElementById('lied-name').textContent = q ? (q.lied ? '' : q.name) : t('Kein Lied – eigene Datei über „Datei wählen …“ einbinden');
   const l = q?.lied;
   document.getElementById('lied-quelle').innerHTML = l
-    ? `${esc(l.urheber)} · <a href="${esc(l.lizenzUrl)}" target="_blank" rel="noopener">${esc((SPRACHE_EN && l.lizenz_en) || l.lizenz)}</a> · <a href="${esc(l.quelle)}" target="_blank" rel="noopener">${esc(t('Quelle'))}</a>` : '';
+    ? `${esc(l.urheber)} · <a href="${esc(l.lizenzUrl)}" target="_blank" rel="noopener">${esc((SPRACHE_EN && l.lizenz_en) || l.lizenz)}</a> · <a href="${esc(l.quelle)}" target="_blank" rel="noopener">${esc(t('Quelle'))}</a>`
+      + ` · <a href="#" id="lied-laden">${esc(t('⬇ Herunterladen'))}</a>` : '';
+  document.getElementById('lied-laden')?.addEventListener('click', ev => {
+    ev.preventDefault();
+    herunterladen(q.url, l.datei || decodeURIComponent(q.url.split('/').pop()));
+  });
   zeigeTon();
 }
 liedAuswahl.addEventListener('change', () => {
@@ -1213,14 +1225,18 @@ const tonKnopf = document.getElementById('ton'), tonMenue = document.getElementB
 document.getElementById('klang-arten').innerHTML = ARTEN.map(([k, name]) =>
   `<label><input type="checkbox" data-art="${k}"${ton.arten[k] ? ' checked' : ''}> ${name}</label>`).join('');
 function zeigeTon() {
-  document.getElementById('lied-an').checked = liedAn && !!musikQuelle;
-  document.getElementById('lied-an').disabled = !musikQuelle;
+  const epoche = ton.musikArt === 'epoche';
+  document.getElementById('lied-an').checked = liedAn && (!!musikQuelle || epoche);
+  document.getElementById('lied-an').disabled = !musikQuelle && !epoche;
+  for (const r of document.querySelectorAll('input[name="musik-art"]')) r.checked = r.value === ton.musikArt;
+  document.getElementById('lied-tempo').disabled = epoche;
+  liedAuswahl.disabled = epoche;
   document.getElementById('geraeusche-an').checked = geraeuscheAn;
   document.getElementById('vol-lied').value = ton.volLied;
   document.getElementById('lied-tempo').checked = ton.liedTempo;
   document.getElementById('vol-geraeusche').value = ton.volGeraeusche;
   document.getElementById('klang-arten').disabled = !geraeuscheAn;
-  tonKnopf.classList.toggle('an', (liedAn && !!musikQuelle) || geraeuscheAn);
+  tonKnopf.classList.toggle('an', (liedAn && (!!musikQuelle || epoche)) || geraeuscheAn);
 }
 tonKnopf.addEventListener('click', ev => {
   ev.stopPropagation();
@@ -1241,7 +1257,57 @@ document.getElementById('geraeusche-an').addEventListener('change', ev => {
   zeigeTon();
 });
 document.getElementById('lied-tempo').addEventListener('change', ev => { ton.liedTempo = ev.target.checked; tonSpeichern(); if (abspielen) stoppeAbspielen(); });
-document.getElementById('vol-lied').addEventListener('input', ev => { ton.volLied = +ev.target.value; musik.volume = ton.volLied / 100; tonSpeichern(); });
+document.getElementById('vol-lied').addEventListener('input', ev => { ton.volLied = +ev.target.value; musik.volume = ton.volLied / 100; epochen.lautstaerke(ton.volLied / 100); tonSpeichern(); });
+// ein Lied für die ganze Zeitreise oder Musik der jeweiligen Epoche
+for (const r of document.querySelectorAll('input[name="musik-art"]')) r.addEventListener('change', () => {
+  ton.musikArt = r.value;
+  if (r.value === 'epoche') liedAn = ton.lied = true;
+  tonSpeichern();
+  if (abspielen) stoppeAbspielen();
+  zeigeTon();
+});
+// freie Musik auf Commons suchen: anhören, wählen (wird zum Lied der Zeitreise)
+{
+  const feld = document.getElementById('lied-suche'), liste = document.getElementById('lied-treffer'), hoer = new Audio();
+  let treffer = [], warte = null, laeuft = -1;
+  const zeige = () => {
+    liste.innerHTML = treffer.map((r, i) => `<li><button class="klein" data-hoer="${i}" title="${esc(t('Anhören'))}">${laeuft === i ? '■' : '▶'}</button>
+      <span>${esc(r.titel)}</span><button class="klein" data-nimm="${i}">${esc(t('Wählen'))}</button>
+      <small>${esc(r.urheber)} · ${esc(r.lizenz)}</small></li>`).join('') || (feld.value.trim().length > 2 ? `<li><small>${esc(t('Nichts gefunden.'))}</small></li>` : '');
+  };
+  feld.addEventListener('input', () => {
+    clearTimeout(warte);
+    warte = setTimeout(async () => {
+      const q = feld.value.trim();
+      if (q.length < 3) { treffer = []; return zeige(); }
+      try { treffer = await sucheLieder(q); } catch (e) { treffer = []; }
+      laeuft = -1; hoer.pause();
+      zeige();
+    }, 500);
+  });
+  liste.addEventListener('click', ev => {
+    const k = ev.target.closest('button');
+    if (!k) return;
+    ev.stopPropagation();
+    if (k.dataset.hoer) {
+      const i = +k.dataset.hoer;
+      if (laeuft === i) { hoer.pause(); laeuft = -1; }
+      else { hoer.src = treffer[i].url; hoer.volume = ton.volLied / 100; hoer.play().catch(() => {}); laeuft = i; }
+      return zeige();
+    }
+    if (k.dataset.nimm) {
+      hoer.pause(); laeuft = -1;
+      ton.commons = treffer[+k.dataset.nimm];
+      ton.liedWahl = 'com'; ton.musikArt = 'lied';
+      liedAn = ton.lied = true;
+      tonSpeichern();
+      if (abspielen) stoppeAbspielen();
+      baueLiedAuswahl();
+      waehleLied();
+      zeige();
+    }
+  });
+}
 document.getElementById('vol-geraeusche').addEventListener('input', ev => { ton.volGeraeusche = +ev.target.value; klang.lautstaerke(ton.volGeraeusche / 100); tonSpeichern(); });
 document.getElementById('klang-arten').addEventListener('change', ev => {
   const art = ev.target.dataset.art;

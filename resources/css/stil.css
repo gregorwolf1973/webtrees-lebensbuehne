@@ -282,6 +282,15 @@ body:not(.bereit) #buehne::after { content: "Stammbaum wird geladen …"; positi
 #lied-quelle:empty { display: none; }
 .lied-tipp { margin: 6px 0 8px; font-size: 12px; line-height: 1.4; color: var(--text-3); }
 .ton-menue .klein { background: var(--flaeche); border: 1px solid var(--linie); border-radius: 6px; padding: 4px 10px; font-size: 13px; }
+.ton-menue input[type=radio] { accent-color: var(--vater); margin: 0; }
+.lied-suche { margin: 8px 0 4px; font-size: 13px; }
+.lied-suche summary { cursor: pointer; color: var(--text-2); }
+.lied-suche input { width: 100%; margin-top: 6px; background: var(--flaeche); border: 1px solid var(--linie); border-radius: 6px; color: var(--text); padding: 4px 8px; font: inherit; font-size: 13px; }
+.lied-treffer { list-style: none; margin: 6px 0 0; padding: 0; max-height: 220px; overflow-y: auto; }
+.lied-treffer li { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 0 6px; align-items: center; padding: 4px 0; border-top: 1px solid var(--linie); }
+.lied-treffer small { grid-column: 2 / -1; color: var(--text-3); font-size: 11.5px; overflow-wrap: anywhere; }
+.lied-treffer span { overflow-wrap: anywhere; }
+.lied-treffer .klein { padding: 2px 8px; }
 .arten { border: 0; margin: 10px 0 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; }
 .arten label { font-size: 13px; color: var(--text-2); }
 .arten:disabled { opacity: 0.45; }

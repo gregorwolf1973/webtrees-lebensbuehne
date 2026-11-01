@@ -104,10 +104,17 @@ $json = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HE
       <div id="ton-menue" class="ton-menue" hidden>
         <h3><?= e($t('Lied')) ?></h3>
         <label class="haken"><input type="checkbox" id="lied-an"> <?= e($t('abspielen')) ?></label>
+        <label class="haken"><input type="radio" name="musik-art" value="lied"> <?= e($t('ein Lied für die ganze Zeitreise')) ?></label>
+        <label class="haken"><input type="radio" name="musik-art" value="epoche"> <?= e($t('Musik der jeweiligen Epoche')) ?></label>
         <select id="lied-wahl" class="lied-wahl" aria-label="<?= e($t('Lied auswählen')) ?>" hidden></select>
         <p id="lied-name" class="lied-name"></p>
         <p id="lied-quelle" class="lied-tipp"></p>
         <button id="lied-waehlen" class="klein"><?= e($t('Datei wählen …')) ?></button>
+        <details class="lied-suche">
+          <summary><?= e($t('Freie Musik suchen (Wikimedia Commons)')) ?></summary>
+          <input type="search" id="lied-suche" placeholder="<?= e($t('z. B. Walzer, Bach, Marsch …')) ?>" aria-label="<?= e($t('Freie Musik suchen')) ?>">
+          <ul id="lied-treffer" class="lied-treffer"></ul>
+        </details>
         <p class="lied-tipp"><?= strtr(e($t('Mitgeliefert sind frei lizenzierte Aufnahmen. Ein eigenes Lied, etwa „Time“ von Hans Zimmer oder {lied}, bindet „Datei wählen …“ ein.')), ['{lied}' => '<a href="https://suno.com/song/a7b9fe0a-e52c-4c97-b7ea-6142434f33cc" target="_blank" rel="noopener">„Ein Licht geht an“</a>']) ?></p>
         <label class="haken"><input type="checkbox" id="lied-tempo"> <?= e($t('Tempo ans Lied anpassen')) ?></label>
         <label class="laut"><?= e($t('Lautstärke')) ?> <input type="range" id="vol-lied" min="0" max="100"></label>
