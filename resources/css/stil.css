@@ -527,7 +527,18 @@ body.netz .legende-netz { display: flex; }
 .vf-bahn input { accent-color: var(--vater); width: 13px; height: 13px; margin: 0; flex: none; }
 .vf-zieh { background: none; border: 0; padding: 0; width: 16px; color: var(--text-3); cursor: grab; font-size: 13px; line-height: 1; touch-action: none; }
 .vf-zieh:hover, .vf-zieh:focus-visible { color: var(--vater); }
-.vf-bahn.zieht { background: rgba(214, 162, 78, 0.12); border-radius: 4px; }
+.vf-bahn.zieht, .vf-gruppe.zieht { background: rgba(214, 162, 78, 0.12); border-radius: 4px; }
+.vf-gruppe + .vf-gruppe { margin-top: 3px; }
+.vf-gruppen-name { display: flex; align-items: center; gap: 2px; min-width: 0; }
+.vf-gruppen-name .haken { font-weight: 600; color: var(--text); }
+.vf-auf { background: none; border: 0; padding: 0; width: 16px; flex: none; color: var(--text-2); font-size: 12px; line-height: 1; }
+.vf-auf:hover { color: var(--vater); }
+.vf-gruppen-name:not(:has(.vf-auf)) { padding-left: 18px; }
+.vf-laender-bahnen { margin: 2px 0 4px; }
+.vf-laender-bahnen .haken { padding-left: 18px; }
+.vf-laender-bahnen .vf-strahl { height: 11px; }
+.vf-gruppe.aus .vf-strahl { opacity: 0.3; }
+.vf-gruppe.aus .haken { color: var(--text-3); }
 .vf-bahn.zieht .vf-zieh { cursor: grabbing; }
 .vf-bahn.aus .vf-strahl { opacity: 0.3; }
 .vf-bahn.aus .haken { color: var(--text-3); }

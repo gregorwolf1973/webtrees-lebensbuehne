@@ -13,14 +13,14 @@ const MINDEST = 10000;   // so lange (ms) bleibt ein Video, bevor ein vorrangige
 // Jedes Video gehört zu dem Land, in dem das Ereignis stattfand; ganze Regionen oder einzelne Länder lassen sich
 // abwählen (lb-videos.aus). Unbekannte Länder zählen zu „Welt“. Die Reihenfolge der Länder (lb-videos.reihenfolge,
 // im Videofenster per Ziehen) ist ihr Vorrang, wenn sich Videos überschneiden.
-export const REGIONEN = ['Europa', 'Nordamerika', 'Welt', 'Ohne Land'];
+export const REGIONEN = ['Europa', 'Amerika', 'Welt', 'Ohne Land'];
 const REGION_VON = { Deutschland: 'Europa' };
 for (const l of ['Österreich', 'Schweiz', 'Frankreich', 'Großbritannien', 'Irland', 'Niederlande', 'Belgien', 'Luxemburg',
   'Dänemark', 'Schweden', 'Norwegen', 'Polen', 'Tschechien', 'Slowakei', 'Ungarn', 'Rumänien', 'Serbien', 'Kroatien',
   'Italien', 'Spanien', 'Portugal', 'Griechenland', 'Russland', 'Ukraine']) REGION_VON[l] = 'Europa';
-for (const l of ['USA', 'Kanada', 'Mexiko']) REGION_VON[l] = 'Nordamerika';
+for (const l of ['USA', 'Kanada', 'Mexiko', 'Brasilien', 'Argentinien']) REGION_VON[l] = 'Amerika';
 export const LAENDER = Object.keys(REGION_VON);
-// ohne eigene Reihenfolge: eigene Videos ohne Land zuerst, dann Deutschland, das übrige Europa, Nordamerika
+// ohne eigene Reihenfolge: eigene Videos ohne Land zuerst, dann Deutschland, das übrige Europa, Amerika
 const STANDARD_REIHENFOLGE = ['Ohne Land', ...LAENDER];
 export const landVon = e => String(e.land || '').trim() || 'Ohne Land';
 export const regionVon = e => { const l = landVon(e); return l === 'Ohne Land' ? l : REGION_VON[l] || 'Welt'; };
@@ -69,7 +69,8 @@ function laden() {
   const alt = Array.isArray(e.liste);
   const einst = { an: e.an ?? true, ton: e.ton ?? false, lautstaerke: e.lautstaerke ?? 70, deckkraft: e.deckkraft ?? 35, groesse: e.groesse ?? 100,
     liste: alt ? e.liste : [], gesehen: Array.isArray(e.gesehen) ? e.gesehen : alt ? [...FRUEHE_VORSCHLAEGE] : [],
-    aus: Array.isArray(e.aus) ? e.aus : [],
+    aus: Array.isArray(e.aus) ? e.aus.map(x => x === 'Nordamerika' ? 'Amerika' : x) : [],
+    offen: Array.isArray(e.offen) ? e.offen : [],
     reihenfolge: Array.isArray(e.reihenfolge) ? e.reihenfolge : [] };
   // übernommene Vorschläge folgen dem Katalog (berichtigte Adressen, Jahre, Länder); nur selbst Geändertes bleibt
   einst.liste = einst.liste.map(x => {
@@ -126,17 +127,17 @@ export class Videos {
   }
 
   /** Eingeschaltete Videos, deren Jahre laufen, das vorrangige zuerst: das Land weiter oben, im selben Land eigene
-   *  Videos vor Vorschlägen, dann das genaueste. Mit `land` nur aus diesem Land, auch wenn es abgewählt ist (für die
-   *  Bahnen im Videofenster). */
-  kandidaten(j, land) {
-    const rang = new Map(this.reihenfolge().map((l, i) => [l, i]));
+   *  Videos vor Vorschlägen, dann das genaueste. Für die Bahnen im Videofenster mit `nur.land` nur aus diesem Land,
+   *  mit `nur.region` aus dieser Region (deren eigene Abwahl bleibt dabei unbeachtet). */
+  kandidaten(j, nur = {}) {
+    const rang = new Map(this.reihenfolge().map((l, i) => [l, i])), aus = this.einst.aus;
     return this.einst.liste.filter(e => e.an && !this.fehler[e.id] && j >= e.von && j < e.bis + 1
-      && (land ? landVon(e) === land : !this.abgewaehlt(e)))
+      && (nur.land ? landVon(e) === nur.land : nur.region ? regionVon(e) === nur.region && !aus.includes(landVon(e)) : !this.abgewaehlt(e)))
       .sort((x, y) => rang.get(landVon(x)) - rang.get(landVon(y)) || istVorschlag(x) - istVorschlag(y) || genauer(x, y));
   }
 
-  waehle(j, land) {
-    return this.kandidaten(j, land)[0] ?? null;
+  waehle(j, nur) {
+    return this.kandidaten(j, nur)[0] ?? null;
   }
 
   /** Je Bild der Zeitreise aufrufen. Es läuft das vorrangige passende Video, genau in seinen Jahren: Es endet mit dem

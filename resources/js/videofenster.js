@@ -108,7 +108,7 @@ export class VideoFenster {
       </header>
       <div class="vf-strahl-box">
         <div class="vf-regionen-zeile">
-          <span class="vf-regionen"></span>
+          <span class="vf-regionen">${esc(t('Länder – wer oben steht, hat Vorrang'))}</span>
           <button class="klein vf-info" data-tun="info" aria-expanded="false" title="${esc(t('Wie die Zeitreise das Video wählt'))}">ⓘ ${esc(t('Regel'))}</button>
         </div>
         <div class="vf-regel" hidden>
@@ -116,7 +116,8 @@ export class VideoFenster {
           <ul>
             <li>${esc(t('Es laufen nur eingeschaltete Videos (Haken in der Liste) aus Ländern und Regionen mit Haken.'))}</li>
             <li>${esc(t('Ein Video läuft genau in seinen Jahren „von–bis“ und endet mit dem Jahr „bis“. Sein Ausschnitt wiederholt sich so lange.'))}</li>
-            <li>${esc(t('Überschneiden sich Videos, gewinnt das Land, das hier weiter oben steht. Zum Ändern eine Bahn am ⠿ nach oben oder unten ziehen (oder ⠿ anklicken und die Pfeiltasten nehmen).'))}</li>
+            <li>${esc(t('Überschneiden sich Videos, gewinnt das Land, das hier weiter oben steht. Zum Ändern eine Region oder ein Land am ⠿ nach oben oder unten ziehen (oder ⠿ anklicken und die Pfeiltasten nehmen). Länder ziehen innerhalb ihrer Region.'))}</li>
+            <li>${esc(t('Zugeklappt zeigt eine Region, welches ihrer Videos jeweils dran wäre; ▸ klappt ihre Länder auf.'))}</li>
             <li>${esc(t('Im selben Land gehen eigene Videos den Vorschlägen vor, sonst gewinnt das genaueste – das mit den wenigsten Jahren, etwa Magdeburg 1631 im Dreißigjährigen Krieg.'))}</li>
             <li>${esc(t('Beginnt ein vorrangiges Video, löst es das laufende frühestens nach 10 Sekunden ab, damit nichts flackert.'))}</li>
             <li>${esc(t('Jede Bahn zeigt, welches Video dieses Landes in welchem Jahr dran wäre. Ein Klick auf einen Abschnitt öffnet das Video, ein Klick auf eine Lücke legt eins für diese Jahre an.'))}</li>
@@ -183,7 +184,6 @@ export class VideoFenster {
     const q = s => el.querySelector(s);
     this.liste = q('.vf-liste');
     this.bahnen = q('.vf-bahnen');
-    this.regionen = q('.vf-regionen');
     this.form = q('.vf-felder');
     this.zl = q('.vf-zeitleiste');
     this.streifen = q('.vf-streifen');
@@ -206,7 +206,7 @@ export class VideoFenster {
       if (lauf?.dataset.id) return this.waehleAus(this.v.einst.liste.find(e => e.id === lauf.dataset.id));
       if (lauf?.dataset.luecke) {
         const [a, b] = lauf.dataset.luecke.split('-').map(Number);
-        const land = lauf.closest('.vf-bahn')?.dataset.land;
+        const land = lauf.closest('.vf-bahn')?.dataset.land ?? lauf.closest('.vf-gruppe')?.dataset.laender.split('|')[0];
         return this.neu(a, b, land === 'Ohne Land' ? '' : land);
       }
       const loeschen = ev.target.closest('[data-loeschen]');
@@ -254,34 +254,43 @@ export class VideoFenster {
     this.bahnenEinrichten();
   }
 
-  /** Bahnen am ⠿ ziehen (oder mit den Pfeiltasten verschieben): ihre Reihenfolge ist der Vorrang der Länder */
+  /** Regionen und Länder am ⠿ ziehen (oder mit den Pfeiltasten verschieben): ihre Reihenfolge ist der Vorrang.
+   *  Regionen ziehen gegeneinander, Länder innerhalb ihrer Region. */
   bahnenEinrichten() {
-    const merken = () => {
-      const sichtbar = [...this.bahnen.querySelectorAll('.vf-bahn')].map(b => b.dataset.land);
+    const stueck = griff => griff.closest('.vf-laender-bahnen > .vf-bahn') || griff.closest('.vf-gruppe');
+    const geschwister = el => [...el.parentElement.children].filter(x => x.classList.contains(el.classList.contains('vf-gruppe') ? 'vf-gruppe' : 'vf-bahn'));
+    const kennung = el => el.dataset.land || el.dataset.region;
+    const merken = el => {
+      const sichtbar = [...this.bahnen.querySelectorAll('.vf-gruppe')].flatMap(g => g.dataset.laender.split('|'));
+      const reihe = [...this.bahnen.querySelectorAll('.vf-gruppe')].flatMap(g => {
+        const innen = [...g.querySelectorAll('.vf-laender-bahnen > .vf-bahn')].map(b => b.dataset.land);
+        return innen.length ? innen : g.dataset.laender.split('|');
+      });
       // nicht sichtbare Länder behalten ihren Platz hinter den sichtbaren
-      this.v.einst.reihenfolge = [...sichtbar, ...this.v.reihenfolge().filter(l => !sichtbar.includes(l))];
+      this.v.einst.reihenfolge = [...reihe, ...this.v.reihenfolge().filter(l => !sichtbar.includes(l))];
       this.v.speichern();
+      const k = kennung(el);
       this.zeichne();
+      [...this.bahnen.querySelectorAll('.vf-gruppe, .vf-laender-bahnen > .vf-bahn')].find(x => kennung(x) === k)?.querySelector('.vf-zieh')?.focus();
     };
     this.bahnen.addEventListener('pointerdown', ev => {
       const griff = ev.target.closest('.vf-zieh');
       if (!griff || ev.button !== 0) return;
       ev.preventDefault();
-      const bahn = griff.closest('.vf-bahn');
-      bahn.classList.add('zieht');
+      const el = stueck(griff);
+      el.classList.add('zieht');
       const ziehen = e2 => {
-        const andere = [...this.bahnen.querySelectorAll('.vf-bahn:not(.zieht)')];
+        const andere = geschwister(el).filter(x => x !== el);
         const vor = andere.find(b => { const r = b.getBoundingClientRect(); return e2.clientY < r.top + r.height / 2; });
-        if (vor) { if (bahn.nextElementSibling !== vor) this.bahnen.insertBefore(bahn, vor); }
-        else if (this.bahnen.lastElementChild !== bahn) this.bahnen.appendChild(bahn);
+        if (vor) { if (el.nextElementSibling !== vor) el.parentElement.insertBefore(el, vor); }
+        else if (andere.length && el !== andere.at(-1).nextElementSibling) andere.at(-1).after(el);
       };
       const los = () => {
         removeEventListener('pointermove', ziehen);
         removeEventListener('pointerup', los);
         removeEventListener('pointercancel', los);
-        bahn.classList.remove('zieht');
-        merken();
-        this.bahnen.querySelector(`.vf-bahn[data-land="${CSS.escape(bahn.dataset.land)}"] .vf-zieh`)?.focus();
+        el.classList.remove('zieht');
+        merken(el);
       };
       addEventListener('pointermove', ziehen);
       addEventListener('pointerup', los);
@@ -292,11 +301,20 @@ export class VideoFenster {
       if (!griff || (ev.key !== 'ArrowUp' && ev.key !== 'ArrowDown')) return;
       ev.preventDefault();
       ev.stopPropagation();
-      const bahn = griff.closest('.vf-bahn'), nachbar = ev.key === 'ArrowUp' ? bahn.previousElementSibling : bahn.nextElementSibling;
+      const el = stueck(griff), reihe = geschwister(el), i = reihe.indexOf(el);
+      const nachbar = reihe[ev.key === 'ArrowUp' ? i - 1 : i + 1];
       if (!nachbar) return;
-      if (ev.key === 'ArrowUp') this.bahnen.insertBefore(bahn, nachbar); else this.bahnen.insertBefore(nachbar, bahn);
-      merken();
-      this.bahnen.querySelector(`.vf-bahn[data-land="${CSS.escape(bahn.dataset.land)}"] .vf-zieh`)?.focus();
+      if (ev.key === 'ArrowUp') nachbar.before(el); else nachbar.after(el);
+      merken(el);
+    });
+    // Regionen auf- und zuklappen
+    this.bahnen.addEventListener('click', ev => {
+      const k = ev.target.closest('.vf-auf');
+      if (!k) return;
+      const r = k.closest('.vf-gruppe').dataset.region, offen = this.v.einst.offen;
+      if (offen.includes(r)) offen.splice(offen.indexOf(r), 1); else offen.push(r);
+      this.v.speichern();
+      this.zeichne();
     });
   }
 
@@ -709,28 +727,39 @@ export class VideoFenster {
       }
       return r;
     };
-    const bahn = r => {
+    const bahn = nur => {
       let n = 0;
-      return laeufe(j => this.v.waehle(j, r)).map(l => {
+      return laeufe(j => this.v.waehle(j, nur)).map(l => {
         const stil = `left:${pos(l.von)}%;width:${pos(l.bis + 1) - pos(l.von)}%`, jahre = l.von === l.bis ? l.von : `${l.von}–${l.bis}`;
         if (!l.e) return `<button class="vf-lauf luecke" style="${stil}" data-luecke="${l.von}-${l.bis}" title="${esc(t('{jahre} ohne Video – Klick: Video für diese Jahre hinzufügen', { jahre }))}"></button>`;
         return `<button class="vf-lauf${n++ % 2 ? ' b' : ''}${l.e.id === wid ? ' gewaehlt' : ''}" style="${stil}" data-id="${esc(l.e.id)}" title="${esc(`${jahre} · ${l.e.titel || l.e.url} (${landVon(l.e)})`)}"></button>`;
       }).join('');
     };
-    this.bahnen.innerHTML = laender.map(l => {
-      const r = regionDes(l), regionAus = r !== l && aus.includes(r);
-      return `<div class="vf-bahn${aus.includes(l) || regionAus ? ' aus' : ''}" data-land="${esc(l)}">
-        <button class="vf-zieh" title="${esc(t('Ziehen oder Pfeiltasten: Vorrang dieses Landes ändern'))}" aria-label="${esc(t('Vorrang von {land} ändern', { land: t(l) }))}">⠿</button>
-        <label class="haken" title="${esc(t('Videos dieses Landes während der Zeitreise zeigen'))}"><input type="checkbox" data-aus="${esc(l)}"${aus.includes(l) ? '' : ' checked'}${regionAus ? ' disabled' : ''}> ${esc(t(l))} <small>${zahl['l:' + l]}</small></label>
-        <div class="vf-strahl">${bahn(l)}</div></div>`;
+    // Regionen in der Reihenfolge ihres ersten Landes; zugeklappt eine Sammelbahn, aufgeklappt die Länder darunter
+    const gruppen = [];
+    for (const l of laender) {
+      const r = regionDes(l);
+      let g = gruppen.find(x => x.r === r);
+      if (!g) gruppen.push(g = { r, laender: [] });
+      g.laender.push(l);
+    }
+    const griff = name => `<button class="vf-zieh" title="${esc(t('Ziehen oder Pfeiltasten: Vorrang ändern'))}" aria-label="${esc(t('Vorrang von {name} ändern', { name }))}">⠿</button>`;
+    this.bahnen.innerHTML = gruppen.map(({ r, laender: ls }) => {
+      const nurEines = ls.length === 1 && ls[0] === r, offen = !nurEines && this.v.einst.offen.includes(r);
+      const anzahl = ls.reduce((n, l) => n + zahl['l:' + l], 0);
+      const kopf = `<div class="vf-bahn vf-gruppen-bahn">${griff(t(r))}
+        <span class="vf-gruppen-name">${nurEines ? '' : `<button class="vf-auf" aria-expanded="${offen}" title="${esc(offen ? t('Länder zuklappen') : t('Länder aufklappen'))}">${offen ? '▾' : '▸'}</button>`}
+          <label class="haken" title="${esc(t('Videos dieser Region während der Zeitreise zeigen'))}"><input type="checkbox" data-aus="${esc(r)}"${aus.includes(r) ? '' : ' checked'}> ${esc(t(r))} <small>${anzahl}</small></label></span>
+        <div class="vf-strahl">${bahn({ region: r })}</div></div>`;
+      const laenderBahnen = nurEines ? '' : `<div class="vf-laender-bahnen"${offen ? '' : ' hidden'}>` + ls.map(l => `<div class="vf-bahn${aus.includes(l) ? ' aus' : ''}" data-land="${esc(l)}">
+        ${griff(t(l))}
+        <label class="haken" title="${esc(t('Videos dieses Landes während der Zeitreise zeigen'))}"><input type="checkbox" data-aus="${esc(l)}"${aus.includes(l) ? '' : ' checked'}${aus.includes(r) ? ' disabled' : ''}> ${esc(t(l))} <small>${zahl['l:' + l]}</small></label>
+        <div class="vf-strahl">${bahn({ land: l })}</div></div>`).join('') + '</div>';
+      return `<div class="vf-gruppe${aus.includes(r) ? ' aus' : ''}" data-region="${esc(r)}" data-laender="${esc(ls.join('|'))}">${kopf}${laenderBahnen}</div>`;
     }).join('');
     const marken = [];
     for (let j = Math.ceil(A / 50) * 50; j < B; j += 50) marken.push(`<span style="left:${pos(j)}%">${j}</span>`);
     this.el.querySelector('.vf-skala').innerHTML = marken.join('');
-    // ganze Regionen ab- und zuwählen (eine Region mit nur einem gleichnamigen Land braucht keinen eigenen Haken)
-    const mitHaken = regionen.filter(r => laenderIn(r).length);
-    this.regionen.innerHTML = mitHaken.length ? `<span>${esc(t('Regionen:'))}</span>` + mitHaken.map(r =>
-      `<label class="haken"><input type="checkbox" data-aus="${esc(r)}"${aus.includes(r) ? '' : ' checked'}> ${esc(t(r))}</label>`).join('') : '';
 
     // was die Zeitreise mit der jetzigen Auswahl abdeckt
     const luecken = laeufe(j => this.v.waehle(j)).filter(l => !l.e);
