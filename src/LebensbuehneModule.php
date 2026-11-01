@@ -105,7 +105,7 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
     use ModuleChartTrait;
     use ModuleGlobalTrait;
 
-    public const string VERSION = '1.10.0';
+    public const string VERSION = '1.10.1';
 
     // Oberflächenwörter des Moduls, die webtrees selbst in viele Sprachen übersetzt (deutscher Schlüssel => englische msgid)
     private const array WEBTREES_WOERTER = [
@@ -252,7 +252,7 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
             'three'                                  => $this->assetUrl('vendor/three/three.module.min.js'),
             'three/addons/controls/OrbitControls.js' => $this->assetUrl('vendor/three/OrbitControls.js'),
         ];
-        foreach (['app', 'daten', 'panel', 'klang', 'tiefe', 'text', 'himmel', 'karten', 'video', 'videofenster', 'videovorschlaege', 'musik', 'musikepochen'] as $datei) {
+        foreach (['app', 'daten', 'panel', 'klang', 'tiefe', 'text', 'himmel', 'karten', 'video', 'videofenster', 'videovorschlaege', 'musik', 'musikepochen', 'bildwahl'] as $datei) {
             $importe['lb/' . $datei . '.js'] = $this->assetUrl('js/' . $datei . '.js');
         }
 

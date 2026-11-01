@@ -200,6 +200,16 @@ body:not(.bereit) #buehne::after { content: "Stammbaum wird geladen …"; positi
 .bild { position: relative; padding: 0; border: 1px solid var(--linie); border-radius: 8px; overflow: hidden; background: #0f131b; aspect-ratio: 1; }
 .bild img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.25s; }
 .bild:hover img { transform: scale(1.05); }
+.bild-leiste { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 4px; }
+.bild-leiste .klein { background: var(--flaeche); border: 1px solid var(--linie); border-radius: 6px; padding: 4px 10px; font-size: 13px; color: var(--text); }
+.bild-leiste .zahl { margin-left: auto; font-size: 12.5px; color: var(--text-3); }
+.bildwahl .bild { cursor: grab; }
+.bildwahl .bild.aus img { opacity: 0.3; filter: grayscale(1); }
+.bildwahl .bild.zieht { opacity: 0.4; }
+.bildwahl .bild.davor { box-shadow: -3px 0 0 var(--vater); }
+.bildwahl .bild.dahinter { box-shadow: 3px 0 0 var(--vater); }
+.bild-oeffnen { all: unset; display: block; width: 100%; height: 100%; cursor: zoom-in; }
+.bild-haken { position: absolute; top: 6px; left: 6px; width: 18px; height: 18px; margin: 0; accent-color: var(--vater); cursor: pointer; }
 .bild span { position: absolute; left: 6px; bottom: 6px; font-size: 11px; background: rgba(12, 15, 21, 0.8); padding: 1px 6px; border-radius: 4px; color: var(--text-2); }
 
 .lightbox { overflow: hidden; position: fixed; inset: 0; z-index: 50; background: rgba(5, 7, 10, 0.94); display: flex; align-items: center; justify-content: center; gap: 12px; padding: 24px; }

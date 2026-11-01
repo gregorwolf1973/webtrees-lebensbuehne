@@ -12,6 +12,7 @@ import { bildrateTiefe } from 'lb/tiefe.js';
 import { Videos, sichereUrl } from 'lb/video.js';
 import { VideoFenster } from 'lb/videofenster.js';
 import { Epochenmusik, sucheLieder, herunterladen } from 'lb/musik.js';
+import { anwenden as bildwahlAnwenden } from 'lb/bildwahl.js';
 
 const FARBE = { vater: '#d6a24e', mutter: '#62b6a9', start: '#f2ede4' };
 const ZWEIGE = ['#c99be0', '#86aee6', '#e39a8b', '#a5d388', '#e8c872', '#86d6cf'];   // Nachkommen: je Kind der Hauptperson eine Farbe
@@ -38,6 +39,7 @@ const FENSTER_ZEIT = 6, FENSTER_FAMILIE = 4;   // so viele Jahre vor und nach de
 const zVon = jahr => (jahr - JAHR_NULL) * TIEFE_PRO_JAHR;
 
 const daten = await ladeDaten();
+for (const p of daten.personen) bildwahlAnwenden(p);   // gewählte Bilder und Reihenfolge je Person (Reiter „Bilder“)
 const { personen, zeit } = daten;
 let zeitAnsicht = zeit, klangAnsicht = daten.klangZeit;   // Zeitgeschehen, das zu den Regionen der Ansicht passt
 const JAHR_MIN = Math.min(...personen.map(p => p.jahrE));

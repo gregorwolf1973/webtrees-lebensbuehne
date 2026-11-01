@@ -2,6 +2,7 @@
 import { kapitel, lebensdaten, verwandtschaft, jahreKurz, ortKurz, trenneNotiz, zeitgeschehenFuer, erzaehle, sortJahr, LB } from 'lb/daten.js';
 import { belebe } from 'lb/tiefe.js';
 import { t, EN } from 'lb/text.js';
+import { geordnet, istAus, eigeneReihe, setze as bildwahlSetzen } from 'lb/bildwahl.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 // OpenStreetMap sperrt Kacheln ohne Referer (403); webtrees 2.2 verbietet ihn mit „Referrer-Policy: same-origin“.
@@ -111,11 +112,11 @@ export class Panel {
         ${p.geschichte ? `<button data-tab="erzaehlung">${t('Erzählung')}</button>` : ''}
         <button data-tab="geschichte">${t('Bildgeschichte')}</button>
         <button data-tab="lebenslauf">${t('Lebenslauf')}</button>
-        <button data-tab="bilder">${t('Bilder')} <span class="zahl">${p.bilder.length}</span></button>
+        <button data-tab="bilder">${t('Bilder')} <span class="zahl">${(p.alleBilder ?? p.bilder).length}</span></button>
         <button data-tab="karte">${t('Lebensweg')}</button>
       </nav>
       <section class="inhalt"></section>`;
-    this.tab(tabAlt === 'bilder' && !p.bilder.length ? 'geschichte' : tabAlt);
+    this.tab(tabAlt === 'bilder' && !(p.alleBilder ?? p.bilder).length ? 'geschichte' : tabAlt);
     this.kopf25d(p);
     requestAnimationFrame(() => this.cb.breite(this.breite()));
   }
@@ -149,11 +150,12 @@ export class Panel {
       this.karte?.remove(); this.karte = null;
       // Fotos in Aufnahmefolge (datierte zuerst), dann Dokumente; in der Zeitreise nur, was bis zum Jahr schon aufgenommen war
       // danach Urkunden und Gräber, dann Ortsbilder, Zeitungsausschnitte ganz zuletzt – so sieht man vor allem Gesichter
+      // Hat jemand im Reiter „Bilder“ eine eigene Reihenfolge gewählt, gilt diese
       const RANG = { urkunde: 1, grab: 2, ort: 3, zeitung: 4 };
       const fotos = p.bilder.map((b, n) => [b, n]).filter(([b]) => b.art === 'foto')
         .sort(([a], [b]) => (a.jahr ?? 1e4) - (b.jahr ?? 1e4));
       const rest = p.bilder.map((b, n) => [b, n]).filter(([b]) => b.art !== 'foto').sort(([a], [b]) => (RANG[a.art] ?? 3) - (RANG[b.art] ?? 3));
-      const alleBilder = [...fotos, ...rest];
+      const alleBilder = eigeneReihe(p) ? p.bilder.map((b, n) => [b, n]) : [...fotos, ...rest];
       if (!alleBilder.length && p.gesicht) alleBilder.push([{ src: p.gesicht, titel: t('Porträt') }, -1]);
       const reihe = { get length() { return alleBilder.length; } };
       const aktuell = () => {
@@ -427,12 +429,75 @@ export class Panel {
   }
 
   // --- Bilder ------------------------------------------------------------------------------------------
+  // Haken: in Bildgeschichte und Zeitreise zeigen; Ziehen: Reihenfolge (bildwahl.js, im Browser gemerkt)
   bilder(box) {
     const p = this.p;
-    if (!p.bilder.length) { box.innerHTML = `<p class="leer-hinweis">${t('Zu dieser Person sind noch keine Bilder in webtrees verknüpft.')}</p>`; return; }
+    if (!(p.alleBilder ?? p.bilder).length) { box.innerHTML = `<p class="leer-hinweis">${t('Zu dieser Person sind noch keine Bilder in webtrees verknüpft.')}</p>`; return; }
     const art = { foto: t('Foto'), urkunde: t('Dokument'), grab: t('Grab'), ort: t('Ortsbild'), zeitung: t('Zeitung') };
-    box.innerHTML = `<div class="galerie">${p.bilder.map((b, n) =>
-      `<button class="bild" data-bild="${n}"><img loading="lazy" src="${b.src}" alt=""><span>${art[b.art]}</span></button>`).join('')}</div>`;
+    let reihe, gezogen = null;
+    const zeichne = () => {
+      reihe = geordnet(p);
+      const an = reihe.filter(b => !istAus(p, b)).length;
+      box.innerHTML = `<div class="bildwahl">
+        <div class="bild-leiste">
+          <button class="klein" data-wahl="alle">${t('Alle an')}</button>
+          <button class="klein" data-wahl="keine">${t('Alle aus')}</button>
+          ${eigeneReihe(p) ? `<button class="klein" data-wahl="webtrees">${t('Reihenfolge wie in webtrees')}</button>` : ''}
+          <span class="zahl">${t('{n} von {m} gezeigt', { n: an, m: reihe.length })}</span>
+        </div>
+        <p class="lied-tipp">${t('Haken: Bild in Bildgeschichte und Zeitreise zeigen · Ziehen: Reihenfolge ändern · Klick: groß ansehen')}</p>
+        <div class="galerie">${reihe.map((b, n) => `<div class="bild${istAus(p, b) ? ' aus' : ''}" draggable="true" data-n="${n}">
+          <button class="bild-oeffnen" data-galerie="${n}" title="${t('Groß ansehen')}"><img loading="lazy" src="${b.src}" alt="" draggable="false"></button>
+          <input type="checkbox" class="bild-haken" data-zeigen="${n}"${istAus(p, b) ? '' : ' checked'} aria-label="${t('Bild zeigen')}">
+          <span>${art[b.art] ?? ''}</span></div>`).join('')}</div></div>`;
+      const w = box.querySelector('.bildwahl');
+      w.addEventListener('click', ev => {
+        const g = ev.target.closest('[data-galerie]');
+        if (g) return this.lightbox.zeige(reihe, +g.dataset.galerie);
+        const k = ev.target.closest('[data-wahl]')?.dataset.wahl;
+        if (k === 'alle') bildwahlSetzen(p, { aus: [] });
+        if (k === 'keine') bildwahlSetzen(p, { aus: reihe });
+        if (k === 'webtrees') bildwahlSetzen(p, { reihe: [] });
+        if (k) zeichne();
+      });
+      w.addEventListener('change', ev => {
+        const n = ev.target.dataset.zeigen;
+        if (n == null) return;
+        bildwahlSetzen(p, { aus: reihe.filter((b, i) => i === +n ? !ev.target.checked : istAus(p, b)) });
+        zeichne();
+      });
+      // Reihenfolge per Ziehen: vor oder hinter das Bild, über dem losgelassen wird
+      w.addEventListener('dragstart', ev => {
+        const el = ev.target.closest('.bild');
+        if (!el) return;
+        gezogen = +el.dataset.n;
+        ev.dataTransfer.effectAllowed = 'move';
+        ev.dataTransfer.setData('text/plain', String(gezogen));
+        el.classList.add('zieht');
+      });
+      w.addEventListener('dragover', ev => {
+        const el = ev.target.closest('.bild');
+        if (!el || gezogen == null) return;
+        ev.preventDefault();
+        const r = el.getBoundingClientRect(), dahinter = ev.clientX > r.left + r.width / 2;
+        w.querySelectorAll('.davor, .dahinter').forEach(x => x.classList.remove('davor', 'dahinter'));
+        el.classList.add(dahinter ? 'dahinter' : 'davor');
+      });
+      w.addEventListener('drop', ev => {
+        const el = ev.target.closest('.bild');
+        if (!el || gezogen == null) return;
+        ev.preventDefault();
+        let ziel = +el.dataset.n + (el.classList.contains('dahinter') ? 1 : 0);
+        const neu = [...reihe], [b] = neu.splice(gezogen, 1);
+        if (ziel > gezogen) ziel--;
+        neu.splice(ziel, 0, b);
+        gezogen = null;
+        bildwahlSetzen(p, { reihe: neu });
+        zeichne();
+      });
+      w.addEventListener('dragend', () => { gezogen = null; w.querySelectorAll('.zieht, .davor, .dahinter').forEach(x => x.classList.remove('zieht', 'davor', 'dahinter')); });
+    };
+    zeichne();
   }
 
   // --- Lebensweg auf der Karte ---------------------------------------------------------------------------

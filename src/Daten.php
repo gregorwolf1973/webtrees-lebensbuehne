@@ -395,6 +395,7 @@ final class Daten
             $m = $this->medium($mid);
             if ($m !== null) {
                 $p['bilder'][] = [
+                    'id'    => $mid,
                     'src'   => $m['url'],
                     'titel' => $m['titel'] !== '' ? $m['titel'] : basename($m['datei']),
                     'art'   => $m['art'],
