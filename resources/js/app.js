@@ -10,6 +10,7 @@ import { baueHimmel } from 'lb/himmel.js';
 import { Kartenstapel, KW, KH } from 'lb/karten.js';
 import { bildrateTiefe } from 'lb/tiefe.js';
 import { Videos } from 'lb/video.js';
+import { VideoFenster } from 'lb/videofenster.js';
 
 const FARBE = { vater: '#d6a24e', mutter: '#62b6a9', start: '#f2ede4' };
 const ZWEIGE = ['#c99be0', '#86aee6', '#e39a8b', '#a5d388', '#e8c872', '#86d6cf'];   // Nachkommen: je Kind der Hauptperson eine Farbe
@@ -1200,6 +1201,12 @@ videoKnopf.addEventListener('click', ev => {
   videoKnopf.setAttribute('aria-expanded', !videoMenue.hidden);
 });
 addEventListener('click', ev => { if (!videoMenue.hidden && !videoMenue.contains(ev.target) && ev.target !== videoKnopf) { videoMenue.hidden = true; videoKnopf.setAttribute('aria-expanded', false); } });
+const videoFenster = new VideoFenster(videos, stoppeAbspielen);
+document.getElementById('videos-fenster').addEventListener('click', () => {
+  videoMenue.hidden = true;
+  videoKnopf.setAttribute('aria-expanded', false);
+  videoFenster.oeffne(Math.floor(zeitJahr ?? +regler.value));
+});
 
 const tonKnopf = document.getElementById('ton'), tonMenue = document.getElementById('ton-menue');
 document.getElementById('klang-arten').innerHTML = ARTEN.map(([k, name]) =>
