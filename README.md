@@ -34,6 +34,7 @@ tunnel with a time travel, life stories, photos, maps and historical events. The
 
 - webtrees 2.2 mit PHP 8.3 oder neuer
 - empfohlen: die PHP-Erweiterung Imagick für die Gesichtsausschnitte. Ohne Imagick zeigt das Modul ein mittiges Vorschaubild.
+- im Browser: WebGL (3D-Grafik). Ist es abgeschaltet oder vom Grafiktreiber gesperrt, zeigt die Lebensbühne einen Hinweis statt der Bühne.
 
 ## Installation
 

@@ -96,9 +96,9 @@
   "Ansicht": "View",
   "Vorfahren": "Ancestors",
   "Nachkommen": "Descendants",
-  "väterlicherseits": "paternal",
-  "mütterlicherseits": "maternal",
-  "Partnerseite": "partner’s side",
+  "Väterlicherseits": "Paternal",
+  "Mütterlicherseits": "Maternal",
+  "Partnerseite": "Partner’s side",
   "Geschwindigkeit der Zeitreise": "Speed of the time travel",
   "Tempo": "Speed",
   "Jahre/min": "years/min",
@@ -282,5 +282,8 @@
   "Groß ansehen": "View larger",
   "Haken: Bild in Bildgeschichte und Zeitreise zeigen · Ziehen: Reihenfolge ändern · Klick: groß ansehen": "Tick: show picture in picture story and time journey · Drag: change order · Click: view larger",
   "Reihenfolge wie in webtrees": "Order as in webtrees",
-  "{n} von {m} gezeigt": "{n} of {m} shown"
+  "{n} von {m} gezeigt": "{n} of {m} shown",
+  "Stammbaum wird geladen …": "Loading family tree …",
+  "Die Lebensbühne braucht WebGL (3D-Grafik im Browser), aber dieser Browser stellt es nicht bereit: Entweder ist WebGL in den Einstellungen abgeschaltet oder der Grafiktreiber wird nicht unterstützt.\nBitte WebGL bzw. die Hardwarebeschleunigung des Browsers einschalten und die Seite neu laden.": "The Lebensbühne requires WebGL (3D graphics in the browser), but this browser does not support it: either WebGL is disabled in the settings or the graphics driver is unsupported.\nPlease enable WebGL or the browser’s hardware acceleration and reload the page.",
+  "WebGL nicht verfügbar": "WebGL not available"
 }

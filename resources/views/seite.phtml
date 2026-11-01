@@ -34,7 +34,7 @@ $json = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HE
   <script>window.LEBENSBUEHNE = <?= json_encode($config, $json) ?>;</script>
 </head>
 <body>
-  <div id="buehne"></div>
+  <div id="buehne" data-meldung="<?= e($t('Stammbaum wird geladen …')) ?>"></div>
 
   <header class="leiste-oben">
     <div class="titel">
@@ -81,8 +81,8 @@ $json = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HE
       </div>
     </div>
     <ul class="legende">
-      <li><i class="vater"></i><?= e($t('väterlicherseits')) ?></li>
-      <li><i class="mutter"></i><?= e($t('mütterlicherseits')) ?></li>
+      <li><i class="vater"></i><?= e($t('Väterlicherseits')) ?></li>
+      <li><i class="mutter"></i><?= e($t('Mütterlicherseits')) ?></li>
       <li><i class="nachkommen"></i><?= e($t('Nachkommen')) ?></li>
       <li><i class="partner"></i><?= e($t('Partnerseite')) ?></li>
       <li><i class="raute"></i><?= e($t('Zeitgeschehen')) ?></li>

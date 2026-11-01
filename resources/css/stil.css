@@ -37,7 +37,7 @@ a { color: var(--vater); }
 #video-schicht video { width: 100%; height: 100%; object-fit: cover; }
 /* YouTube liefert immer 16:9 (4:3-Filme mit Balken): mittig auf 4:3 zuschneiden */
 #video-schicht .yt iframe { position: absolute; top: 0; left: 50%; height: 100%; width: 133.34%; transform: translateX(-50%); border: 0; }
-body:not(.bereit) #buehne::after { content: "Stammbaum wird geladen …"; position: absolute; inset: 0; display: grid; place-items: center; color: var(--text-3); }
+body:not(.bereit) #buehne::after { content: attr(data-meldung); position: absolute; inset: 0; display: grid; place-items: center; padding: 0 24px; text-align: center; white-space: pre-line; color: var(--text-3); }
 
 /* --- Leisten ------------------------------------------------------------------------------- */
 .leiste-oben { position: fixed; top: 0; left: 0; right: 0; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 12px 24px; padding: 16px 20px; pointer-events: none; }
