@@ -2,7 +2,7 @@
 import { kapitel, lebensdaten, verwandtschaft, jahreKurz, ortKurz, trenneNotiz, zeitgeschehenFuer, erzaehle, sortJahr, LB } from 'lb/daten.js';
 import { belebe } from 'lb/tiefe.js';
 import { t, EN } from 'lb/text.js';
-import { geordnet, istAus, eigeneReihe, setze as bildwahlSetzen } from 'lb/bildwahl.js';
+import { geordnet, istAus, eigeneReihe, eigeneWahl, setze as bildwahlSetzen, zuruecksetzen as bildwahlZurueck } from 'lb/bildwahl.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 // OpenStreetMap sperrt Kacheln ohne Referer (403); webtrees 2.2 verbietet ihn mit „Referrer-Policy: same-origin“.
@@ -443,6 +443,7 @@ export class Panel {
           <button class="klein" data-wahl="alle">${t('Alle an')}</button>
           <button class="klein" data-wahl="keine">${t('Alle aus')}</button>
           ${eigeneReihe(p) ? `<button class="klein" data-wahl="webtrees">${t('Reihenfolge wie in webtrees')}</button>` : ''}
+          ${eigeneWahl(p) ? `<button class="klein" data-wahl="vorgabe" title="${t('Nur Fotos zeigen; ohne Foto ein Dokument')}">${t('↺ Vorgabe')}</button>` : ''}
           <span class="zahl">${t('{n} von {m} gezeigt', { n: an, m: reihe.length })}</span>
         </div>
         <p class="lied-tipp">${t('Haken: Bild in Bildgeschichte und Zeitreise zeigen · Ziehen: Reihenfolge ändern · Klick: groß ansehen')}</p>
@@ -458,6 +459,7 @@ export class Panel {
         if (k === 'alle') bildwahlSetzen(p, { aus: [] });
         if (k === 'keine') bildwahlSetzen(p, { aus: reihe });
         if (k === 'webtrees') bildwahlSetzen(p, { reihe: [] });
+        if (k === 'vorgabe') bildwahlZurueck(p);
         if (k) zeichne();
       });
       w.addEventListener('change', ev => {
