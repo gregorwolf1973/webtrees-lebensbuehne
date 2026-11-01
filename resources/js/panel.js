@@ -447,7 +447,7 @@ export class Panel {
         </div>
         <p class="lied-tipp">${t('Haken: Bild in Bildgeschichte und Zeitreise zeigen · Ziehen: Reihenfolge ändern · Klick: groß ansehen')}</p>
         <div class="galerie">${reihe.map((b, n) => `<div class="bild${istAus(p, b) ? ' aus' : ''}" draggable="true" data-n="${n}">
-          <button class="bild-oeffnen" data-galerie="${n}" title="${t('Groß ansehen')}"><img loading="lazy" src="${b.src}" alt="" draggable="false"></button>
+          <button class="bild-oeffnen" data-galerie="${n}" title="${t('Groß ansehen')}"><img loading="lazy" src="${esc(b.src)}" alt="" draggable="false"></button>
           <input type="checkbox" class="bild-haken" data-zeigen="${n}"${istAus(p, b) ? '' : ' checked'} aria-label="${t('Bild zeigen')}">
           <span>${art[b.art] ?? ''}</span></div>`).join('')}</div></div>`;
       const w = box.querySelector('.bildwahl');
