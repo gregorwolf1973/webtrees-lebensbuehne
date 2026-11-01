@@ -1,6 +1,7 @@
 // Videos zur Zeitgeschichte: Während der Zeitreise läuft halb durchsichtig hinter dem Stammbaum ein Film zu den gerade
 // erreichten Jahren – eine Videodatei (etwa von Wikimedia Commons) oder ein YouTube-Video, jeweils auch als Ausschnitt.
 // Die Auswahl merkt sich der Browser (localStorage lb-videos); ausgesucht und zugeschnitten wird im Videofenster.
+// Für neue Nutzer zunächst aus: sonst lädt jede Zeitreise ungefragt Videos von YouTube und Wikimedia.
 import { t } from 'lb/text.js';
 import { VORSCHLAEGE } from 'lb/videovorschlaege.js';
 
@@ -71,7 +72,7 @@ function laden() {
   let e = {};
   try { e = JSON.parse(localStorage.getItem('lb-videos') || '{}'); } catch (err) { /* Vorschläge */ }
   const alt = Array.isArray(e.liste);
-  const einst = { an: e.an ?? true, ton: e.ton ?? false, lautstaerke: e.lautstaerke ?? 70, deckkraft: e.deckkraft ?? 35, groesse: e.groesse ?? 100,
+  const einst = { an: e.an ?? false, ton: e.ton ?? false, lautstaerke: e.lautstaerke ?? 70, deckkraft: e.deckkraft ?? 35, groesse: e.groesse ?? 100,
     liste: alt ? e.liste : [], gesehen: Array.isArray(e.gesehen) ? e.gesehen : alt ? [...FRUEHE_VORSCHLAEGE] : [],
     aus: Array.isArray(e.aus) ? e.aus.map(x => x === 'Nordamerika' ? 'Amerika' : x) : [],
     offen: Array.isArray(e.offen) ? e.offen : [],
