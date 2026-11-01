@@ -9,7 +9,7 @@ import * as klang from 'lb/klang.js';
 import { baueHimmel } from 'lb/himmel.js';
 import { Kartenstapel, KW, KH } from 'lb/karten.js';
 import { bildrateTiefe } from 'lb/tiefe.js';
-import { Videos } from 'lb/video.js';
+import { Videos, sichereUrl } from 'lb/video.js';
 import { VideoFenster } from 'lb/videofenster.js';
 import { Epochenmusik, sucheLieder, herunterladen } from 'lb/musik.js';
 
@@ -1179,7 +1179,7 @@ function setzeLied(q) {
   document.getElementById('lied-name').textContent = q ? (q.lied ? '' : q.name) : t('Kein Lied – eigene Datei über „Datei wählen …“ einbinden');
   const l = q?.lied;
   document.getElementById('lied-quelle').innerHTML = l
-    ? `${esc(l.urheber)} · <a href="${esc(l.lizenzUrl)}" target="_blank" rel="noopener">${esc((SPRACHE_EN && l.lizenz_en) || l.lizenz)}</a> · <a href="${esc(l.quelle)}" target="_blank" rel="noopener">${esc(t('Quelle'))}</a>`
+    ? `${esc(l.urheber)} · <a href="${esc(sichereUrl(l.lizenzUrl) || sichereUrl(l.quelle))}" target="_blank" rel="noopener">${esc((SPRACHE_EN && l.lizenz_en) || l.lizenz)}</a> · <a href="${esc(sichereUrl(l.quelle))}" target="_blank" rel="noopener">${esc(t('Quelle'))}</a>`
       + ` · <a href="#" id="lied-laden">${esc(t('⬇ Herunterladen'))}</a>` : '';
   document.getElementById('lied-laden')?.addEventListener('click', ev => {
     ev.preventDefault();
@@ -1271,7 +1271,7 @@ for (const r of document.querySelectorAll('input[name="musik-art"]')) r.addEvent
 // freie Musik auf Commons suchen: anhören, wählen (wird zum Lied der Zeitreise)
 {
   const feld = document.getElementById('lied-suche'), liste = document.getElementById('lied-treffer'), hoer = new Audio();
-  let treffer = [], warte = null, laeuft = -1;
+  let treffer = [], warte = null, laeuft = -1, anfrage = 0;
   const zeige = () => {
     liste.innerHTML = treffer.map((r, i) => `<li><button class="klein" data-hoer="${i}" title="${esc(t('Anhören'))}">${laeuft === i ? '■' : '▶'}</button>
       <span>${esc(r.titel)}</span><button class="klein" data-nimm="${i}">${esc(t('Wählen'))}</button>
@@ -1281,8 +1281,12 @@ for (const r of document.querySelectorAll('input[name="musik-art"]')) r.addEvent
     clearTimeout(warte);
     warte = setTimeout(async () => {
       const q = feld.value.trim();
+      const nr = ++anfrage;
       if (q.length < 3) { treffer = []; return zeige(); }
-      try { treffer = await sucheLieder(q); } catch (e) { treffer = []; }
+      let neu = [];
+      try { neu = await sucheLieder(q); } catch (e) { /* nichts gefunden */ }
+      if (nr !== anfrage) return;   // eine neuere Suche läuft schon
+      treffer = neu;
       laeuft = -1; hoer.pause();
       zeige();
     }, 500);

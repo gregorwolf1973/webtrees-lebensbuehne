@@ -44,15 +44,20 @@ export async function herunterladen(url, name) {
   }
 }
 
-/** Lautstärke eines Audio-Elements weich von `von` nach `nach` führen */
+/** Lautstärke eines Audio-Elements weich von `von` nach `nach` (Zahl oder Funktion) führen; eine neue Blende löst die
+ *  laufende ab. In versteckten Tabs ruht requestAnimationFrame – dann bringt ein Zeitgeber die Blende zu Ende. */
 function blende(audio, von, nach, ms, fertig) {
-  const t0 = performance.now();
+  const id = audio.blendeNr = (audio.blendeNr || 0) + 1, t0 = performance.now(), ziel = () => typeof nach === 'function' ? nach() : nach;
+  let fertigGemeldet = false;
+  const ende = () => { if (fertigGemeldet || audio.blendeNr !== id) return; fertigGemeldet = true; audio.volume = Math.max(0, Math.min(1, ziel())); fertig?.(); };
   const schritt = jetzt => {
+    if (audio.blendeNr !== id || fertigGemeldet) return;
     const f = Math.min(1, (jetzt - t0) / ms);
-    audio.volume = Math.max(0, Math.min(1, von + (nach - von) * f));
-    if (f < 1) requestAnimationFrame(schritt); else fertig?.();
+    audio.volume = Math.max(0, Math.min(1, von + (ziel() - von) * f));
+    if (f < 1) requestAnimationFrame(schritt); else ende();
   };
   requestAnimationFrame(schritt);
+  setTimeout(ende, ms + 150);
 }
 
 const genauer = (x, y) => (x.bis - x.von) - (y.bis - y.von) || y.von - x.von;
@@ -86,9 +91,10 @@ export class Epochenmusik {
   audio(e) {
     const a = new Audio();
     a.preload = 'auto';
-    a.loop = true;
     a.src = e.url;
     if (e.start) a.addEventListener('loadedmetadata', () => { a.currentTime = e.start; }, { once: true });
+    // in Schleife, aber vom Startpunkt an
+    a.addEventListener('ended', () => { a.currentTime = e.start || 0; a.play().catch(() => {}); });
     return a;
   }
 
@@ -107,7 +113,7 @@ export class Epochenmusik {
     if (this.vorrat?.e === e) this.vorrat = null;
     audio.volume = 0;
     audio.play().catch(() => {});
-    blende(audio, 0, this.laut, BLENDE);
+    blende(audio, 0, () => this.laut, BLENDE);
     this.spur = { e, audio, seit: performance.now() };
   }
 

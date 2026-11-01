@@ -5,7 +5,7 @@
 // und Zeitleiste: ein Klick setzt den Start, Umschalt+Klick oder Rechtsklick das Ende, die Griffe lassen sich ziehen.
 // Gestrichelt ist, was der 4:3-Rahmen im Hintergrund abschneidet.
 import { t } from 'lb/text.js';
-import { youtubeId, youtubeApi, ytFehler, sekunden, uhr, istVorschlag, REGIONEN, LAENDER, landVon, regionVon } from 'lb/video.js';
+import { youtubeId, youtubeApi, ytFehler, sekunden, uhr, istVorschlag, REGIONEN, LAENDER, landVon, regionVon, sichereUrl } from 'lb/video.js';
 import { VORSCHLAEGE } from 'lb/videovorschlaege.js';
 
 const STREIFEN = 10;   // Einzelbilder im Filmstreifen
@@ -236,7 +236,8 @@ export class VideoFenster {
       const name = ev.target.dataset.aus;
       if (name == null) return;
       const aus = this.v.einst.aus;
-      if (ev.target.checked) aus.splice(aus.indexOf(name), 1); else if (!aus.includes(name)) aus.push(name);
+      const i = aus.indexOf(name);
+      if (ev.target.checked) { if (i >= 0) aus.splice(i, 1); } else if (i < 0) aus.push(name);
       this.v.speichern();
       this.zeichne();
     });
@@ -398,7 +399,8 @@ export class VideoFenster {
     if (d && Math.abs(d - this.dauer) > 0.5) { this.dauer = d; this.leiste(); this.filmstreifen(); }
     if (!e.titel && sp.titel) { e.titel = this.form.titel.value = sp.titel; this.uebernehmen(); }
     const z = sp.zeit, start = e.start || 0;
-    if ((e.ende && z >= e.ende) || sp.zuEnde) { sp.springe(start); sp.spiele(); }
+    // am Ende des Ausschnitts einmal zurückspringen (YouTube meldet die neue Stelle erst nach ein paar Bildern)
+    if (((e.ende && z >= e.ende) || sp.zuEnde) && !(this.springt > performance.now())) { sp.springe(start); sp.spiele(); this.springt = performance.now() + 600; }
     if (sp.laeuft && this.v.fehler[e.id]) { delete this.v.fehler[e.id]; this.zeichne(); }
     if (this.dauer) this.el.querySelector('.vf-kopf').style.left = Math.min(100, z / this.dauer * 100) + '%';
     const uhrText = `${uhr(z)} / ${uhr(this.dauer)}`, k = this.el.querySelector('[data-tun="spiel"]'), zeichen = sp.laeuft ? '❚❚' : '▶';
@@ -442,25 +444,28 @@ export class VideoFenster {
     // von Commons die kleinste Fassung, sonst die Datei selbst
     const klein = e.url.replace(/\.\d+p\.vp9\.webm$/, '.240p.vp9.webm');
     try {
-      v.src = klein; await warte('loadedmetadata');
-    } catch (err) {
-      if (klein === e.url || nr !== this.streifenNr) return;
-      try { v.src = e.url; await warte('loadedmetadata'); } catch (err2) { return; }
+      try {
+        v.src = klein; await warte('loadedmetadata');
+      } catch (err) {
+        if (klein === e.url || nr !== this.streifenNr) return;
+        v.src = e.url; await warte('loadedmetadata');
+      }
+      for (let i = 0; i < STREIFEN && nr === this.streifenNr; i++) {
+        const p = (i + 0.5) / STREIFEN;
+        v.currentTime = p * v.duration;
+        try { await warte('seeked'); } catch (err) { break; }
+        if (nr !== this.streifenNr) break;
+        const c = document.createElement('canvas');
+        c.width = 128; c.height = 96;
+        const s = Math.max(c.width / v.videoWidth, c.height / v.videoHeight), w = v.videoWidth * s, h = v.videoHeight * s;
+        c.getContext('2d').drawImage(v, (c.width - w) / 2, (c.height - h) / 2, w, h);
+        c.style.left = p * 100 + '%';
+        ziel.appendChild(c);
+      }
+    } catch (err) { /* ohne Filmstreifen */ } finally {
+      v.removeAttribute('src');
+      v.load();
     }
-    for (let i = 0; i < STREIFEN && nr === this.streifenNr; i++) {
-      const p = (i + 0.5) / STREIFEN;
-      v.currentTime = p * v.duration;
-      try { await warte('seeked'); } catch (err) { break; }
-      if (nr !== this.streifenNr) break;
-      const c = document.createElement('canvas');
-      c.width = 128; c.height = 96;
-      const s = Math.max(c.width / v.videoWidth, c.height / v.videoHeight), w = v.videoWidth * s, h = v.videoHeight * s;
-      c.getContext('2d').drawImage(v, (c.width - w) / 2, (c.height - h) / 2, w, h);
-      c.style.left = p * 100 + '%';
-      ziel.appendChild(c);
-    }
-    v.removeAttribute('src');
-    v.load();
   }
 
   zeitleisteEinrichten() {
@@ -670,7 +675,7 @@ export class VideoFenster {
     q('[data-tun="zuruecksetzen"]').hidden = !(w.art === 'liste' && istVorschlag(e) && e.geaendert?.length);
     q('[data-tun="hintergrund"]').hidden = !e.url;
     const id = youtubeId(e.url);
-    const quelle = e.quelle || (id ? `https://www.youtube.com/watch?v=${id}` : e.url);
+    const quelle = sichereUrl(e.quelle || (id ? `https://www.youtube.com/watch?v=${id}` : e.url));
     q('.vf-quelle').innerHTML = quelle ? `${esc(t('Quelle'))}: <a href="${esc(quelle)}" target="_blank" rel="noopener">${esc(e.quelle ? new URL(quelle).hostname : id ? 'YouTube' : t('Datei'))}</a>`
       + [e.urheber, e.lizenz].filter(Boolean).map(x => ' · ' + esc(x)).join('') + (e.inhalt ? `<br>${esc(e.inhalt)}` : '') : '';
   }
@@ -681,7 +686,7 @@ export class VideoFenster {
     const fehlen = VORSCHLAEGE.filter(v => !L.some(x => x.id === v.id));
 
     // Länder (in der Reihenfolge ihres Vorrangs) und Regionen der Liste, mit Anzahl
-    const zahl = {};
+    const zahl = Object.create(null);
     for (const e of L) { zahl[regionVon(e)] = (zahl[regionVon(e)] || 0) + 1; zahl['l:' + landVon(e)] = (zahl['l:' + landVon(e)] || 0) + 1; }
     const laender = this.v.reihenfolge().filter(l => zahl['l:' + l]);
     const regionen = REGIONEN.filter(r => zahl[r]);

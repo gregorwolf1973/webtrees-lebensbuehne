@@ -28,7 +28,9 @@ export const LAENDER = Object.keys(REGION_VON);
 // ohne eigene Reihenfolge: eigene Videos ohne Land zuerst, dann Deutschland, das übrige Europa, Amerika
 const STANDARD_REIHENFOLGE = ['Ohne Land', ...LAENDER];
 export const landVon = e => String(e.land || '').trim() || 'Ohne Land';
-export const regionVon = e => { const l = landVon(e); return l === 'Ohne Land' ? l : REGION_VON[l] || 'Welt'; };
+export const regionVon = e => { const l = landVon(e); return l === 'Ohne Land' ? l : Object.hasOwn(REGION_VON, l) ? REGION_VON[l] : 'Welt'; };
+/** Nur http(s)-Adressen als Link (Adressen kommen auch aus Nutzereingaben und von Commons) */
+export const sichereUrl = u => /^https?:\/\//i.test(String(u ?? '')) ? u : '';
 /** genauer = kürzere Spanne, bei Gleichstand das später beginnende */
 export const genauer = (x, y) => (x.bis - x.von) - (y.bis - y.von) || y.von - x.von;
 const BLENDE = 1200;     // Ein- und Ausblenden (ms), passend zur CSS-Übergangszeit
