@@ -1,6 +1,6 @@
 // Videovorschläge zur Geschichte Deutschlands, Europas und Amerikas: frei lizenzierte Filme von Wikimedia Commons
 // (als abspielbare VP9-WebM-Fassung, Chrome spielt kein Theora mehr), wo Commons nichts hat, eingebettete Videos von
-// Museums- und Behördenkanälen auf YouTube. Neue Einträge erscheinen einmal von selbst in der Auswahl jedes
+// Museums- und Behördenkanälen auf YouTube, vereinzelt Filme aus dem Internet Archive. Neue Einträge erscheinen einmal von selbst in der Auswahl jedes
 // Browsers; die id darf sich darum nie ändern, und Berichtigungen erreichen alle, die den Eintrag nicht selbst geändert
 // haben. start/ende in Sekunden schneiden einen Ausschnitt zu (Terra X ab 4 s: ohne den Vorspann mit Logo). land ist das
 // Land, in dem das Ereignis stattfand; Deutschland soll für sich allein lückenlos bleiben.
@@ -48,6 +48,10 @@ export const VORSCHLAEGE = [
     url: 'https://www.youtube.com/watch?v=lAuDENs_4Us',
     quelle: 'https://www.youtube.com/watch?v=lAuDENs_4Us', lizenz: 'YouTube-Standardlizenz (einbettbar)', urheber: 'Parks Canada',
     inhalt: 'Die rekonstruierte französische Festungsstadt Louisbourg.' },
+  { id: 'ia-haexan', land: 'Deutschland', titel: 'Hexenprozesse: Stummfilm Häxan (1922)', von: 1618, bis: 1630, start: 2500, ende: 2595,
+    url: 'https://archive.org/download/haxan-1922_202312/H%C3%A4xan%20(1922).mp4',
+    quelle: 'https://archive.org/details/haxan-1922_202312', lizenz: 'Public Domain Mark (Internet Archive)', urheber: 'Benjamin Christensen',
+    inhalt: 'Nachgestellte Hexenverfolgung: Inquisitoren im Klosterhof, aus dem schwedisch-dänischen Stummfilm von 1922.' },
   { id: 'c-dreissig', land: 'Deutschland', titel: 'Dreißigjähriger Krieg: Söldner und Musketiere', von: 1618, bis: 1648, start: 20,
     url: C + 'b/bb/BourtangeExerzieren2010.ogv/BourtangeExerzieren2010.ogv.480p.vp9.webm',
     quelle: SEITE + 'BourtangeExerzieren2010.ogv', lizenz: 'CC BY-SA 3.0', urheber: 'Helge Klaus Rieder',

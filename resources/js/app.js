@@ -112,6 +112,10 @@ function zeichneKarte(g, p, img) {
 const stapel = new Kartenstapel(renderer, zeichneKarte);
 let neuZeichnen = true;
 const zeichnen = () => { neuZeichnen = true; };   // nächstes Bild zeichnen (die Schleife zeichnet sonst nicht)
+// OrbitControls bewegt die Kamera beim Mausrad schon im Ereignis selbst, controls.update() in der Schleife meldet danach
+// nichts mehr. Darum zählt „change“: Sonst bliebe das Bild stehen, bis etwas anderes ein Neuzeichnen auslöst.
+let kameraGeaendert = false;
+controls.addEventListener('change', () => { kameraGeaendert = true; });
 
 function rundRechteck(g, x, y, w, h, r) {
   g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r);
@@ -1587,7 +1591,8 @@ renderer.setAnimationLoop(now => {
   if (simLaeuft) { simSchritt(); netzPositionen(); bewegt = true; }   // Netz kommt sanft zur Ruhe
   if (kameraNachfuehren(dt)) bewegt = true;
   abspannRollen(dt);
-  if (controls.update()) bewegt = true;
+  controls.update();
+  if (kameraGeaendert) { kameraGeaendert = false; bewegt = true; }
   if (bewegt) neuZeichnen = true;
   if (!neuZeichnen && !stapel.offen) return;
   const begrenzt = (abspielen || controls.autoRotate || simLaeuft) && !nutzerZieht && !flug;

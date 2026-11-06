@@ -5,7 +5,7 @@
 // und Zeitleiste: ein Klick setzt den Start, Umschalt+Klick oder Rechtsklick das Ende, die Griffe lassen sich ziehen.
 // Gestrichelt ist, was der 4:3-Rahmen im Hintergrund abschneidet.
 import { t } from 'lb/text.js';
-import { youtubeId, youtubeApi, ytFehler, sekunden, uhr, istVorschlag, REGIONEN, LAENDER, landVon, regionVon, sichereUrl } from 'lb/video.js';
+import { youtubeId, youtubeApi, ytFehler, ytOhneUntertitel, sekunden, uhr, istVorschlag, REGIONEN, LAENDER, landVon, regionVon, sichereUrl } from 'lb/video.js';
 import { VORSCHLAEGE } from 'lb/videovorschlaege.js';
 
 const STREIFEN = 10;   // Einzelbilder im Filmstreifen
@@ -27,10 +27,12 @@ class Abspieler {
         this.yt = new YT.Player(platz, {
           host: 'https://www.youtube-nocookie.com',
           videoId: id,
-          playerVars: { autoplay: 1, mute: 1, controls: 0, disablekb: 1, fs: 0, iv_load_policy: 3, playsinline: 1, rel: 0,
+          playerVars: { autoplay: 1, mute: 1, controls: 0, disablekb: 1, fs: 0, iv_load_policy: 3, cc_load_policy: 0, playsinline: 1, rel: 0,
             start: Math.floor(start), origin: location.origin },
           events: {
             onReady: ev => { this.bereit = true; ev.target.setVolume(lautstaerke); if (stumm) ev.target.mute(); else ev.target.unMute(); ev.target.playVideo(); },
+            onStateChange: ev => { if (ev.data === YT.PlayerState.PLAYING) ytOhneUntertitel(ev.target); },
+            onApiChange: ev => ytOhneUntertitel(ev.target),
             onError: ev => fehler(ytFehler(ev.data)),
           },
         });

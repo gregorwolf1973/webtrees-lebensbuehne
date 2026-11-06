@@ -53,6 +53,17 @@ export function sekunden(s) {
 export const uhr = s => (s = Math.floor(s || 0)) >= 3600 ? `${Math.floor(s / 3600)}:${String(Math.floor(s / 60) % 60).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
   : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
+/** Keine Untertitel über den Videos. cc_load_policy kann sie nur erzwingen, nicht verbieten: YouTube folgt sonst den
+ *  Kontoeinstellungen und schaltet sie bei stummen Videos oft selbst ein. Darum das Modul entfernen, sobald es geladen
+ *  ist. Diese Aufrufe sind nicht dokumentiert, darum abgesichert. */
+export function ytOhneUntertitel(p) {
+  try {
+    p.setOption?.('captions', 'track', {});
+    p.unloadModule?.('captions');
+    p.unloadModule?.('cc');
+  } catch (err) { /* ändert sich bei YouTube, dann bleibt es bei der Vorgabe */ }
+}
+
 /** Meldung zu einem Fehler des YouTube-Players: 101/150 der Kanal erlaubt kein Einbetten, 100 gelöscht oder privat */
 export const ytFehler = n => [101, 150].includes(n) ? t('Einbetten nicht erlaubt') : n === 100 ? t('Video nicht gefunden') : t('Fehler {n}', { n });
 
@@ -291,7 +302,7 @@ export class Videos {
     a.player = new YT.Player(ziel, {
       host: 'https://www.youtube-nocookie.com',
       videoId: id,
-      playerVars: { autoplay: 1, mute: 1, controls: 0, disablekb: 1, fs: 0, iv_load_policy: 3,
+      playerVars: { autoplay: 1, mute: 1, controls: 0, disablekb: 1, fs: 0, iv_load_policy: 3, cc_load_policy: 0,
         playsinline: 1, rel: 0, start, ...(e.ende ? { end: e.ende } : {}), origin: location.origin },
       events: {
         onReady: ev => {
@@ -301,11 +312,13 @@ export class Videos {
         },
         onStateChange: ev => {
           if (ev.data === YT.PlayerState.PLAYING) {
+            ytOhneUntertitel(ev.target);
             if (!a.los) { ev.target.pauseVideo(); ev.target.seekTo(start, true); }
             else if (this.aktiv === a) huelle.classList.add('an');
           }
           if (ev.data === YT.PlayerState.ENDED) { ev.target.seekTo(start, true); ev.target.playVideo(); }
         },
+        onApiChange: ev => ytOhneUntertitel(ev.target),
         onError: ev => this.misslungen(a, ytFehler(ev.data)),
       },
     });
