@@ -334,6 +334,7 @@ function baue() {
   document.getElementById('modus-partner').setAttribute('aria-pressed', modus.partner);
   document.getElementById('modus-geschwister')?.setAttribute('aria-pressed', modus.geschwister);
   document.getElementById('modus-netz').setAttribute('aria-pressed', modus.netz);
+  document.getElementById('weitere').setAttribute('aria-pressed', modus.netz);
   for (const id of ['modus-vorfahren', 'modus-nachkommen', 'modus-partner', 'modus-geschwister']) document.getElementById(id)?.classList.toggle('im-netz', modus.netz);
   // mit Geschwistern blendet „Partner“ auch die Partner der Geschwister ein
   const geschwPartner = modus.geschwister && imBild.some(p => p.rolle === 'geschwister' && p.partnerP.length);
@@ -1369,7 +1370,7 @@ menueKnopf.addEventListener('click', ev => { ev.stopPropagation(); menue(!docume
 addEventListener('click', ev => {
   if (document.body.classList.contains('menue-offen') && !mehr.contains(ev.target) && ev.target !== menueKnopf && ev.target.id !== 'hauptperson') menue(false);
 });
-mehr.addEventListener('click', ev => { if (ev.target.closest('button')) menue(false); });
+mehr.addEventListener('click', ev => { if (ev.target.closest('button') && !ev.target.closest('#weitere')) menue(false); });
 
 // Kaffee-Knopf: kleiner Hinweis mit Link zur Spende (Buy Me a Coffee)
 const spendeKnopf = document.getElementById('spende-knopf'), spende = document.getElementById('spende');
@@ -1430,7 +1431,25 @@ document.getElementById('modus-geschwister')?.addEventListener('click', () => {
 });
 
 // Netz: alle Verwandten frei angeordnet, Linien zu Eltern, Kindern und Partnern (wie die Ansicht „Lineage“)
+const weitere = document.getElementById('weitere'), weitereMenue = document.getElementById('weitere-menue');
+function weitereZeigen(an) {
+  weitereMenue.hidden = !an;
+  weitere.setAttribute('aria-expanded', an);
+}
+weitere.addEventListener('click', () => weitereZeigen(weitereMenue.hidden));
+addEventListener('click', ev => { if (!weitereMenue.hidden && !weitere.contains(ev.target) && !weitereMenue.contains(ev.target)) weitereZeigen(false); });
+// Bildwerkstatt: eigene Fläche über der Bühne, erst bei Bedarf geladen
+let werkstatt = null;
+document.getElementById('modus-werkstatt').addEventListener('click', async () => {
+  weitereZeigen(false);
+  stoppeAbspielen();
+  panel.schliesse();
+  const { Werkstatt } = await import('lb/werkstatt.js');
+  werkstatt ??= new Werkstatt(daten);
+  werkstatt.oeffne(root);
+});
 document.getElementById('modus-netz').addEventListener('click', () => {
+  weitereZeigen(false);
   stoppeAbspielen();
   modus.netz = !modus.netz;
   panel.schliesse();

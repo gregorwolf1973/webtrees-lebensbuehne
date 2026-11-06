@@ -105,7 +105,7 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
     use ModuleChartTrait;
     use ModuleGlobalTrait;
 
-    public const string VERSION = '1.11.0';
+    public const string VERSION = '1.12.0';
 
     // Oberflächenwörter des Moduls, die webtrees selbst in viele Sprachen übersetzt (deutscher Schlüssel => englische msgid)
     private const array WEBTREES_WOERTER = [
@@ -252,7 +252,7 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
             'three'                                  => $this->assetUrl('vendor/three/three.module.min.js'),
             'three/addons/controls/OrbitControls.js' => $this->assetUrl('vendor/three/OrbitControls.js'),
         ];
-        foreach (['app', 'daten', 'panel', 'klang', 'tiefe', 'text', 'himmel', 'karten', 'video', 'videofenster', 'videovorschlaege', 'musik', 'musikepochen', 'bildwahl'] as $datei) {
+        foreach (['app', 'daten', 'panel', 'klang', 'tiefe', 'text', 'himmel', 'karten', 'video', 'videofenster', 'videovorschlaege', 'musik', 'musikepochen', 'bildwahl', 'formen', 'werkstatt'] as $datei) {
             $importe['lb/' . $datei . '.js'] = $this->assetUrl('js/' . $datei . '.js');
         }
 
@@ -364,6 +364,7 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
         $xref    = Validator::attributes($request)->isXref()->string('xref');
         $mid     = Validator::attributes($request)->isXref()->string('media');
         $quadrat = Validator::queryParams($request)->string('q', '') === '1';
+        $gross   = Validator::queryParams($request)->string('g', '') === '1';   // für Bilder zum Speichern und Drucken
 
         $person = Registry::individualFactory()->make($xref, $tree);
         $media  = Registry::mediaFactory()->make($mid, $tree);
@@ -378,7 +379,7 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
 
         $ordner = Webtrees::DATA_DIR . 'lebensbuehne/cache/';
         $name   = $tree->id() . '_' . $xref . '_' . $mid . '_' . md5(json_encode($rahmen) . '|' . $datei->filename());
-        $ziel   = $ordner . $name . '.jpg';
+        $ziel   = $ordner . $name . ($gross ? '_g' : '') . '.jpg';
 
         // Tiefenkarte für das 2,5D-Porträt (berechnet mit tools/tiefen.py, liegt neben dem Zwischenspeicher)
         if (Validator::queryParams($request)->string('t', '') === '1') {
@@ -398,7 +399,7 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
                 if (!is_dir($ordner)) {
                     mkdir($ordner, 0775, true);
                 }
-                file_put_contents($ziel . '.tmp', $this->schneide($datei->fileContents(), $rahmen));
+                file_put_contents($ziel . '.tmp', $this->schneide($datei->fileContents(), $rahmen, $gross ? 1600 : 400));
                 rename($ziel . '.tmp', $ziel);
             } catch (Throwable) {
                 return redirect($datei->imageUrl(400, 400, 'crop'));
@@ -411,7 +412,7 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
     /**
      * @param list<int>|null $rahmen [x1, y1, x2, y2] im Originalbild; null = mittig quadratisch
      */
-    private function schneide(string $bild, ?array $rahmen): string
+    private function schneide(string $bild, ?array $rahmen, int $kante = 400): string
     {
         $im = new Imagick();
         $im->readImageBlob($bild);
@@ -437,9 +438,12 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
             $im->cropImage($s, $s, intdiv($w - $s, 2), max(0, intdiv($h - $s, 4)));
         }
         $im->setImagePage(0, 0, 0, 0);
-        $im->thumbnailImage(400, 400, true);
+        // die große Fassung nur verkleinern: Hochrechnen brächte keine Schärfe
+        if ($kante <= 400 || $im->getImageWidth() > $kante) {
+            $im->thumbnailImage($kante, $kante, true);
+        }
         $im->setImageFormat('jpeg');
-        $im->setImageCompressionQuality(82);
+        $im->setImageCompressionQuality($kante > 400 ? 90 : 82);
         $im->stripImage();
 
         return $im->getImageBlob();
