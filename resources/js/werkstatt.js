@@ -7,7 +7,7 @@ import { FORMEN, auswahl, anordnen, anordnenFrei, freiEinblenden, freiMassstab, 
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const SCHRIFT = '"Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif';
-const VORGABE = { form: 'herz', vorfahren: 4, nachkommen: 0, partner: false, geschwister: false, aus: [], mehr: [], portraets: {}, freiJe: {}, freiGroesse: 0.3, ranken: 'aus', rankenSaat: 1, rankenArt: 'ranke', rankenGroesse: 1, rankenFarbe: '', groesseJe: {}, paareJe: {}, ohneLinieJe: {}, massstabJe: {}, verschoben: {}, versatzJe: {}, ton: 'farbe', linie: 'mittel',
+const VORGABE = { form: 'herz', vorfahren: 4, nachkommen: 0, partner: false, geschwister: false, aus: [], mehr: [], portraets: {}, freiJe: {}, freiGroesse: 0.3, ranken: 'aus', rankenSaat: 1, rankenArt: 'ranke', rankenGroesse: 1, rankenFarbe: '', rosenFarbe: '#a51e33', groesseJe: {}, paareJe: {}, ohneLinieJe: {}, massstabJe: {}, verschoben: {}, versatzJe: {}, ton: 'farbe', linie: 'mittel',
   linienart: 'geschwungen', linienfarbe: '#d6a24e', kontur: true, seiten: false, namen: true, jahre: true, grund: 'dunkel', format: 'bildschirm' };
 const STAERKE = { duenn: 1.2, mittel: 2.4, dick: 5 };     // bei 1080 Pixeln Bildhöhe
 const GRUENDE = {
@@ -38,7 +38,7 @@ function formate() {
 
 // Was eine Szene für die ganze Werkstatt festhält; dazu kommt, was je Form und Hauptperson gilt (szeneErstellen)
 const SZENEN_WERTE = ['form', 'vorfahren', 'nachkommen', 'partner', 'geschwister', 'seiten', 'aus', 'mehr', 'portraets', 'ton', 'linie', 'linienart', 'linienfarbe',
-  'kontur', 'namen', 'jahre', 'grund', 'format', 'freiGroesse', 'ranken', 'rankenSaat', 'rankenArt', 'rankenGroesse', 'rankenFarbe'];
+  'kontur', 'namen', 'jahre', 'grund', 'format', 'freiGroesse', 'ranken', 'rankenSaat', 'rankenArt', 'rankenGroesse', 'rankenFarbe', 'rosenFarbe'];
 const FORM_NAMEN = { herz: 'Herz', fluegel: 'Flügel', frei: 'Frei' };
 const FORM_TIPPS = {
   herz: 'Hauptperson unten, nach oben die älteren Generationen',
@@ -112,6 +112,13 @@ function ranken(g, pfade, stil, einheit) {
     return ((z ^ (z >>> 14)) >>> 0) / 4294967296;
   };
   const reich = stil.ranken === 'reich', e = einheit * (stil.rankenGroesse ?? 1), farbe = stil.rankenFarbe || stil.linienfarbe;
+  // Rosenblüten: vier Töne aus der gewählten Farbe, innen dunkler, außen heller
+  const rose = /^#[0-9a-f]{6}$/i.test(stil.rosenFarbe ?? '') ? stil.rosenFarbe : '#a51e33';
+  const mische = (k, ziel) => '#' + [1, 3, 5].map(i => {
+    const v = parseInt(rose.slice(i, i + 2), 16);
+    return Math.round(v + (ziel - v) * k).toString(16).padStart(2, '0');
+  }).join('');
+  const rosenToene = [mische(0.25, 0), rose, mische(0.18, 255), mische(0.36, 255)];
   g.strokeStyle = g.fillStyle = farbe;
   g.lineCap = g.lineJoin = 'round';
   const strich = b => { g.lineWidth = Math.max(0.5 * einheit, b * e); };
@@ -140,7 +147,6 @@ function ranken(g, pfade, stil, einheit) {
   const SPITZ = t => 0.3 * Math.sin(Math.PI * t) ** 0.8;
   const ZACKIG = t => 0.3 * Math.sin(Math.PI * t ** 0.8) * (Math.floor(t * 14) % 2 ? 0.8 : 1);
   const GELAPPT = t => (0.13 + 0.17 * Math.sin(Math.PI * t)) * (1 + 0.5 * Math.cos(t * Math.PI * 8)) * Math.min(1, t * 9, (1 - t) * 7 + 0.1);
-  const HERZ = t => 0.44 * Math.sin(Math.PI * t ** 0.6);
 
   const kringel = (x, y, w, l, seite) => {
     g.beginPath();
@@ -168,7 +174,7 @@ function ranken(g, pfade, stil, einheit) {
     g.fill();
   };
   const bluete = (x, y, r) => {
-    const toene = ['#7d1526', '#a51e33', '#c8334a', '#e0566b'];
+    const toene = rosenToene;
     for (let ring = 0; ring < 3; ring++) {
       const n = 5 - ring, weit = r * (0.62 - ring * 0.22), gr = r * (0.56 - ring * 0.1), dreh = ring * 0.7 + zufall() * 0.4;
       g.fillStyle = toene[ring];
@@ -188,7 +194,7 @@ function ranken(g, pfade, stil, einheit) {
   };
   const knospe = (x, y, w, l) => {
     blatt(x, y, w, l * 0.5, SPITZ, 0.5);
-    g.fillStyle = '#a51e33';
+    g.fillStyle = rosenToene[1];
     blatt(x + Math.cos(w) * l * 0.2, y + Math.sin(w) * l * 0.2, w, l * 0.6, t => 0.34 * Math.sin(Math.PI * t), 0.9);
     g.fillStyle = farbe;
   };
@@ -215,17 +221,6 @@ function ranken(g, pfade, stil, einheit) {
     g.fill();
     g.restore();
   };
-  const schote = (x, y, w, l, seite) => {
-    const c = Math.cos(w), s = Math.sin(w);
-    blatt(x, y, w, l, t => 0.085 * (Math.sin(Math.PI * t) ** 0.4) * (1 + 0.28 * Math.abs(Math.sin(t * Math.PI * 4))), 0.55);
-    g.globalAlpha = 0.9;
-    for (let i = 1; i <= 3; i++) {
-      g.beginPath();
-      g.arc(x + c * l * i / 4, y + s * l * i / 4, l * 0.045, 0, Math.PI * 2);
-      g.fill();
-    }
-    kringel(x + c * l, y + s * l, w, l * 0.3, seite);
-  };
 
   // je Art: Abstand der Verzierungen, wie der Trieb verläuft und was an ihm wächst
   const ARTEN = {
@@ -249,15 +244,6 @@ function ranken(g, pfade, stil, einheit) {
     eiche: { abstand: 40, weite: 2.6, welle: 54, staerke: 1.2, an: (x, y, w, s, l) => {
       if (zufall() < 0.78) blatt(x, y, w, l * (1.7 + zufall() * 0.6), GELAPPT, 0.45);
       else eichel(x, y, w, l * 0.62);
-    } },
-    bohne: { abstand: 36, weite: 3.6, welle: 15, staerke: 0.9, zweiter: true, an: (x, y, w, s, l) => {
-      const z = zufall();
-      if (z < 0.5) {
-        blatt(x, y, w, l * 1.35, HERZ, 0.5);
-        blatt(x, y, w + 1, l, HERZ, 0.5);
-        blatt(x, y, w - 1, l, HERZ, 0.5);
-      } else if (z < 0.78) kringel(x, y, w, l * (2.2 + zufall()), s);
-      else schote(x, y, w, l * 2.6, s);
     } },
   };
   const art = ARTEN[stil.rankenArt] ?? ARTEN.ranke;
@@ -515,11 +501,12 @@ export class Werkstatt {
           <label class="bw-feld">${esc(t('Linienfarbe'))}<input type="color" name="linienfarbe"></label>
           ${wahl('ranken', t('Ranken'), [['aus', t('aus')], ['zart', t('zart')], ['reich', t('üppig')]])}
           <div class="bw-rankenwahl">
-            ${wahl('rankenArt', t('Art der Ranken'), [['ranke', t('Ranke')], ['dornen', t('Dornenstrauch')], ['rose', t('Rose')], ['eiche', t('Eichenlaub')], ['bohne', t('Bohnenranke')]])}
+            ${wahl('rankenArt', t('Art der Ranken'), [['ranke', t('Ranke')], ['dornen', t('Dornenstrauch')], ['rose', t('Rose')], ['eiche', t('Eichenlaub')]])}
             <label class="bw-feld">${esc(t('Rankengröße'))}<input type="range" name="rankenGroesse" min="0.4" max="3" step="0.05"></label>
             <div class="bw-feld"><label for="bw-rankenfarbe">${esc(t('Rankenfarbe'))}</label>
               <button class="klein bw-rankenfarbe-aus" data-tun="rankenfarbe">${esc(t('wie die Linien'))}</button>
               <input type="color" id="bw-rankenfarbe" name="rankenFarbe"></div>
+            <label class="bw-feld bw-rosenfarbe">${esc(t('Farbe der Rosen'))}<input type="color" name="rosenFarbe"></label>
             <button class="klein bw-wuerfel" data-tun="wuerfeln">${esc(t('Ranken neu würfeln'))}</button>
           </div>
           ${wahl('grund', t('Hintergrund'), [['dunkel', t('dunkel')], ['pergament', t('Pergament')], ['weiss', t('weiß')], ['klardunkel', t('transparent, für dunklen Grund')], ['klarhell', t('transparent, für hellen Grund')]])}
@@ -763,6 +750,10 @@ export class Werkstatt {
     this.plan.kleinstes *= k;
     this.feld('groesse').value = k;
     this.el.querySelector('.bw-rankenwahl').hidden = this.s.ranken === 'aus';
+    if (!['ranke', 'dornen', 'rose', 'eiche'].includes(this.s.rankenArt)) this.s.rankenArt = 'ranke';   // z. B. die frühere Bohnenranke
+    this.feld('rankenArt').value = this.s.rankenArt;
+    this.feld('rosenFarbe').value = this.s.rosenFarbe || VORGABE.rosenFarbe;
+    this.el.querySelector('.bw-rosenfarbe').hidden = this.s.rankenArt !== 'rose';
     this.feld('rankenFarbe').value = this.s.rankenFarbe || this.s.linienfarbe;
     this.el.querySelector('.bw-rankenfarbe-aus').hidden = !this.s.rankenFarbe;
     this.el.classList.toggle('frei', frei);
