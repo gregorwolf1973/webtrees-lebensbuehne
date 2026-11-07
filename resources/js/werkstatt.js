@@ -387,7 +387,7 @@ function male(g, b, h, plan, stil, bilder, wahl, { schaerfe = 1, zwischen = null
     kinder.forEach((q, i) => ast(q, untenPunkte[i], true));
   }
 
-  if (pfade.length) ranken(g, pfade, stil, einheit);
+  if (stil.ranken !== 'aus' && pfade.length) ranken(g, pfade, stil, einheit);
   g.textAlign = 'center';
   g.textBaseline = 'top';
   for (const q of plan.plaetze) {
