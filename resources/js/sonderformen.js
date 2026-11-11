@@ -1151,6 +1151,13 @@ function mosaikAnordnen(eintraege) {
     const [x0, y0] = f([0, 0]), zelle = Math.min(160, m * k.schaerfe), px = Math.max(8, Math.min(256, Math.ceil(zelle / 4) * 4));
     const bild2 = vorrat(k, ['mosaik', ziel.src, ziel.cx, ziel.cy, ziel.z, stil.ton, k.verziert, stil.rankenSaat, kacheln.map(x => x.b.src).join(',')].join('|'), ZELLEN * zelle, ZELLEN * zelle, g => {
     const zufall = wuerfel(stil.rankenSaat || 1), vorige = [];
+    // jede Kachel einmal in den Hauptspeicher holen: Sonst liest der Browser sie bei jedem der tausenden Felder von der Grafikkarte zurück
+    for (const kachel of kacheln) {
+      const c2 = document.createElement('canvas');
+      c2.width = c2.height = px;
+      c2.getContext('2d', { willReadFrequently: true }).drawImage(k.rund(kachel.b, px, kachel.ton, kachel.w, 'quadrat'), 0, 0);
+      kachel.fertig = c2;
+    }
     for (let y = 0; y < ZELLEN; y++) for (let x = 0; x < ZELLEN; x++) {
       const i = (y * ZELLEN + x) * 4, L = (0.299 * pixel[i] + 0.587 * pixel[i + 1] + 0.114 * pixel[i + 2]) / 255;
       // unter den nach Helligkeit passendsten Bildern eins, das nicht gleich neben sich selbst liegt
@@ -1160,7 +1167,7 @@ function mosaikAnordnen(eintraege) {
       for (let j = Math.max(0, lo - 3); j <= Math.min(kacheln.length - 1, lo + 3); j++) if (kacheln[j] !== vorige[x] && kacheln[j] !== vorige[x - 1]) nah.push(kacheln[j]);
       const kachel = nah.length ? nah[Math.floor(zufall() * nah.length)] : kacheln[lo];
       vorige[x] = kachel;
-      g.drawImage(k.rund(kachel.b, px, kachel.ton, kachel.w, 'quadrat'), x * zelle, y * zelle, zelle + 0.5, zelle + 0.5);
+      g.drawImage(kachel.fertig, x * zelle, y * zelle, zelle + 0.5, zelle + 0.5);
       if (k.verziert) {
         const grau = stil.ton !== 'farbe';
         const [r, gg, bb] = grau ? [L * 255, L * 255, L * 255] : [pixel[i], pixel[i + 1], pixel[i + 2]];
