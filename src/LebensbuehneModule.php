@@ -252,7 +252,7 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
             'three'                                  => $this->assetUrl('vendor/three/three.module.min.js'),
             'three/addons/controls/OrbitControls.js' => $this->assetUrl('vendor/three/OrbitControls.js'),
         ];
-        foreach (['app', 'daten', 'panel', 'klang', 'tiefe', 'text', 'himmel', 'karten', 'video', 'videofenster', 'videovorschlaege', 'musik', 'musikepochen', 'bildwahl', 'formen', 'werkstatt'] as $datei) {
+        foreach (['app', 'daten', 'panel', 'klang', 'tiefe', 'text', 'himmel', 'karten', 'video', 'videofenster', 'videovorschlaege', 'musik', 'musikepochen', 'bildwahl', 'formen', 'sonderformen', 'werkstatt'] as $datei) {
             $importe['lb/' . $datei . '.js'] = $this->assetUrl('js/' . $datei . '.js');
         }
 
