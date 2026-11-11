@@ -89,6 +89,23 @@ function entzerren(plaetze, w, h, ziele = null, runden = 140) {
   }
 }
 
+/** Aufwendige Hintergründe aus vielen kleinen Teilen einmal auf einer eigenen Fläche malen (im Hauptspeicher, das ist für tausende
+ *  kleine Zeichenbefehle viel schneller als die Grafikkarte) und danach nur noch als ein Bild übernehmen */
+const vorraete = new Map();
+function vorrat(k, schluessel, b, h, malen) {
+  const s = `${schluessel}|${Math.round(b)}|${Math.round(h)}`;
+  let c = vorraete.get(s);
+  if (!c) {
+    c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(b));
+    c.height = Math.max(1, Math.round(h));
+    malen(c.getContext('2d', { willReadFrequently: true }));
+    if (vorraete.size > 6) vorraete.delete(vorraete.keys().next().value);
+    vorraete.set(s, c);
+  }
+  return c;
+}
+
 const leer = (box, mehr = {}) => ({ plaetze: [], kanten: [], familien: [], box, kontur: [], kleinstes: 1, ohnePaare: true, ...mehr });
 
 // =====================================================================================================================
@@ -479,6 +496,7 @@ function galerieAnordnen(eintraege, { namen, verhaeltnis }) {
     if (!k.verziert) return;
     const { g, f, m, b, h } = k, art = k.stil.grund;
     const wand = ['dunkel', 'klardunkel'].includes(art) ? ['#1d332d', '#2a463d'] : art === 'pergament' ? ['#5e222c', '#76303b'] : ['#d5cab7', '#e2d8c6'];
+    k.g.drawImage(vorrat(k, `wand|${wand[0]}|${Math.round(m * 10)}`, b, h, g => {
     g.fillStyle = wand[0];
     g.fillRect(0, 0, b, h);
     // Damasttapete: ein Lilienmuster, versetzt
@@ -513,6 +531,8 @@ function galerieAnordnen(eintraege, { namen, verhaeltnis }) {
     g.lineWidth = Math.max(1, h * 0.002);
     const feld = h * 0.2;
     for (let xx = feld * 0.15; xx < b; xx += feld) g.strokeRect(xx, sockel + h * 0.025, feld * 0.85, h - sockel - h * 0.05);
+    }), 0, 0, b, h);
+    const leiste = h * 0.035;
     // Licht über jedem Bild und die Schnur zur Leiste
     for (const q of plaetze) {
       const [x, yy] = f([q.x, q.y]), r = q.d * m / 2, oben = yy - r - r * 0.4;
@@ -916,8 +936,9 @@ function sterneAnordnen(eintraege, { namen }) {
   const leben = q => { const l = lebenszeit(q.e.p); return l ? Math.min(100, l.bis - l.von) : 40; };
 
   const hinten = k => {
-    const { g, f, m, b, h: hoehe } = k, zufall2 = wuerfel(17);
-    if (k.verziert) {
+    const { g, f, m, b, h: hoehe } = k;
+    if (k.verziert) k.g.drawImage(vorrat(k, `sterne|${!!k.grund.innen}|${k.einheit}`, b, hoehe, g => {
+      const zufall2 = wuerfel(17);
       if (k.grund.innen) {
         const v = g.createRadialGradient(b / 2, hoehe * 1.1, 0, b / 2, hoehe * 0.5, Math.hypot(b, hoehe) * 0.75);
         v.addColorStop(0, '#1a2d58'); v.addColorStop(0.6, '#0b1430'); v.addColorStop(1, '#03060f');
@@ -949,6 +970,8 @@ function sterneAnordnen(eintraege, { namen }) {
         g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
         if (r > 1.5 * k.einheit) { g.fillRect(x - r * 4, y - k.einheit * 0.3, r * 8, k.einheit * 0.6); g.fillRect(x - k.einheit * 0.3, y - r * 4, k.einheit * 0.6, r * 8); }
       }
+    }), 0, 0, b, hoehe);
+    if (k.verziert) {
       g.globalAlpha = 1;
       if (familie) {
         const [, oben] = f([0, box.y0 + 0.4]);
@@ -1125,7 +1148,9 @@ function mosaikAnordnen(eintraege) {
     }
     if (!kacheln.length) return hinweis(k, t('Bilder werden geladen …'));
     kacheln.sort((a, b) => a.hell - b.hell);
-    const zufall = wuerfel(stil.rankenSaat || 1), [x0, y0] = f([0, 0]), px = Math.max(8, Math.min(256, Math.ceil(m * k.schaerfe / 4) * 4)), vorige = [];
+    const [x0, y0] = f([0, 0]), zelle = Math.min(160, m * k.schaerfe), px = Math.max(8, Math.min(256, Math.ceil(zelle / 4) * 4));
+    const bild2 = vorrat(k, ['mosaik', ziel.src, ziel.cx, ziel.cy, ziel.z, stil.ton, k.verziert, stil.rankenSaat, kacheln.map(x => x.b.src).join(',')].join('|'), ZELLEN * zelle, ZELLEN * zelle, g => {
+    const zufall = wuerfel(stil.rankenSaat || 1), vorige = [];
     for (let y = 0; y < ZELLEN; y++) for (let x = 0; x < ZELLEN; x++) {
       const i = (y * ZELLEN + x) * 4, L = (0.299 * pixel[i] + 0.587 * pixel[i + 1] + 0.114 * pixel[i + 2]) / 255;
       // unter den nach Helligkeit passendsten Bildern eins, das nicht gleich neben sich selbst liegt
@@ -1135,14 +1160,16 @@ function mosaikAnordnen(eintraege) {
       for (let j = Math.max(0, lo - 3); j <= Math.min(kacheln.length - 1, lo + 3); j++) if (kacheln[j] !== vorige[x] && kacheln[j] !== vorige[x - 1]) nah.push(kacheln[j]);
       const kachel = nah.length ? nah[Math.floor(zufall() * nah.length)] : kacheln[lo];
       vorige[x] = kachel;
-      g.drawImage(k.rund(kachel.b, px, kachel.ton, kachel.w, 'quadrat'), x0 + x * m, y0 + y * m, m + 0.5, m + 0.5);
+      g.drawImage(k.rund(kachel.b, px, kachel.ton, kachel.w, 'quadrat'), x * zelle, y * zelle, zelle + 0.5, zelle + 0.5);
       if (k.verziert) {
         const grau = stil.ton !== 'farbe';
         const [r, gg, bb] = grau ? [L * 255, L * 255, L * 255] : [pixel[i], pixel[i + 1], pixel[i + 2]];
         g.fillStyle = `rgba(${r | 0}, ${gg | 0}, ${bb | 0}, 0.52)`;
-        g.fillRect(x0 + x * m, y0 + y * m, m + 0.5, m + 0.5);
+        g.fillRect(x * zelle, y * zelle, zelle + 0.5, zelle + 0.5);
       }
     }
+    });
+    k.g.drawImage(bild2, x0, y0, ZELLEN * m, ZELLEN * m);
   };
   return { plaetze: [], kanten: [], familien: [], box: { x0: 0, y0: 0, x1: ZELLEN, y1: ZELLEN }, kontur: [], kleinstes: 1e9, ohnePaare: true,
     bilderLaden: personen, anzahl: personen.length, hinten, linienMalen: () => {} };
