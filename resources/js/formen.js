@@ -117,7 +117,7 @@ function schnitte(umriss, y) {
 }
 
 /** Glatte Kurve durch die Punkte (Catmull-Rom) */
-function glatt(punkte, je = 12) {
+export function glatt(punkte, je = 12) {
   const z = [];
   for (let i = 0; i < punkte.length - 1; i++) {
     const p0 = punkte[Math.max(0, i - 1)], p1 = punkte[i], p2 = punkte[i + 1], p3 = punkte[Math.min(punkte.length - 1, i + 2)];
@@ -468,17 +468,17 @@ export function anordnen(name, eintraege, { namen = true, seiten = false, verhae
 // Diese drei legen die Personen selbst aus, mit Porträts der Größe 1. Das Bild ergibt sich aus dem Inhalt (box), die Zeichnung
 // passt es ins Format ein. Alle drei halten die Vaterseite links und die Mutterseite rechts.
 
-const nachSosa = (a, b) => a.sosa - b.sosa;
-const kreis = (x, y, r, n = 16) => Array.from({ length: n }, (_, i) => [x + r * Math.cos(i / n * 2 * Math.PI), y + r * Math.sin(i / n * 2 * Math.PI)]);
-const SYMBOL_BOX = { x0: -2, y0: -1.5, x1: 2, y1: 1.5 };
+export const nachSosa = (a, b) => a.sosa - b.sosa;
+export const kreis = (x, y, r, n = 16) => Array.from({ length: n }, (_, i) => [x + r * Math.cos(i / n * 2 * Math.PI), y + r * Math.sin(i / n * 2 * Math.PI)]);
+export const SYMBOL_BOX = { x0: -2, y0: -1.5, x1: 2, y1: 1.5 };
 
 /** Maße bei Porträtgröße 1: Breite eines Platzes (der Name ist breiter als das Gesicht), Höhe mit Namen, Abstand der Reihen */
-function einheiten(namen) {
+export function einheiten(namen) {
   const h = namen ? 1.62 : 1.08;
   return { w: namen ? 1.36 : 1.04, h, zeile: h + 0.85 };
 }
 
-function umrandung(plaetze, w, h, mehr = []) {
+export function umrandung(plaetze, w, h, mehr = []) {
   const xs = [...plaetze.flatMap(q => [q.x - w / 2, q.x + w / 2]), ...mehr.map(p => p[0])];
   const ys = [...plaetze.flatMap(q => [q.y - 0.5, q.y - 0.5 + h]), ...mehr.map(p => p[1])];
   if (!xs.length) return { x0: -1, y0: -1, x1: 1, y1: 1 };
@@ -490,7 +490,7 @@ function umrandung(plaetze, w, h, mehr = []) {
  *  übergeordneten, die Teilbäume rücken so dicht zusammen, wie ihre Umrisse es in jeder Tiefe erlauben; `luft(t)` ist der
  *  Abstand in Tiefe t (0 = die Kinder selbst). Bei `getrennt` überschneiden sich die Teilbäume in keiner Tiefe: So bleibt die
  *  Vaterseite ganz links und die Mutterseite ganz rechts. Gibt den Umriss [links, rechts] je Tiefe zurück, Knoten bei 0. */
-function ordne(k, luft) {
+export function ordne(k, luft) {
   const umriss = [[-k.breite / 2, k.breite / 2]];
   if (!k.kinder.length) return umriss;
   const teile = k.kinder.map(c => ordne(c, luft)), lage = [0], gesamt = teile[0].map(u => [...u]);
@@ -509,7 +509,7 @@ function ordne(k, luft) {
 }
 
 /** Personen nebeneinander in einem Knoten */
-const knoten = (personen, w, luft, kinder = []) => ({ personen, luft, kinder, breite: personen.length * w + Math.max(0, personen.length - 1) * luft });
+export const knoten = (personen, w, luft, kinder = []) => ({ personen, luft, kinder, breite: personen.length * w + Math.max(0, personen.length - 1) * luft });
 
 // --- Tafel: oben die Vorfahren, jedes Elternpaar mittig über seinen Kindern, darunter die Nachkommen mit ihren Partnern ----
 function tafelAnordnen(eintraege, { namen, seiten }) {
@@ -569,7 +569,7 @@ function tafelAnordnen(eintraege, { namen, seiten }) {
 }
 
 // --- Ahnen-Eiche: die Hauptperson am Stamm, die Vorfahren fächern sich nach oben in die Krone ---------------------------
-function eicheAnordnen(eintraege, { namen, verhaeltnis = 16 / 9, seiten = false }) {
+export function eicheAnordnen(eintraege, { namen, verhaeltnis = 16 / 9, seiten = false }) {
   const { w, h, zeile } = einheiten(namen), schritt = w + 0.16, MITTE = schritt * 0.5 + 0.1, VERSATZ = 0.8;
   const sichtbar = eintraege.filter(e => !e.weg), start = sichtbar.find(e => e.art === 'start');
   // nur die eigenen Vorfahren: Partner und Nachkommen haben in der Ahnentafel keinen Platz

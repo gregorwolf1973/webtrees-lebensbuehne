@@ -3,7 +3,10 @@
 // Die Einstellungen merkt sich der Browser (localStorage lb-werkstatt).
 import { t } from 'lb/text.js';
 import { jahreKurz } from 'lb/daten.js';
+import { SONDERFORMEN } from 'lb/sonderformen.js';
 import { FORMEN, auswahl, anordnen, anordnenFrei, freiEinblenden, freiMassstab, geschwisterVon, paareZusammenfassen, stammAuswahl } from 'lb/formen.js';
+
+Object.assign(FORMEN, SONDERFORMEN);
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const SCHRIFT = '"Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif';
@@ -94,6 +97,9 @@ function portraet(bild, px, ton, { cx = 0.5, cy = 0.5, z = 1 } = {}, rahmen = 'r
 /** Umriss eines Porträts: rund oder als Wappenschild */
 function umriss(g, x, y, r, rahmen) {
   g.beginPath();
+  if (rahmen === 'oval') { g.ellipse(x, y, r * 0.8, r, 0, 0, 2 * Math.PI); return; }
+  if (rahmen === 'eckig') { g.rect(x - r * 0.8, y - r, r * 1.6, r * 2); return; }
+  if (rahmen === 'quadrat') { g.rect(x - r, y - r, r * 2, r * 2); return; }
   if (rahmen !== 'schild') { g.arc(x, y, r, 0, 2 * Math.PI); return; }
   g.moveTo(x - r, y - r * 0.94);
   g.quadraticCurveTo(x, y - r * 0.78, x + r, y - r * 0.94);
@@ -458,12 +464,12 @@ function ranken(g, pfade, stil, einheit) {
 /** Malt das ganze Bild in die Fläche b × h. Für Vorschau und Ausgabe dieselbe Funktion, damit beide gleich aussehen. */
 function male(g, b, h, plan, stil, bilder, wahl, { schaerfe = 1, zwischen = null, massstab = 1, versatz = [0, 0] } = {}) {
   // im Zoom scharf bleiben; bereits gerechnete Porträts wiederverwenden, sonst stockt das Mausrad
-  const rund = (bild, px, ton, w) => {
-    if (!zwischen) return portraet(bild, px, ton, w, plan.rahmen);
-    const schluessel = [bild.src, px, ton, w.cx, w.cy, w.z, plan.rahmen].join('|');
+  const rund = (bild, px, ton, w, form = plan.rahmen) => {
+    if (!zwischen) return portraet(bild, px, ton, w, form);
+    const schluessel = [bild.src, px, ton, w.cx, w.cy, w.z, form].join('|');
     if (!zwischen.has(schluessel)) {
-      if (zwischen.size > 300) zwischen.clear();
-      zwischen.set(schluessel, portraet(bild, px, ton, w, plan.rahmen));
+      if (zwischen.size > 600) zwischen.clear();
+      zwischen.set(schluessel, portraet(bild, px, ton, w, form));
     }
     return zwischen.get(schluessel);
   };
@@ -482,6 +488,10 @@ function male(g, b, h, plan, stil, bilder, wahl, { schaerfe = 1, zwischen = null
   const ox = b / 2 - (box.x0 + box.x1) / 2 * m + versatz[0] * m, oy = rand + kopf + (h - rand - frei - kopf) / 2 - (box.y0 + box.y1) / 2 * m + versatz[1] * m;
   const f = ([x, y]) => [ox + x * m, oy + y * m];
   const baum = !!(plan.zierde && stil.kontur), dicke = (STAERKE[stil.linie] ?? STAERKE.mittel) / STAERKE.mittel;
+  // Kontext für die Sonderformen (sonderformen.js): eigener Hintergrund, eigene Linien, Beschriftung und Vordergrund
+  const k = { g, b, h, f, m, stil, grund, einheit, plan, bilder, wahl, rund, schaerfe, dicke, verziert: !!stil.kontur, zufall: wuerfel((stil.rankenSaat || 1) + 11),
+    SCHRIFT, kurz, umriss, astPunkte, astMalen, bogen, farben: FARBE_SEITE };
+  if (plan.hinten) { g.save(); plan.hinten(k); g.restore(); }
   const astZuege = (plan.aeste ?? []).map(a => ({ a, punkte: astPunkte(f(a.a ? [a.a.x, a.a.y] : a.von), f(a.b ? [a.b.x, a.b.y] : a.bis), a.kurve) }));
   if (baum) baumMalen(g, plan.zierde, f, m, wuerfel((stil.rankenSaat || 1) + (plan.zierde.saat ?? 0)), astZuege);
   g.globalAlpha = 1;
@@ -514,8 +524,9 @@ function male(g, b, h, plan, stil, bilder, wahl, { schaerfe = 1, zwischen = null
     g.stroke();
     pfade.push({ punkte: b ? bogen([x1, y1], ...b, [x2, y2]) : [[x1, y1], [x2, y2]] });
   };
-  const eckig = plan.linien === 'eckig';
-  if (eckig) tafelLinien(g, plan, f, m, stil, gerade, pfade);
+  const eckig = plan.linien === 'eckig', eigen = !!plan.linienMalen;
+  if (eigen) { g.save(); plan.linienMalen({ ...k, pfade, gerade }); g.restore(); }
+  else if (eckig) tafelLinien(g, plan, f, m, stil, gerade, pfade);
   else for (const { a, b: z } of plan.kanten) {
     const [x1, y1] = f([a.x, a.y]), [x2, y2] = f([z.x, z.y]);
     linie(x1, y1, x2, y2);
@@ -527,7 +538,7 @@ function male(g, b, h, plan, stil, bilder, wahl, { schaerfe = 1, zwischen = null
     return [(bx - ax) / l, (by - ay) / l, l];
   };
   const mitte = punkte => [0, 1].map(i => punkte.reduce((n, p) => n + p[i], 0) / punkte.length);
-  for (const { eltern, kinder } of eckig ? [] : plan.familien) {
+  for (const { eltern, kinder } of eckig || eigen ? [] : plan.familien) {
     const obenPunkte = eltern.map(q => f([q.x, q.y])), untenPunkte = kinder.map(q => f([q.x, q.y]));
     const e = mitte(obenPunkte), k = mitte(untenPunkte), [tx, ty, abstand] = richtung(e, k);
     // der Treffpunkt liegt jenseits aller Eltern, in Richtung der Kinder: sonst liefe eine Linie erst weg und böge dann zurück.
@@ -562,9 +573,12 @@ function male(g, b, h, plan, stil, bilder, wahl, { schaerfe = 1, zwischen = null
   g.textBaseline = 'top';
   for (const q of plan.plaetze) {
     const [x, y] = f([q.x, q.y]), d = q.d * m, r = d / 2, w = wahl(q.e.p), bild = w.src ? bilder.get(w.src) : null, ton = w.ton || stil.ton;
-    if (bild) g.drawImage(rund(bild, Math.max(8, Math.min(1200, Math.ceil(d * schaerfe / 8) * 8)), ton, w), x - r, y - r, d, d);
+    const rq = q.rahmen ?? rahmen, schrift = q.schrift ?? plan.schrift ?? grund;
+    g.textAlign = 'center';
+    g.textBaseline = 'top';
+    if (bild) g.drawImage(rund(bild, Math.max(8, Math.min(1200, Math.ceil(d * schaerfe / 8) * 8)), ton, w, rq), x - r, y - r, d, d);
     else {
-      umriss(g, x, y, r, rahmen);
+      umriss(g, x, y, r, rq);
       g.fillStyle = grund.leer;
       g.fill();
       g.fillStyle = grund.text2;
@@ -574,15 +588,18 @@ function male(g, b, h, plan, stil, bilder, wahl, { schaerfe = 1, zwischen = null
       g.fillText(`${(q.e.p.rufname || '?')[0]}${(n.nachname || '')[0] ?? ''}`, x, y);
       g.textBaseline = 'top';
     }
-    umriss(g, x, y, r, rahmen);
-    g.strokeStyle = ton === 'farbe' ? FARBE_SEITE[q.seite ?? q.e.seite] : stil.linienfarbe;
-    g.lineWidth = Math.max(1, d * 0.028);
-    g.stroke();
-    if (!stil.namen) continue;
+    if (!plan.ohneRing) {
+      umriss(g, x, y, r, rq);
+      g.strokeStyle = ton === 'farbe' ? FARBE_SEITE[q.seite ?? q.e.seite] : stil.linienfarbe;
+      g.lineWidth = Math.max(1, d * 0.028);
+      g.stroke();
+    }
+    if (!stil.namen || d < (plan.namenAb ?? 0) * einheit) continue;
+    if (plan.beschriftung) { g.save(); plan.beschriftung(q, { ...k, x, y, d, schrift }); g.restore(); continue; }
     const p = q.e.p, z = q.zweiter, breite = d * (z ? 2 : 1.36), gr = d * (z ? 0.15 : 0.17), y0 = y + r + d * 0.05;
     const zeile = (text, yy, farbe) => {
       const s = kurz(g, text, breite);
-      g.strokeStyle = grund.hof ?? grund.innen;
+      g.strokeStyle = schrift.hof ?? grund.hof ?? grund.innen;
       g.lineWidth = gr * 0.32;
       g.lineJoin = 'round';
       g.strokeText(s, x, yy);
@@ -591,37 +608,38 @@ function male(g, b, h, plan, stil, bilder, wahl, { schaerfe = 1, zwischen = null
     };
     g.font = `600 ${gr}px ${SCHRIFT}`;
     if (z) {   // Bildblase: beide Namen, darunter beider Lebensdaten
-      zeile([p.rufname, p.name.nachname].filter(Boolean).join(' '), y0, grund.text);
-      zeile([z.rufname, z.name.nachname].filter(Boolean).join(' '), y0 + gr * 1.08, grund.text);
+      zeile([p.rufname, p.name.nachname].filter(Boolean).join(' '), y0, schrift.text);
+      zeile([z.rufname, z.name.nachname].filter(Boolean).join(' '), y0 + gr * 1.08, schrift.text);
       if (stil.jahre) {
         g.font = `${gr * 0.8}px ${SCHRIFT}`;
-        zeile([jahreKurz(p), jahreKurz(z)].filter(Boolean).join(' · '), y0 + gr * 2.2, grund.text2);
+        zeile([jahreKurz(p), jahreKurz(z)].filter(Boolean).join(' · '), y0 + gr * 2.2, schrift.text2);
       }
       continue;
     }
-    zeile(p.rufname || p.name.voll, y0, grund.text);
+    zeile(p.rufname || p.name.voll, y0, schrift.text);
     const nach = p.name.nachname;
-    if (nach) zeile(nach, y0 + gr * 1.08, grund.text);
+    if (nach) zeile(nach, y0 + gr * 1.08, schrift.text);
     if (stil.jahre) {
       g.font = `${gr * 0.8}px ${SCHRIFT}`;
-      zeile(jahreKurz(p), y0 + gr * (nach ? 2.2 : 1.12), grund.text2);
+      zeile(jahreKurz(p), y0 + gr * (nach ? 2.2 : 1.12), schrift.text2);
     }
   }
+  if (plan.vorne) { g.save(); plan.vorne(k); g.restore(); }
   if (titel) {   // Überschrift mit Zierlinien
     let gr = kopf * 0.5;
     g.font = `italic 600 ${gr}px ${SCHRIFT}`;
     let breite = g.measureText(titel).width;
     if (breite > b * 0.66) { gr *= b * 0.66 / breite; g.font = `italic 600 ${gr}px ${SCHRIFT}`; breite = b * 0.66; }
-    const ty = rand + kopf * 0.4;
+    const ty = rand + kopf * 0.4, ts = plan.titelSchrift ?? {};
     g.textAlign = 'center';
     g.textBaseline = 'middle';
-    if (grund.hof) {
-      g.strokeStyle = grund.hof;
+    if (ts.hof ?? grund.hof) {
+      g.strokeStyle = ts.hof ?? grund.hof;
       g.lineWidth = gr * 0.2;
       g.lineJoin = 'round';
       g.strokeText(titel, b / 2, ty);
     }
-    g.fillStyle = grund.text;
+    g.fillStyle = ts.text ?? grund.text;
     g.fillText(titel, b / 2, ty);
     g.strokeStyle = g.fillStyle = stil.linienfarbe;
     g.lineWidth = Math.max(1, 1.4 * einheit);
@@ -726,7 +744,7 @@ export class Werkstatt {
         </section>
         <section><h3>${esc(t('Form'))}</h3>
           <div class="bw-formen">${Object.keys(FORMEN).map(n => `
-            <button data-form="${n}" title="${esc(t(FORM_TIPPS[n]))}" aria-pressed="false"><canvas width="96" height="72" aria-hidden="true"></canvas>${esc(t(FORM_NAMEN[n]))}</button>`).join('')}
+            <button data-form="${n}" title="${esc(t(FORM_TIPPS[n] ?? FORMEN[n].tipp))}" aria-pressed="false"><canvas width="96" height="72" aria-hidden="true"></canvas>${esc(t(FORM_NAMEN[n] ?? FORMEN[n].name))}</button>`).join('')}
           </div>
         </section>
         <section><h3>${esc(t('Personen'))}</h3>
@@ -1024,8 +1042,10 @@ export class Werkstatt {
     const flaeche = !!(form.flaeche || form.streng), seiten = this.feld('seiten');
     for (const n of ['nachkommen', 'partner', 'geschwister']) this.feld(n).disabled = !!form.ohne?.includes(n);
     this.el.querySelector('.bw-nur-stamm').hidden = !form.eigeneAuswahl;
-    this.feld('kontur').nextSibling.textContent = ' ' + t(form.baum ? 'Baum zeichnen' : 'Kontur der Form');
-    this.el.querySelector('.bw-zahl-frei').textContent = t('{n} Personen im Bild', { n: this.plan.plaetze.reduce((z, q) => z + (q.zweiter ? 2 : 1), 0) });
+    this.feld('kontur').nextSibling.textContent = ' ' + t(form.zierName ?? (form.baum ? 'Baum zeichnen' : 'Kontur der Form'));
+    if (this.plan.warten) this.plan.warten.then(() => this.malen());
+    for (const p of this.plan.bilderLaden ?? []) this.lade(this.bildVon(p).src);
+    this.el.querySelector('.bw-zahl-frei').textContent = t('{n} Personen im Bild', { n: this.anzahl() });
     seiten.disabled = flaeche;
     seiten.checked = flaeche || this.s.seiten;
     this.liste(eintraege);
@@ -1046,12 +1066,16 @@ export class Werkstatt {
   }
 
   melden() {
-    const n = this.plan.plaetze.reduce((z, q) => z + (q.zweiter ? 2 : 1), 0), f = this.format(), box = this.plan.box;
+    const n = this.anzahl(), f = this.format(), box = this.plan.box;
     const m = Math.min(f.b * 0.9 / (box.x1 - box.x0), f.h * 0.87 / (box.y1 - box.y0)) * this.massstab();
     const klein = Math.round(this.plan.kleinstes * m);
     const teil = this.el.querySelector('.bw-zahl');
     teil.textContent = t('{n} Personen im Bild', { n }) + (klein < 40 ? ' · ' + t('sehr eng: Porträts nur {px} Pixel groß', { px: klein }) : '');
     teil.classList.toggle('warnung', klein < 40);
+  }
+
+  anzahl() {
+    return this.plan.anzahl ?? this.plan.plaetze.reduce((z, q) => z + (q.zweiter ? 2 : 1), 0);
   }
 
   lade(src) {
@@ -1253,7 +1277,7 @@ export class Werkstatt {
     };
     const name = person => zweiter ? `<h5>${esc(person.rufname || person.name.voll)}</h5>` : '';
     // zusammenfassen geht mit jedem Partner, der im Bild steht und noch frei ist
-    const partner = zweiter ? [] : (p.partnerP ?? []).filter(x => zu.has(x) && !this.zweiterVon(x));
+    const partner = zweiter || FORMEN[this.s.form].ohnePaare ? [] : (p.partnerP ?? []).filter(x => zu.has(x) && !this.zweiterVon(x));
     const linien = zweiter ? [] : (p.partnerP ?? []).filter(x => this.plan.paarLinien.has(linienSchluessel(p, x)));
     k.innerHTML = `<h4>${esc(zweiter ? `${p.name.voll} & ${zweiter.name.voll}` : p.name.voll)}</h4>
       ${name(p)}${fuer(p)}${zweiter ? name(zweiter) + fuer(zweiter) : ''}
