@@ -10,7 +10,7 @@ const KLEINSTER = 0.6;
 
 /** Wer mit welcher Hauptperson ins Bild kommt. `weg` sind Personen, die nicht gezeigt werden, weil sie selbst abgewählt
  *  sind (`aus`) oder an einer abgewählten Person hängen; sie bleiben in der Liste, damit man sie zurückholen kann. */
-export function auswahl(root, { vorfahren = 0, nachkommen = 0, partner = false, geschwister = false, aus = [], mehr = [] } = {}) {
+export function auswahl(root, { vorfahren = 0, nachkommen = 0, partner = false, partnerAlle = false, geschwister = false, aus = [], mehr = [] } = {}) {
   const abgewaehlt = new Set(aus), weiter = new Set(mehr), gesehen = new Set([root]), eintraege = [];
   const neu = (p, ebene, seite, von, art, sosa = 0) => {
     const e = { p, ebene, seite, von, art, sosa, geburt: p.geburt ?? p.jahrE ?? 0,
@@ -56,8 +56,10 @@ export function auswahl(root, { vorfahren = 0, nachkommen = 0, partner = false, 
     for (const x of stufe) for (const k of x.p.kinderP ?? []) {
       if (gesehen.has(k)) continue;
       const kind = neu(k, -g, 'm', x, 'kind'), andere = k.vaterP === x.p ? k.mutterP : k.vaterP;
-      kind.paar = eintraege.find(e => e.art === 'partner' && e.p === andere) ?? null;
+      kind.paar = eintraege.find(e => (e.art === 'partner' || e.art === 'schwieger') && e.p === andere) ?? null;
       naechste.push(kind);
+      // in der Tafel stehen auch die Nachkommen mit ihren Partnern
+      if (partner && partnerAlle) for (const pa of k.partnerP ?? []) if (!gesehen.has(pa)) neu(pa, -g, 'm', kind, 'schwieger');
     }
     stufe = naechste;
   }
@@ -271,6 +273,7 @@ export function paareZusammenfassen(plan, paare) {
     for (const k of kinder.map(neu)) if (!liste.includes(k) && !e.includes(k)) liste.push(k);
   }
   plan.familien = [...gruppen.values()].filter(x => x.kinder.length);
+  if (plan.aeste) plan.aeste = plan.aeste.map(a => ({ ...a, a: a.a && neu(a.a), b: a.b && neu(a.b) })).filter(a => !a.a || a.a !== a.b);
   return plan;
 }
 
@@ -428,8 +431,10 @@ function flaecheLoesen(form, ebenen, namen) {
 }
 
 /** Größte Porträts, die passen, dann der übrige Platz auf die Reihen verteilt. Maße in Einheiten der Form (form.box). */
-export function anordnen(name, eintraege, { namen = true, seiten = false } = {}) {
-  const form = FORMEN[name], sichtbar = eintraege.filter(e => !e.weg), ebenen = ebenenBilden(sichtbar, form, seiten);
+export function anordnen(name, eintraege, { namen = true, seiten = false, verhaeltnis = 16 / 9 } = {}) {
+  const form = FORMEN[name];
+  if (form.anordnen) return form.anordnen(eintraege, { namen, verhaeltnis, seiten });
+  const sichtbar = eintraege.filter(e => !e.weg), ebenen = ebenenBilden(sichtbar, form, seiten);
   let bestes = null;
   if (form.flaeche) bestes = flaecheLoesen(form, ebenen, namen);
   else {
@@ -458,3 +463,276 @@ export function anordnen(name, eintraege, { namen = true, seiten = false } = {})
   }
   return { plaetze, kanten, familien: [...gruppen.values()], box: form.box, kontur: form.kontur(), kleinstes: plaetze.length ? Math.min(...plaetze.map(q => q.d)) : 0 };
 }
+
+// --- Tafel, Ahnen-Eiche, Stammlinie ---------------------------------------------------------------------------------
+// Diese drei legen die Personen selbst aus, mit Porträts der Größe 1. Das Bild ergibt sich aus dem Inhalt (box), die Zeichnung
+// passt es ins Format ein. Alle drei halten die Vaterseite links und die Mutterseite rechts.
+
+const nachSosa = (a, b) => a.sosa - b.sosa;
+const kreis = (x, y, r, n = 16) => Array.from({ length: n }, (_, i) => [x + r * Math.cos(i / n * 2 * Math.PI), y + r * Math.sin(i / n * 2 * Math.PI)]);
+const SYMBOL_BOX = { x0: -2, y0: -1.5, x1: 2, y1: 1.5 };
+
+/** Maße bei Porträtgröße 1: Breite eines Platzes (der Name ist breiter als das Gesicht), Höhe mit Namen, Abstand der Reihen */
+function einheiten(namen) {
+  const h = namen ? 1.62 : 1.08;
+  return { w: namen ? 1.36 : 1.04, h, zeile: h + 0.85 };
+}
+
+function umrandung(plaetze, w, h, mehr = []) {
+  const xs = [...plaetze.flatMap(q => [q.x - w / 2, q.x + w / 2]), ...mehr.map(p => p[0])];
+  const ys = [...plaetze.flatMap(q => [q.y - 0.5, q.y - 0.5 + h]), ...mehr.map(p => p[1])];
+  if (!xs.length) return { x0: -1, y0: -1, x1: 1, y1: 1 };
+  const r = 0.35;
+  return { x0: Math.min(...xs) - r, y0: Math.min(...ys) - r, x1: Math.max(...xs) + r, y1: Math.max(...ys) + r };
+}
+
+/** Ordentlicher Baum (nach Reingold und Tilford): Jeder Knoten { breite, kinder } bekommt in `dx` seinen Platz relativ zum
+ *  übergeordneten, die Teilbäume rücken so dicht zusammen, wie ihre Umrisse es in jeder Tiefe erlauben; `luft(t)` ist der
+ *  Abstand in Tiefe t (0 = die Kinder selbst). Bei `getrennt` überschneiden sich die Teilbäume in keiner Tiefe: So bleibt die
+ *  Vaterseite ganz links und die Mutterseite ganz rechts. Gibt den Umriss [links, rechts] je Tiefe zurück, Knoten bei 0. */
+function ordne(k, luft) {
+  const umriss = [[-k.breite / 2, k.breite / 2]];
+  if (!k.kinder.length) return umriss;
+  const teile = k.kinder.map(c => ordne(c, luft)), lage = [0], gesamt = teile[0].map(u => [...u]);
+  for (let i = 1; i < teile.length; i++) {
+    const u = teile[i];
+    let schub = -Infinity;
+    for (let t = 0; t < Math.min(gesamt.length, u.length); t++) schub = Math.max(schub, gesamt[t][1] - u[t][0] + luft(t));
+    if (k.getrennt && u.length > 1 && gesamt.length > 1) schub = Math.max(schub, Math.max(...gesamt.map(g => g[1])) - Math.min(...u.map(g => g[0])) + luft(1));
+    lage.push(schub);
+    u.forEach(([l, r], t) => { if (t < gesamt.length) gesamt[t][1] = r + schub; else gesamt.push([l + schub, r + schub]); });
+  }
+  const mitte = (lage[0] + lage[lage.length - 1]) / 2;
+  k.kinder.forEach((c, i) => { c.dx = lage[i] - mitte; });
+  for (const [l, r] of gesamt) umriss.push([l - mitte, r - mitte]);
+  return umriss;
+}
+
+/** Personen nebeneinander in einem Knoten */
+const knoten = (personen, w, luft, kinder = []) => ({ personen, luft, kinder, breite: personen.length * w + Math.max(0, personen.length - 1) * luft });
+
+// --- Tafel: oben die Vorfahren, jedes Elternpaar mittig über seinen Kindern, darunter die Nachkommen mit ihren Partnern ----
+function tafelAnordnen(eintraege, { namen, seiten }) {
+  const { w, h, zeile } = einheiten(namen), PAAR = 0.4, GESCHWISTER = 0.26, FAMILIE = 0.6;
+  const sichtbar = eintraege.filter(e => !e.weg), start = sichtbar.find(e => e.art === 'start');
+  const von = (e, art) => sichtbar.filter(x => x.von === e && x.art === art);
+  const plaetze = [], nach = new Map();
+  const lege = (k, x, tiefe, richtung) => {
+    let px = x - k.breite / 2 + w / 2;
+    for (const e of k.personen) {
+      const q = { e, x: px, y: richtung * tiefe * zeile, d: 1 };
+      plaetze.push(q);
+      nach.set(e, q);
+      px += w + k.luft;
+    }
+    for (const c of k.kinder) lege(c, x + c.dx, tiefe + 1, richtung);
+  };
+  // nach oben: Hauptperson mit ihren Geschwistern, daneben die Partner, über jedem die Eltern
+  const hoch = e => knoten([e], w, 0, von(e, 'eltern').sort(nachSosa).map(hoch));
+  const geschwister = sichtbar.filter(e => e.art === 'geschwister').sort((a, b) => a.geburt - b.geburt);
+  const partner = von(start, 'partner');
+  const kern = knoten([...geschwister, start], w, GESCHWISTER, von(start, 'eltern').sort(nachSosa).map(hoch));
+  kern.getrennt = seiten;
+  const oben = { breite: 0, personen: [], getrennt: seiten, kinder: [kern, ...partner.map(hoch)] };
+  ordne(oben, t => t ? FAMILIE : PAAR);
+  oben.kinder.forEach(c => lege(c, c.dx, 0, -1));
+  // nach unten: Kinder je Partner, jeweils mit ihren eigenen Partnern
+  const rang = e => (e.paar ? sichtbar.indexOf(e.paar) : -1);
+  const kinderVon = e => von(e, 'kind').sort((a, b) => rang(a) - rang(b) || a.geburt - b.geburt);
+  const runter = e => knoten([e, ...von(e, 'schwieger')], w, PAAR, kinderVon(e).map(runter));
+  const unten = { breite: 0, personen: [], kinder: kinderVon(start).map(runter) };
+  if (unten.kinder.length) {
+    ordne(unten, t => t ? FAMILIE : GESCHWISTER);
+    const eltern = [start, ...partner].map(e => nach.get(e)).filter(Boolean), mx = eltern.reduce((s, q) => s + q.x, 0) / eltern.length;
+    unten.kinder.forEach(c => lege(c, mx + c.dx, 1, 1));
+  }
+  // Linien: Eheleute nebeneinander verbunden, von ihrer Mitte hinab zu den Kindern
+  const kanten = [], familien = [], q = e => nach.get(e);
+  for (const e of sichtbar) {
+    if (!nach.has(e)) continue;
+    const eltern = von(e, 'eltern').sort(nachSosa).filter(x => nach.has(x)).map(q);
+    const kinder = e === start ? [...geschwister, start].map(q) : [q(e)];
+    if (eltern.length) familien.push({ eltern, kinder });
+    else if (e === start && geschwister.length) familien.push({ eltern: [], kinder });
+    if (eltern.length === 2) kanten.push({ a: eltern[0], b: eltern[1], art: 'partner' });
+    const ks = von(e, 'kind').filter(k => nach.has(k));
+    for (const paar of new Set(ks.map(k => k.paar))) {
+      familien.push({ eltern: [q(e), ...(paar && nach.has(paar) ? [q(paar)] : [])], kinder: ks.filter(k => k.paar === paar).map(q) });
+    }
+    for (const s of [...von(e, 'partner'), ...von(e, 'schwieger')]) if (nach.has(s)) kanten.push({ a: q(e), b: q(s), art: 'partner' });
+  }
+  const box = umrandung(plaetze, w, h), bb = box.x1 - box.x0, hh = box.y1 - box.y0, cx = (box.x0 + box.x1) / 2;
+  // im Hintergrund ein zarter Baum
+  const zierde = { art: 'tafel', stamm: { x: cx, unten: box.y1, oben: box.y0 + hh * 0.5, bu: bb * 0.05, bo: bb * 0.03 },
+    krone: { x: cx, y: box.y0 + hh * 0.36, rx: bb * 0.44, ry: hh * 0.36 } };
+  return { plaetze, kanten, familien, box, kontur: [], kleinstes: 1, linien: 'eckig', zierde };
+}
+
+// --- Ahnen-Eiche: die Hauptperson am Stamm, die Vorfahren fächern sich nach oben in die Krone ---------------------------
+function eicheAnordnen(eintraege, { namen, verhaeltnis = 16 / 9, seiten = false }) {
+  const { w, h, zeile } = einheiten(namen), schritt = w + 0.16, MITTE = schritt * 0.5 + 0.1, VERSATZ = 0.8;
+  const sichtbar = eintraege.filter(e => !e.weg), start = sichtbar.find(e => e.art === 'start');
+  // nur die eigenen Vorfahren: Partner und Nachkommen haben in der Ahnentafel keinen Platz
+  const zurHauptperson = e => { while (e && e !== start) { if (e.art !== 'eltern') return false; e = e.von; } return !!e; };
+  const ahnen = sichtbar.filter(e => e !== start && zurHauptperson(e)), G = Math.max(0, ...ahnen.map(e => e.ebene));
+  const gen = Array.from({ length: G + 1 }, (_, g) => ahnen.filter(e => e.ebene === g).sort(nachSosa));
+  // Breite der Krone je Generation: unten schmal, oben so breit, wie das Bildformat es hergibt. Passt eine Generation nicht in
+  // eine Reihe, stehen ihre Personen versetzt in mehreren.
+  let breite = verhaeltnis * (G + 2) * zeile, lagen = [];
+  for (let runde = 0; runde < 16; runde++) {
+    lagen = gen.map((liste, g) => {
+      if (!g) return { k: 1, halb: 0 };
+      const halb = Math.max(schritt * 1.2, breite / 2 * (0.16 + 0.84 * (g / Math.max(1, G)) ** 0.85));
+      // streng geteilt hat jede Seite ihre Hälfte, sonst teilen sie sich die Breite nach der Zahl ihrer Personen
+      const n = seiten ? Math.max(...['l', 'r'].map(s => liste.filter(e => e.seite === s).length), 1) : Math.max(1, liste.length);
+      return { k: Math.max(1, Math.ceil(n * schritt / (seiten ? halb - MITTE : 2 * halb - 3 * MITTE))), halb };
+    });
+    const hoehe = lagen.reduce((s, l, g) => s + (g ? zeile * (1 + VERSATZ * (l.k - 1)) : 0), 0) + h + 2;
+    const neu = verhaeltnis * hoehe * 0.94;
+    if (Math.abs(neu - breite) < 0.02) break;
+    breite = neu;
+  }
+  const plaetze = [], nach = new Map(), setze = (e, x, y) => { const q = { e, x, y, d: 1 }; plaetze.push(q); nach.set(e, q); };
+  setze(start, 0, 0);
+  let y = 0;
+  for (let g = 1; g <= G; g++) {
+    const { k, halb } = lagen[g], vorher = lagen[g - 1].halb || 1;
+    y -= zeile * (1 + VERSATZ * (lagen[g - 1].k - 1));
+    const nl = gen[g].filter(e => e.seite === 'l').length, nr = gen[g].length - nl;
+    const teil = seiten ? 0 : Math.max(-halb + MITTE, Math.min(halb - MITTE, -halb + 2 * halb * nl / Math.max(1, nl + nr)));
+    for (const s of ['l', 'r']) {
+      const liste = gen[g].filter(e => e.seite === s), n = liste.length;
+      if (!n) continue;
+      const lo = s === 'l' ? -halb : teil + MITTE, hi = s === 'l' ? teil - MITTE : halb;
+      // dicht besetzte Reihen füllen die Krone, wenige Personen stehen beisammen über ihren Kindern
+      const breit = Math.max(0, Math.min(hi - lo, n * schritt * 2.2 / k));
+      const wunsch = liste.reduce((a, e) => a + (nach.get(e.von)?.x ?? 0) * halb / vorher, 0) / n;
+      const anfang = Math.max(lo, Math.min(hi - breit, wunsch - breit / 2));
+      liste.forEach((e, i) => setze(e, anfang + (i + 0.5) / n * breit, y - (i % k) * VERSATZ * zeile));
+    }
+  }
+  const aeste = ahnen.filter(e => nach.has(e.von)).map(e => ({ a: nach.get(e.von), b: nach.get(e), dicke: 0.4 * 0.74 ** (e.ebene - 1), kurve: 'hoch' }));
+  const erste = plaetze.filter(q => q.e.ebene === 1).map(q => q.y), box = umrandung(plaetze, w, h, [[-1.8, h + 1.4], [1.8, h + 1.4]]);
+  box.x1 = Math.max(box.x1, -box.x0);   // der Stamm steht in der Mitte des Bildes
+  box.x0 = -box.x1;
+  const krone = plaetze.filter(q => q.e.ebene >= 1);
+  const zierde = { art: 'eiche', saat: 7, stamm: { x: 0, unten: h + 1.2, oben: erste.length ? Math.max(...erste) * 0.55 : -0.6, bu: 1.15, bo: 0.6 },
+    blaetter: krone.filter(q => q.e.ebene >= Math.min(2, G)) };
+  return { plaetze, kanten: [], familien: [], aeste, box, kontur: [], kleinstes: 1, zierde, rahmen: 'schild' };
+}
+
+// --- Stammlinie: vom ältesten Stammvater im Stamm hinauf bis zur Hauptperson, die Geschwister auf den Ästen ---------------
+/** Wer in die Stammlinie kommt: die Linie über den Vater (oder die Mutter), mit ihren Ehepartnern, dazu auf Wunsch die
+ *  Geschwister jeder Generation, Partner und Nachkommen der Hauptperson. Aufbau der Einträge wie bei auswahl(). */
+export function stammAuswahl(root, { vorfahren = 0, nachkommen = 0, partner = false, geschwister = false, aus = [], stammLinie = 'vater' } = {}) {
+  const abgewaehlt = new Set(aus), gesehen = new Set(), eintraege = [];
+  const neu = (p, ebene, von, art, mehr = {}) => {
+    const e = { p, ebene, seite: 'm', von, art, sosa: 0, geburt: p.geburt ?? p.jahrE ?? 0, aus: p !== root && abgewaehlt.has(p.id), weg: false, ...mehr };
+    e.weg = e.aus || !!von?.weg;
+    gesehen.add(p);
+    eintraege.push(e);
+    return e;
+  };
+  const start = neu(root, 0, null, 'start'), linie = [start];
+  for (let g = 1; g <= vorfahren; g++) {
+    const kind = linie[g - 1].p, p = stammLinie === 'mutter' ? kind.mutterP : kind.vaterP;
+    if (!p || gesehen.has(p)) break;
+    const e = neu(p, g, linie[g - 1], 'eltern', { linie: true, seite: p === kind.vaterP ? 'l' : 'r' });
+    const gatte = p === kind.vaterP ? kind.mutterP : kind.vaterP;
+    if (gatte && !gesehen.has(gatte)) neu(gatte, g, linie[g - 1], 'eltern', { gatte: e, seite: gatte === kind.vaterP ? 'l' : 'r' });
+    linie.push(e);
+  }
+  if (geschwister) {
+    for (let g = 0; g < linie.length - 1; g++) {
+      const eltern = linie[g + 1], kinder = (eltern.p.kinderP ?? []).filter(k => !gesehen.has(k));
+      for (const k of kinder) neu(k, g, eltern, 'geschwister');
+    }
+  }
+  if (partner) for (const pa of root.partnerP ?? []) if (!gesehen.has(pa)) neu(pa, 0, start, 'partner');
+  let stufe = [start];
+  for (let g = 1; g <= nachkommen; g++) {
+    const naechste = [];
+    for (const x of stufe) for (const k of x.p.kinderP ?? []) {
+      if (gesehen.has(k)) continue;
+      const kind = neu(k, -g, x, 'kind'), andere = k.vaterP === x.p ? k.mutterP : k.vaterP;
+      kind.paar = eintraege.find(e => e.art === 'partner' && e.p === andere) ?? null;
+      naechste.push(kind);
+    }
+    stufe = naechste;
+  }
+  return eintraege;
+}
+
+function stammAnordnen(eintraege, { namen }) {
+  const { w, h, zeile } = einheiten(namen), PAAR = 0.4, schritt = w + 0.22, AST = 1.1;
+  const sichtbar = eintraege.filter(e => !e.weg), start = sichtbar.find(e => e.art === 'start');
+  const linie = [start, ...sichtbar.filter(e => e.linie).sort((a, b) => a.ebene - b.ebene)], G = linie.length - 1;
+  const plaetze = [], nach = new Map(), aeste = [], kanten = [];
+  const setze = (e, x, y) => { const q = { e, x, y, d: 1 }; plaetze.push(q); nach.set(e, q); return q; };
+  const halbe = [];
+  linie.forEach((l, g) => {
+    const y = g * zeile;
+    // im Stamm das Paar, der Mann links; bei der Hauptperson ihre Partner rechts daneben
+    const paar = g ? [l, ...sichtbar.filter(e => e.gatte === l)].sort((a, b) => (a.seite === 'l' ? 0 : 1) - (b.seite === 'l' ? 0 : 1))
+      : [start, ...sichtbar.filter(e => e.art === 'partner')];
+    const breite = paar.length * w + (paar.length - 1) * PAAR;
+    paar.forEach((e, i) => setze(e, -breite / 2 + w / 2 + i * (w + PAAR), y));
+    for (let i = 1; i < paar.length; i++) kanten.push({ a: nach.get(paar[0]), b: nach.get(paar[i]), art: 'partner' });
+    halbe[g] = breite / 2;
+    // Geschwister nach Geburt: die ältere Hälfte links, die jüngere rechts; ein Ast je Seite, an ihm ein Zweig je Person
+    const geschwister = sichtbar.filter(e => e.art === 'geschwister' && e.ebene === g).sort((a, b) => a.geburt - b.geburt);
+    const teilung = Math.ceil(geschwister.length / 2), yAst = y + h - 0.5 + 0.38;
+    [[geschwister.slice(0, teilung).reverse(), -1], [geschwister.slice(teilung), 1]].forEach(([seite, v]) => {
+      if (!seite.length) return;
+      const xs = seite.map((e, j) => v * (breite / 2 + AST + w / 2 + j * schritt));
+      seite.forEach((e, j) => setze(e, xs[j], y));
+      const ende = xs[xs.length - 1] + v * (w / 2 + 0.1);
+      aeste.push({ von: [v * Math.max(0.2, breite / 2 - 0.5), yAst + 0.45], bis: [ende, yAst - 0.15], dicke: 0.3, spitze: 0.35, kurve: 'quer' });
+      seite.forEach((e, j) => aeste.push({ von: [xs[j] + v * (w / 2 - 0.05), yAst - 0.04 * j], b: nach.get(e), dicke: 0.11, kurve: 'seite' }));
+    });
+  });
+  // die Linie selbst, falls kein Baum gezeichnet wird: von Paar zu Paar
+  for (let g = 1; g <= G; g++) {
+    const mitte = e => nach.get(e).x + (sichtbar.some(x => x.gatte === e) ? (e.seite === 'l' ? 1 : -1) * (w + PAAR) / 2 : 0);
+    aeste.push({ von: [mitte(linie[g]), g * zeile], bis: [g === 1 ? nach.get(start).x : mitte(linie[g - 1]), (g - 1) * zeile], dicke: 0.3, kurve: 'hoch', linie: true });
+  }
+  // Nachkommen der Hauptperson oben in der Krone
+  const kinderVon = e => sichtbar.filter(x => x.von === e && x.art === 'kind').sort((a, b) => a.geburt - b.geburt);
+  const krone = e => knoten([e], w, 0, kinderVon(e).map(krone)), oben = { breite: 0, personen: [], kinder: kinderVon(start).map(krone) };
+  if (oben.kinder.length) {
+    ordne(oben, t => t ? 0.6 : 0.26);
+    const lege = (k, x, tiefe) => {
+      setze(k.personen[0], x, -tiefe * zeile);
+      for (const c of k.kinder) lege(c, x + c.dx, tiefe + 1);
+    };
+    oben.kinder.forEach(c => lege(c, c.dx, 1));
+    for (const e of sichtbar) if (e.art === 'kind' && nach.has(e.von)) aeste.push({ a: nach.get(e.von), b: nach.get(e), dicke: 0.16, kurve: 'hoch' });
+  }
+  const unten = G * zeile + h + 0.9, box = umrandung(plaetze, w, h, [[-2, unten + 0.3], [2, unten + 0.3]]);
+  const oberste = Math.min(...plaetze.map(q => q.y));
+  const zierde = { art: 'stamm', saat: 3, stamm: { x: 0, unten, oben: Math.min(-0.2, oberste + zeile * 0.6), bu: Math.min(1.5, 0.75 + 0.06 * G), bo: 0.42 },
+    krone: { x: (box.x0 + box.x1) / 2, y: (oberste - 0.6 + (G - 0.6) * zeile) / 2, rx: (box.x1 - box.x0) * 0.44, ry: ((G - 0.6) * zeile - oberste + 1.4) / 2 },
+    blaetter: plaetze.filter(q => q.e.art === 'geschwister' || q.e.art === 'kind') };
+  return { plaetze, kanten, familien: [], aeste, box, kontur: [], kleinstes: 1, zierde };
+}
+
+const tafel = {
+  baum: true, partnerAlle: true, anordnen: tafelAnordnen, box: SYMBOL_BOX,
+  kontur: () => [[[-1.2, -0.85], [-1.2, -0.55], [-0.6, -0.55], [-0.6, -0.85]], [[0.6, -0.85], [0.6, -0.55], [1.2, -0.55], [1.2, -0.85]],
+    [[-0.9, -0.55], [-0.9, 0.35], [0.9, 0.35], [0.9, -0.55]], [[0, 0.35], [0, 0.85]]].map(zug => ({ zug, zu: false }))
+    .concat([[-1.2, -1.1], [-0.6, -1.1], [0.6, -1.1], [1.2, -1.1], [-0.9, -0.05], [0.9, -0.05], [0, 1.1]].map(([x, y]) => ({ zug: kreis(x, y, 0.2), zu: true }))),
+};
+const eiche = {
+  baum: true, ohne: ['nachkommen', 'partner', 'geschwister'], anordnen: eicheAnordnen, box: SYMBOL_BOX,
+  kontur: () => [{ zug: [[-0.35, 1.4], [-0.2, 0.6], [-0.25, 0], [-1.3, -0.6], [-1.8, -1.2]], zu: false },
+    { zug: [[0.35, 1.4], [0.2, 0.6], [0.25, 0], [1.3, -0.6], [1.8, -1.2]], zu: false },
+    { zug: [[-0.22, 0.2], [-0.6, -0.9], [-0.5, -1.35]], zu: false }, { zug: [[0.22, 0.2], [0.6, -0.9], [0.5, -1.35]], zu: false },
+    { zug: glatt([[-1.9, -0.9], [-1.4, -1.45], [0, -1.5], [1.4, -1.45], [1.9, -0.9]]), zu: false }],
+};
+const stamm = {
+  streng: true, baum: true, eigeneAuswahl: true, anordnen: stammAnordnen, box: SYMBOL_BOX,
+  kontur: () => [{ zug: [[-0.4, 1.45], [-0.25, 0.9], [-0.22, -1.2]], zu: false }, { zug: [[0.4, 1.45], [0.25, 0.9], [0.22, -1.2]], zu: false },
+    ...[0.6, -0.1, -0.8].flatMap(y => [{ zug: [[-0.25, y + 0.15], [-1.1, y], [-1.6, y - 0.2]], zu: false }, { zug: [[0.25, y + 0.15], [1.1, y], [1.6, y - 0.2]], zu: false }]),
+    { zug: glatt([[-1.8, 0.2], [-1.6, -1.1], [0, -1.5], [1.6, -1.1], [1.8, 0.2]]), zu: false }],
+};
+Object.assign(FORMEN, { tafel, eiche, stamm });

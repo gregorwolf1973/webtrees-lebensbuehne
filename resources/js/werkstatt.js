@@ -3,11 +3,11 @@
 // Die Einstellungen merkt sich der Browser (localStorage lb-werkstatt).
 import { t } from 'lb/text.js';
 import { jahreKurz } from 'lb/daten.js';
-import { FORMEN, auswahl, anordnen, anordnenFrei, freiEinblenden, freiMassstab, geschwisterVon, paareZusammenfassen } from 'lb/formen.js';
+import { FORMEN, auswahl, anordnen, anordnenFrei, freiEinblenden, freiMassstab, geschwisterVon, paareZusammenfassen, stammAuswahl } from 'lb/formen.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const SCHRIFT = '"Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif';
-const VORGABE = { form: 'herz', vorfahren: 4, nachkommen: 0, partner: false, geschwister: false, aus: [], mehr: [], portraets: {}, freiJe: {}, freiGroesse: 0.3, ranken: 'aus', rankenSaat: 1, rankenArt: 'ranke', rankenGroesse: 1, rankenFarbe: '', rosenFarbe: '#a51e33', groesseJe: {}, paareJe: {}, ohneLinieJe: {}, massstabJe: {}, verschoben: {}, versatzJe: {}, ton: 'farbe', linie: 'mittel',
+const VORGABE = { form: 'herz', vorfahren: 4, nachkommen: 0, partner: false, geschwister: false, aus: [], mehr: [], portraets: {}, freiJe: {}, freiGroesse: 0.3, ranken: 'aus', rankenSaat: 1, rankenArt: 'ranke', rankenGroesse: 1, rankenFarbe: '', rosenFarbe: '#a51e33', titel: '', stammLinie: 'vater', rahmenJe: {}, groesseJe: {}, paareJe: {}, ohneLinieJe: {}, massstabJe: {}, verschoben: {}, versatzJe: {}, ton: 'farbe', linie: 'mittel',
   linienart: 'geschwungen', linienfarbe: '#d6a24e', kontur: true, seiten: false, namen: true, jahre: true, grund: 'dunkel', format: 'bildschirm' };
 const STAERKE = { duenn: 1.2, mittel: 2.4, dick: 5 };     // bei 1080 Pixeln Bildhöhe
 const GRUENDE = {
@@ -38,13 +38,19 @@ function formate() {
 
 // Was eine Szene für die ganze Werkstatt festhält; dazu kommt, was je Form und Hauptperson gilt (szeneErstellen)
 const SZENEN_WERTE = ['form', 'vorfahren', 'nachkommen', 'partner', 'geschwister', 'seiten', 'aus', 'mehr', 'portraets', 'ton', 'linie', 'linienart', 'linienfarbe',
-  'kontur', 'namen', 'jahre', 'grund', 'format', 'freiGroesse', 'ranken', 'rankenSaat', 'rankenArt', 'rankenGroesse', 'rankenFarbe', 'rosenFarbe'];
-const FORM_NAMEN = { herz: 'Herz', fluegel: 'Flügel', frei: 'Frei' };
+  'kontur', 'namen', 'jahre', 'grund', 'format', 'freiGroesse', 'ranken', 'rankenSaat', 'rankenArt', 'rankenGroesse', 'rankenFarbe', 'rosenFarbe', 'titel', 'stammLinie'];
+const FORM_NAMEN = { herz: 'Herz', fluegel: 'Flügel', frei: 'Frei', tafel: 'Tafel', eiche: 'Ahnen-Eiche', stamm: 'Stammlinie' };
 const FORM_TIPPS = {
   herz: 'Hauptperson unten, nach oben die älteren Generationen',
   fluegel: 'Hauptperson in der Mitte, Vaterseite im linken, Mutterseite im rechten Flügel',
   frei: 'Beginnt mit der Hauptperson. Klick auf eine Person blendet Verwandte ein, Ziehen verschiebt sie',
+  tafel: 'Klassische Tafel: Vorfahren oben, Nachkommen mit ihren Partnern darunter, rechtwinklige Linien',
+  eiche: 'Hauptperson am Stamm, die Vorfahren fächern sich in die Krone, Vaterseite links',
+  stamm: 'Die Linie vom ältesten Stammvater bis zur Hauptperson im Stamm, Geschwister auf den Ästen',
 };
+const RINDE = '#6b4a2c', RINDE_DUNKEL = '#3b2815';
+const LAUB = { eiche: ['#6f8a2e', '#8fa23c', '#a8a542', '#5b7326', '#b08d3a'], stamm: ['#4f7a2a', '#6b9634', '#86ad45', '#3f6522', '#97b94f'],
+  tafel: ['#7d8f5a', '#93a26c', '#6c7d4c'] };
 
 function ebenenName(g) {
   if (g === 0) return t('Hauptperson und Familie');
@@ -62,7 +68,7 @@ function pfad(g, zug, zu, f) {
 }
 
 /** Porträt rund ausgeschnitten im gewählten Bildton. Mit Zeichenmodi statt ctx.filter, das Safari nicht überall kann. */
-function portraet(bild, px, ton, { cx = 0.5, cy = 0.5, z = 1 } = {}) {
+function portraet(bild, px, ton, { cx = 0.5, cy = 0.5, z = 1 } = {}, rahmen = 'rund') {
   const c = document.createElement('canvas');
   c.width = c.height = px;
   const o = c.getContext('2d');
@@ -80,10 +86,176 @@ function portraet(bild, px, ton, { cx = 0.5, cy = 0.5, z = 1 } = {}) {
     }
   }
   o.globalCompositeOperation = 'destination-in';
-  o.beginPath();
-  o.arc(px / 2, px / 2, px / 2, 0, 2 * Math.PI);
+  umriss(o, px / 2, px / 2, px / 2, rahmen);
   o.fill();
   return c;
+}
+
+/** Umriss eines Porträts: rund oder als Wappenschild */
+function umriss(g, x, y, r, rahmen) {
+  g.beginPath();
+  if (rahmen !== 'schild') { g.arc(x, y, r, 0, 2 * Math.PI); return; }
+  g.moveTo(x - r, y - r * 0.94);
+  g.quadraticCurveTo(x, y - r * 0.78, x + r, y - r * 0.94);
+  g.lineTo(x + r, y + r * 0.08);
+  g.quadraticCurveTo(x + r * 0.96, y + r * 0.74, x, y + r);
+  g.quadraticCurveTo(x - r * 0.96, y + r * 0.74, x - r, y + r * 0.08);
+  g.closePath();
+}
+
+/** Feste Zahlenfolge: Das gespeicherte Bild sieht aus wie die Vorschau */
+function wuerfel(saat) {
+  let zustand = (saat * 2654435761) >>> 0;
+  return () => {
+    zustand = (zustand + 0x6D2B79F5) >>> 0;
+    let z = Math.imul(zustand ^ (zustand >>> 15), 1 | zustand);
+    z ^= z + Math.imul(z ^ (z >>> 7), 61 | z);
+    return ((z ^ (z >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** Punkte eines Astes von A nach B: 'hoch' steigt senkrecht auf, 'quer' läuft waagrecht hinaus, 'seite' kommt von unten seitlich */
+function astPunkte(A, B, kurve) {
+  const [ax, ay] = A, [bx, by] = B;
+  const c = kurve === 'quer' ? [[ax + (bx - ax) * 0.5, ay], [bx - (bx - ax) * 0.25, by]]
+    : kurve === 'seite' ? [[ax, ay + (by - ay) * 0.85], [ax + (bx - ax) * 0.35, by]]
+      : [[ax, ay + (by - ay) * 0.55], [bx, ay + (by - ay) * 0.45]];
+  return bogen(A, c[0], c[1], B, 30);
+}
+
+/** Ast, der sich von w0 auf w1 verjüngt */
+function astMalen(g, punkte, w0, w1, farbe, kante) {
+  const n = punkte.length, links = [], rechts = [];
+  punkte.forEach(([x, y], i) => {
+    const [px, py] = punkte[Math.max(0, i - 1)], [nx, ny] = punkte[Math.min(n - 1, i + 1)];
+    const l = Math.hypot(nx - px, ny - py) || 1, b = (w0 + (w1 - w0) * i / (n - 1)) / 2;
+    links.push([x - (ny - py) / l * b, y + (nx - px) / l * b]);
+    rechts.push([x + (ny - py) / l * b, y - (nx - px) / l * b]);
+  });
+  g.beginPath();
+  [...links, ...rechts.reverse()].forEach(([x, y], i) => { if (i) g.lineTo(x, y); else g.moveTo(x, y); });
+  g.closePath();
+  g.fillStyle = farbe;
+  g.fill();
+  if (kante) {
+    g.strokeStyle = kante;
+    g.lineWidth = Math.max(0.6, w0 * 0.07);
+    g.globalAlpha *= 0.6;
+    g.stroke();
+    g.globalAlpha /= 0.6;
+  }
+}
+
+/** Gemalter Baum hinter den Personen: erst das Laub, darüber Stamm und Wurzeln. Die Tafel bekommt nur einen zarten Schatten. */
+function baumMalen(g, z, f, m, zufall, astZuege) {
+  const leise = z.art === 'tafel', farben = LAUB[z.art] ?? LAUB.stamm, gelappt = z.art === 'eiche';
+  g.save();
+  g.globalAlpha = leise ? 0.15 : 0.92;
+  const blatt = (x, y, w, l) => {
+    const c = Math.cos(w), s = Math.sin(w), n = 14;
+    const profil = t => gelappt ? (0.15 + 0.13 * Math.sin(Math.PI * t)) * (1 + 0.45 * Math.cos(t * Math.PI * 8)) * Math.min(1, t * 8, (1 - t) * 6 + 0.1)
+      : 0.36 * Math.sin(Math.PI * t) ** 0.8;
+    g.beginPath();
+    g.moveTo(x, y);
+    for (let i = 1; i <= n; i++) { const t = i / n, r = profil(t) * l; g.lineTo(x + c * t * l - s * r, y + s * t * l + c * r); }
+    for (let i = n - 1; i > 0; i--) { const t = i / n, r = profil(t) * l; g.lineTo(x + c * t * l + s * r, y + s * t * l - c * r); }
+    g.closePath();
+    g.fillStyle = farben[Math.floor(zufall() * farben.length)];
+    g.fill();
+  };
+  const eichel = (x, y, r) => {
+    g.fillStyle = '#9c7a3c';
+    g.beginPath();
+    g.ellipse(x, y + r * 0.35, r * 0.55, r * 0.8, 0, 0, 2 * Math.PI);
+    g.fill();
+    g.fillStyle = '#5e4524';
+    g.beginPath();
+    g.ellipse(x, y - r * 0.15, r * 0.66, r * 0.42, 0, 0, 2 * Math.PI);
+    g.fill();
+  };
+  const art = { eiche: { groesse: 0.5, dicht: 0, um: 9, weit: 1.25, jeder: 3, ab: 0.35 }, stamm: { groesse: 0.46, dicht: 7, um: 16, weit: 1.55, jeder: 2, ab: 0.15 },
+    tafel: { groesse: 0.5, dicht: 5 } }[z.art];
+  const groesse = art.groesse * m, orte = [];
+  if (z.krone) {   // die Krone in Büscheln, nicht gleichmäßig gestreut
+    const k = z.krone, n = Math.min(500, Math.round(Math.PI * k.rx * k.ry * art.dicht / 9));
+    for (let i = 0; i < n; i++) {
+      const r = Math.sqrt(zufall()) * 0.97, w = zufall() * 2 * Math.PI, [bx, by] = [k.x + Math.cos(w) * r * k.rx, k.y + Math.sin(w) * r * k.ry];
+      for (let j = 0; j < 9; j++) {
+        const rr = zufall() * 0.55, ww = zufall() * 2 * Math.PI;
+        orte.push(f([bx + Math.cos(ww) * rr, by + Math.sin(ww) * rr * 0.8]));
+      }
+    }
+  }
+  for (const q of z.blaetter ?? []) {
+    for (let i = 0; i < art.um; i++) {
+      const r = (0.5 + zufall() * (art.weit - 0.5)) * q.d, w = zufall() * 2 * Math.PI;
+      orte.push(f([q.x + Math.cos(w) * r, q.y + 0.2 + Math.sin(w) * r * 0.85]));
+    }
+  }
+  if (!leise) {
+    for (const { a, punkte } of astZuege) {
+      if (a.linie) continue;
+      for (let i = Math.floor(punkte.length * art.ab); i < punkte.length; i += art.jeder) {
+        for (const v of [-1, 1]) orte.push([punkte[i][0] + (zufall() - 0.5) * groesse, punkte[i][1] + v * zufall() * groesse * 0.9]);
+      }
+    }
+  }
+  for (const [x, y] of orte) blatt(x, y, zufall() * 2 * Math.PI, groesse * (0.75 + zufall() * 0.5));
+  // die Tafel hat keine eigenen Äste: der Schattenbaum bekommt ein paar, vom Stamm in die Krone
+  if (leise && z.stamm && z.krone) {
+    const s = z.stamm, k = z.krone;
+    g.fillStyle = RINDE;
+    for (const w of [-0.95, -0.55, -0.2, 0.2, 0.55, 0.95]) {
+      const ziel = [k.x + Math.sin(w) * k.rx * 0.8, k.y - Math.cos(w) * k.ry * 0.55];
+      astMalen(g, astPunkte(f([s.x + w * s.bo, s.oben]), f(ziel), 'hoch'), s.bo * m * 0.9, s.bo * m * 0.15, RINDE);
+    }
+  }
+  if (gelappt) for (const [x, y] of orte) if (zufall() < 0.05) eichel(x, y, groesse * 0.22);
+
+  // Stamm mit Wurzeln
+  const s = z.stamm;
+  if (s) {
+    const P = (x, y) => f([s.x + x, y]), mitte = (s.unten + s.oben) / 2;
+    g.beginPath();
+    g.moveTo(...P(-s.bu * 2.1, s.unten));
+    g.quadraticCurveTo(...P(-s.bu * 0.95, s.unten - 0.12), ...P(-s.bu, s.unten - 0.9));
+    g.bezierCurveTo(...P(-s.bu * 0.92, mitte), ...P(-s.bo * 1.15, s.oben + (s.unten - s.oben) * 0.2), ...P(-s.bo, s.oben));
+    g.lineTo(...P(s.bo, s.oben));
+    g.bezierCurveTo(...P(s.bo * 1.15, s.oben + (s.unten - s.oben) * 0.2), ...P(s.bu * 0.92, mitte), ...P(s.bu, s.unten - 0.9));
+    g.quadraticCurveTo(...P(s.bu * 0.95, s.unten - 0.12), ...P(s.bu * 2.1, s.unten));
+    g.quadraticCurveTo(...P(s.bu * 0.6, s.unten - 0.3), ...P(0, s.unten - 0.08));
+    g.quadraticCurveTo(...P(-s.bu * 0.6, s.unten - 0.3), ...P(-s.bu * 2.1, s.unten));
+    g.closePath();
+    g.fillStyle = RINDE;
+    g.fill();
+    if (!leise) {
+      g.strokeStyle = RINDE_DUNKEL;
+      g.lineWidth = Math.max(1, 0.025 * m);
+      g.stroke();
+      // Rinde: ein paar gewellte Furchen
+      g.globalAlpha = 0.45;
+      for (let i = 0; i < 7; i++) {
+        const k = (i + 0.5) / 7 * 2 - 1;
+        g.beginPath();
+        for (let j = 0; j <= 20; j++) {
+          const y = s.oben + (s.unten - 0.9 - s.oben) * j / 20, b = s.bo + (s.bu - s.bo) * j / 20;
+          const [x, yy] = P(k * b * 0.8 + Math.sin(j * 0.9 + i * 2) * 0.04, y);
+          if (j) g.lineTo(x, yy); else g.moveTo(x, yy);
+        }
+        g.stroke();
+      }
+    }
+  }
+  g.restore();
+}
+
+/** Kleines Herz zwischen Eheleuten */
+function herz(g, x, y, r) {
+  g.beginPath();
+  g.moveTo(x, y + r * 0.9);
+  g.bezierCurveTo(x - r * 1.6, y - r * 0.2, x - r * 0.7, y - r * 1.3, x, y - r * 0.45);
+  g.bezierCurveTo(x + r * 0.7, y - r * 1.3, x + r * 1.6, y - r * 0.2, x, y + r * 0.9);
+  g.fill();
 }
 
 function kurz(g, text, breite) {
@@ -287,11 +459,11 @@ function ranken(g, pfade, stil, einheit) {
 function male(g, b, h, plan, stil, bilder, wahl, { schaerfe = 1, zwischen = null, massstab = 1, versatz = [0, 0] } = {}) {
   // im Zoom scharf bleiben; bereits gerechnete Porträts wiederverwenden, sonst stockt das Mausrad
   const rund = (bild, px, ton, w) => {
-    if (!zwischen) return portraet(bild, px, ton, w);
-    const schluessel = [bild.src, px, ton, w.cx, w.cy, w.z].join('|');
+    if (!zwischen) return portraet(bild, px, ton, w, plan.rahmen);
+    const schluessel = [bild.src, px, ton, w.cx, w.cy, w.z, plan.rahmen].join('|');
     if (!zwischen.has(schluessel)) {
       if (zwischen.size > 300) zwischen.clear();
-      zwischen.set(schluessel, portraet(bild, px, ton, w));
+      zwischen.set(schluessel, portraet(bild, px, ton, w, plan.rahmen));
     }
     return zwischen.get(schluessel);
   };
@@ -304,10 +476,20 @@ function male(g, b, h, plan, stil, bilder, wahl, { schaerfe = 1, zwischen = null
     g.fillRect(0, 0, b, h);
   }
   // unten etwas mehr Rand, dort liegt auf dem Bildschirm meist die Taskleiste
-  const rand = h * 0.05, frei = h * 0.08, box = plan.box;
-  const m = Math.min((b - 2 * rand) / (box.x1 - box.x0), (h - rand - frei) / (box.y1 - box.y0)) * massstab;
-  const ox = b / 2 - (box.x0 + box.x1) / 2 * m + versatz[0] * m, oy = rand + (h - rand - frei) / 2 - (box.y0 + box.y1) / 2 * m + versatz[1] * m;
+  const titel = (stil.titel ?? '').trim(), kopf = titel ? h * 0.11 : 0;
+  const rand = h * 0.05, frei = h * 0.08, box = plan.box, rahmen = plan.rahmen ?? 'rund';
+  const m = Math.min((b - 2 * rand) / (box.x1 - box.x0), (h - rand - frei - kopf) / (box.y1 - box.y0)) * massstab;
+  const ox = b / 2 - (box.x0 + box.x1) / 2 * m + versatz[0] * m, oy = rand + kopf + (h - rand - frei - kopf) / 2 - (box.y0 + box.y1) / 2 * m + versatz[1] * m;
   const f = ([x, y]) => [ox + x * m, oy + y * m];
+  const baum = !!(plan.zierde && stil.kontur), dicke = (STAERKE[stil.linie] ?? STAERKE.mittel) / STAERKE.mittel;
+  const astZuege = (plan.aeste ?? []).map(a => ({ a, punkte: astPunkte(f(a.a ? [a.a.x, a.a.y] : a.von), f(a.b ? [a.b.x, a.b.y] : a.bis), a.kurve) }));
+  if (baum) baumMalen(g, plan.zierde, f, m, wuerfel((stil.rankenSaat || 1) + (plan.zierde.saat ?? 0)), astZuege);
+  g.globalAlpha = 1;
+  for (const { a, punkte } of astZuege) {
+    if (a.linie && baum) continue;   // die Linie verläuft im Stamm
+    astMalen(g, punkte, Math.max(1.5 * einheit, a.dicke * m * dicke), Math.max(einheit, a.dicke * (a.spitze ?? 0.5) * m * dicke),
+      baum ? RINDE : stil.linienfarbe, baum ? RINDE_DUNKEL : null);
+  }
 
   if (stil.kontur) {
     g.strokeStyle = stil.linienfarbe;
@@ -332,7 +514,9 @@ function male(g, b, h, plan, stil, bilder, wahl, { schaerfe = 1, zwischen = null
     g.stroke();
     pfade.push({ punkte: b ? bogen([x1, y1], ...b, [x2, y2]) : [[x1, y1], [x2, y2]] });
   };
-  for (const { a, b: z } of plan.kanten) {
+  const eckig = plan.linien === 'eckig';
+  if (eckig) tafelLinien(g, plan, f, m, stil, gerade, pfade);
+  else for (const { a, b: z } of plan.kanten) {
     const [x1, y1] = f([a.x, a.y]), [x2, y2] = f([z.x, z.y]);
     linie(x1, y1, x2, y2);
   }
@@ -343,7 +527,7 @@ function male(g, b, h, plan, stil, bilder, wahl, { schaerfe = 1, zwischen = null
     return [(bx - ax) / l, (by - ay) / l, l];
   };
   const mitte = punkte => [0, 1].map(i => punkte.reduce((n, p) => n + p[i], 0) / punkte.length);
-  for (const { eltern, kinder } of plan.familien) {
+  for (const { eltern, kinder } of eckig ? [] : plan.familien) {
     const obenPunkte = eltern.map(q => f([q.x, q.y])), untenPunkte = kinder.map(q => f([q.x, q.y]));
     const e = mitte(obenPunkte), k = mitte(untenPunkte), [tx, ty, abstand] = richtung(e, k);
     // der Treffpunkt liegt jenseits aller Eltern, in Richtung der Kinder: sonst liefe eine Linie erst weg und böge dann zurück.
@@ -380,8 +564,7 @@ function male(g, b, h, plan, stil, bilder, wahl, { schaerfe = 1, zwischen = null
     const [x, y] = f([q.x, q.y]), d = q.d * m, r = d / 2, w = wahl(q.e.p), bild = w.src ? bilder.get(w.src) : null, ton = w.ton || stil.ton;
     if (bild) g.drawImage(rund(bild, Math.max(8, Math.min(1200, Math.ceil(d * schaerfe / 8) * 8)), ton, w), x - r, y - r, d, d);
     else {
-      g.beginPath();
-      g.arc(x, y, r, 0, 2 * Math.PI);
+      umriss(g, x, y, r, rahmen);
       g.fillStyle = grund.leer;
       g.fill();
       g.fillStyle = grund.text2;
@@ -391,8 +574,7 @@ function male(g, b, h, plan, stil, bilder, wahl, { schaerfe = 1, zwischen = null
       g.fillText(`${(q.e.p.rufname || '?')[0]}${(n.nachname || '')[0] ?? ''}`, x, y);
       g.textBaseline = 'top';
     }
-    g.beginPath();
-    g.arc(x, y, r, 0, 2 * Math.PI);
+    umriss(g, x, y, r, rahmen);
     g.strokeStyle = ton === 'farbe' ? FARBE_SEITE[q.seite ?? q.e.seite] : stil.linienfarbe;
     g.lineWidth = Math.max(1, d * 0.028);
     g.stroke();
@@ -425,7 +607,78 @@ function male(g, b, h, plan, stil, bilder, wahl, { schaerfe = 1, zwischen = null
       zeile(jahreKurz(p), y0 + gr * (nach ? 2.2 : 1.12), grund.text2);
     }
   }
+  if (titel) {   // Überschrift mit Zierlinien
+    let gr = kopf * 0.5;
+    g.font = `italic 600 ${gr}px ${SCHRIFT}`;
+    let breite = g.measureText(titel).width;
+    if (breite > b * 0.66) { gr *= b * 0.66 / breite; g.font = `italic 600 ${gr}px ${SCHRIFT}`; breite = b * 0.66; }
+    const ty = rand + kopf * 0.4;
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    if (grund.hof) {
+      g.strokeStyle = grund.hof;
+      g.lineWidth = gr * 0.2;
+      g.lineJoin = 'round';
+      g.strokeText(titel, b / 2, ty);
+    }
+    g.fillStyle = grund.text;
+    g.fillText(titel, b / 2, ty);
+    g.strokeStyle = g.fillStyle = stil.linienfarbe;
+    g.lineWidth = Math.max(1, 1.4 * einheit);
+    for (const v of [-1, 1]) {
+      const x1 = b / 2 + v * (breite / 2 + gr * 0.5), x2 = b / 2 + v * (breite / 2 + gr * 3.2);
+      g.beginPath();
+      g.moveTo(x1, ty);
+      g.lineTo(x2, ty);
+      g.stroke();
+      g.beginPath();
+      g.moveTo(x2 + v * gr * 0.22, ty);
+      g.lineTo(x2, ty - gr * 0.12);
+      g.lineTo(x2 - v * gr * 0.22, ty);
+      g.lineTo(x2, ty + gr * 0.12);
+      g.closePath();
+      g.fill();
+    }
+  }
   return { ox, oy, m };
+}
+
+/** Linien der Tafel: Eheleute waagrecht mit einem Herz, von ihrer Mitte senkrecht hinab und über einen Querbalken zu den Kindern */
+function tafelLinien(g, plan, f, m, stil, gerade, pfade) {
+  const unterNamen = q => q.d * m * (stil.namen ? (stil.jahre ? 1.1 : 0.92) : 0.56);
+  const zug = punkte => {
+    g.beginPath();
+    g.moveTo(...punkte[0]);
+    for (let i = 1; i < punkte.length; i++) {
+      const p = punkte[i], n = punkte[i + 1];
+      const r = gerade || !n ? 0 : Math.min(0.14 * m, Math.hypot(p[0] - punkte[i - 1][0], p[1] - punkte[i - 1][1]) / 2, Math.hypot(n[0] - p[0], n[1] - p[1]) / 2);
+      if (r > 0.5) g.arcTo(...p, ...n, r); else g.lineTo(...p);
+    }
+    g.stroke();
+    pfade.push({ punkte });
+  };
+  const herzen = [];
+  for (const k of plan.kanten) {
+    const A = f([k.a.x, k.a.y]), B = f([k.b.x, k.b.y]);
+    zug([A, B]);
+    if (k.art === 'partner') herzen.push([(A[0] + B[0]) / 2, (A[1] + B[1]) / 2, Math.min(k.a.basis ?? k.a.d, k.b.basis ?? k.b.d) * m * 0.12]);
+  }
+  for (const { eltern, kinder } of plan.familien) {
+    const E = eltern.map(q => f([q.x, q.y])), K = kinder.map(q => f([q.x, q.y]));
+    const unten = E.length ? Math.max(...eltern.map((q, i) => E[i][1] + unterNamen(q))) : null;
+    const kopf = Math.min(...kinder.map((q, i) => K[i][1] - q.d * m / 2));
+    const quer = unten === null ? kopf - 0.3 * m : (unten + kopf) / 2;
+    const s = E.length >= 2 ? [E.reduce((a, p) => a + p[0], 0) / E.length, E.reduce((a, p) => a + p[1], 0) / E.length]
+      : E.length ? [E[0][0], unten] : null;
+    if (s) for (const k of K) zug([s, [s[0], quer], [k[0], quer], k]);
+    else {
+      const xs = K.map(k => k[0]);
+      zug([[Math.min(...xs), quer], [Math.max(...xs), quer]]);
+      for (const k of K) zug([[k[0], quer], k]);
+    }
+  }
+  g.fillStyle = stil.linienfarbe;
+  for (const [x, y, r] of herzen) herz(g, x, y, r);
 }
 
 // --- Fenster ---------------------------------------------------------------------------------------------
@@ -488,13 +741,16 @@ export class Werkstatt {
           ${wahl('nachkommen', t('Nachkommen'), [[0, t('keine')], [1, t('Kinder')], [2, t('Enkel')], [3, t('Urenkel')], ...generationen(5)])}
           ${haken('partner', t('Partner'))}${haken('geschwister', t('Geschwister'))}
           ${haken('seiten', t('Vaterseite links, Mutterseite rechts'))}
+          <div class="bw-nur-stamm">${wahl('stammLinie', t('Linie'), [['vater', t('über den Vater')], ['mutter', t('über die Mutter')]])}</div>
           <p class="bw-zahl" aria-live="polite"></p>
           <details class="bw-einzeln"><summary>${esc(t('Einzelne Personen'))}</summary><div class="bw-liste"></div></details>
           <button class="klein bw-ordnen" data-tun="ordnen" hidden>${esc(t('Verschobene Personen zurücksetzen'))}</button>
           </div>
         </section>
         <section><h3>${esc(t('Gestaltung'))}</h3>
+          <label class="bw-feld">${esc(t('Überschrift'))}<input name="titel" maxlength="90" autocomplete="off"></label>
           <label class="bw-feld">${esc(t('Porträtgröße'))}<input type="range" name="groesse" min="0.4" max="2" step="0.05" title="${esc(t('Ändert nur die Bilder; Plätze und Linien bleiben, wie sie sind'))}"></label>
+          ${wahl('rahmen', t('Rahmen'), [['rund', t('rund')], ['schild', t('Wappenschild')]])}
           ${wahl('ton', t('Bilder'), [['farbe', t('Farbe')], ['sw', t('Schwarzweiß')], ['sepia', t('Sepia')]])}
           ${wahl('linie', t('Verbindungslinien'), [['duenn', t('dünn')], ['mittel', t('mittel')], ['dick', t('dick')]])}
           ${wahl('linienart', t('Linienform'), [['geschwungen', t('geschwungen')], ['gerade', t('gerade')]])}
@@ -677,7 +933,8 @@ export class Werkstatt {
       }
       if (n === 'hauptperson') return this.hauptperson(w.value);
       if (n === 'groesse' || n === 'rankenGroesse') return;   // läuft schon über „input“
-      if (n === 'aus') {
+      if (n === 'rahmen') this.s.rahmenJe[this.s.form] = w.value;
+      else if (n === 'aus') {
         this.s.aus = this.s.aus.filter(id => id !== w.value);
         if (!w.checked) this.s.aus.push(w.value);
       } else if (w.type === 'checkbox') this.s[n] = w.checked;
@@ -699,7 +956,8 @@ export class Werkstatt {
     if (!this.el) this.baue();
     this.root = root;
     this.feld('hauptperson').value = root.name.voll;
-    for (const n of ['vorfahren', 'nachkommen', 'ranken', 'rankenArt', 'rankenGroesse', 'ton', 'linie', 'linienart', 'linienfarbe', 'grund', 'format']) this.feld(n).value = this.s[n];
+    for (const n of ['vorfahren', 'nachkommen', 'ranken', 'rankenArt', 'rankenGroesse', 'ton', 'linie', 'linienart', 'linienfarbe', 'grund', 'format', 'stammLinie', 'titel']) this.feld(n).value = this.s[n] ?? '';
+    this.feld('titel').placeholder = root.name.nachname ? t('z. B. Stammbaum der Familie {name}', { name: root.name.nachname }) : '';
     for (const n of ['partner', 'geschwister', 'seiten', 'kontur', 'namen', 'jahre']) this.feld(n).checked = this.s[n];
     if (!this.feld('format').value) this.feld('format').value = this.s.format = VORGABE.format;
     this.el.hidden = false;
@@ -730,9 +988,12 @@ export class Werkstatt {
   /** Auswahl oder Gestaltung hat sich geändert: Plan neu rechnen, Knöpfe und Liste nachziehen, Bilder laden, malen */
   geaendert() {
     this.merken();
-    const frei = this.s.form === 'frei', eintraege = frei ? [] : auswahl(this.root, this.s);
+    const frei = this.s.form === 'frei', form = FORMEN[this.s.form], fmt = this.format();
+    const eintraege = frei ? [] : form.eigeneAuswahl ? stammAuswahl(this.root, this.s) : auswahl(this.root, { ...this.s, partnerAlle: !!form.partnerAlle });
     this.plan = frei ? anordnenFrei(this.root, this.freiPlaetze(), this.daten.byId, this.s.freiGroesse)
-      : anordnen(this.s.form, eintraege, { namen: this.s.namen, seiten: this.s.seiten });
+      : anordnen(this.s.form, eintraege, { namen: this.s.namen, seiten: this.s.seiten, verhaeltnis: fmt.b / fmt.h });
+    this.plan.rahmen = this.s.rahmenJe[this.s.form] ?? this.plan.rahmen ?? 'rund';
+    this.feld('rahmen').value = this.plan.rahmen;
     if (frei) this.massstabSetzen(Math.min(this.massstab(), freiMassstab(this.freiPlaetze(), this.s.freiGroesse, this.s.namen)));
     else {
       const eigen = this.verschobene();
@@ -759,8 +1020,11 @@ export class Werkstatt {
     this.el.classList.toggle('frei', frei);
     this.el.querySelectorAll('[data-form]').forEach(k => k.setAttribute('aria-pressed', k.dataset.form === this.s.form));
     this.feld('jahre').disabled = !this.s.namen;
-    // im Flügel gilt das immer: Dort bleibt jede Seite in ihrem Flügel
-    const flaeche = !!FORMEN[this.s.form].flaeche, seiten = this.feld('seiten');
+    // im Flügel, in der Tafel, der Eiche und der Stammlinie gilt das immer: Dort bleibt jede Seite auf ihrer Seite
+    const flaeche = !!(form.flaeche || form.streng), seiten = this.feld('seiten');
+    for (const n of ['nachkommen', 'partner', 'geschwister']) this.feld(n).disabled = !!form.ohne?.includes(n);
+    this.el.querySelector('.bw-nur-stamm').hidden = !form.eigeneAuswahl;
+    this.feld('kontur').nextSibling.textContent = ' ' + t(form.baum ? 'Baum zeichnen' : 'Kontur der Form');
     this.el.querySelector('.bw-zahl-frei').textContent = t('{n} Personen im Bild', { n: this.plan.plaetze.reduce((z, q) => z + (q.zweiter ? 2 : 1), 0) });
     seiten.disabled = flaeche;
     seiten.checked = flaeche || this.s.seiten;
@@ -983,7 +1247,8 @@ export class Werkstatt {
         const liste = this.verwandte(art, person);
         return knopf(`frei-${art}`, person, t(liste.some(x => zu.has(x)) ? aus : ein), liste.length > 0);
       }).join('');
-      const darf = eltern.length && (person !== p || (q.e.art !== 'kind' && q.e.art !== 'geschwister'));
+      if (FORMEN[this.s.form].eigeneAuswahl) return '';
+      const darf = eltern.length && (person !== p || !['kind', 'geschwister', 'schwieger'].includes(q.e.art));
       return knopf('eltern', person, t(!eltern.length ? 'Keine Eltern bekannt' : offen ? 'Eltern ausblenden' : 'Eltern einblenden'), !!darf);
     };
     const name = person => zweiter ? `<h5>${esc(person.rufname || person.name.voll)}</h5>` : '';
@@ -1150,7 +1415,7 @@ export class Werkstatt {
     const f = this.s.form, r = this.root.id, werte = {};
     for (const k of SZENEN_WERTE) werte[k] = this.s[k];
     return JSON.parse(JSON.stringify({ name, zeit: Date.now(), root: r, werte, frei: this.s.freiJe[r], verschoben: this.s.verschoben[f]?.[r],
-      groesse: this.s.groesseJe[f], paare: this.s.paareJe[f], ohneLinie: this.s.ohneLinieJe[f], massstab: this.s.massstabJe[f], versatz: this.s.versatzJe[f] }));
+      groesse: this.s.groesseJe[f], rahmen: this.s.rahmenJe[f], paare: this.s.paareJe[f], ohneLinie: this.s.ohneLinieJe[f], massstab: this.s.massstabJe[f], versatz: this.s.versatzJe[f] }));
   }
 
   szeneSpeichern() {
@@ -1175,6 +1440,7 @@ export class Werkstatt {
     if (sz.frei) this.s.freiJe[sz.root] = sz.frei; else delete this.s.freiJe[sz.root];
     (this.s.verschoben[f] ??= {})[sz.root] = sz.verschoben ?? {};
     setzen(this.s.groesseJe, sz.groesse);
+    setzen(this.s.rahmenJe, sz.rahmen);
     setzen(this.s.paareJe, sz.paare);
     setzen(this.s.ohneLinieJe, sz.ohneLinie);
     setzen(this.s.massstabJe, sz.massstab);
