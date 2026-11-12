@@ -251,6 +251,8 @@ final class Daten
                     'titel' => $datei->title(),
                     'art'   => $art,
                     'url'   => $datei->imageUrl(1400, 1400, 'contain'),
+                    // Original, z. B. für einen Hintergrund in Druckgröße
+                    'gross' => $datei->downloadUrl('inline'),
                 ];
             }
         }
@@ -397,6 +399,7 @@ final class Daten
                 $p['bilder'][] = [
                     'id'    => $mid,
                     'src'   => $m['url'],
+                    'gross' => $m['gross'],
                     'titel' => $m['titel'] !== '' ? $m['titel'] : basename($m['datei']),
                     'art'   => $m['art'],
                     'jahr'  => $fotojahr($mid),

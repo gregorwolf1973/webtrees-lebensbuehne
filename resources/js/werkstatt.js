@@ -1274,10 +1274,10 @@ export class Werkstatt {
   /** Hintergrund aus den Bildern der Hauptperson in webtrees wählen */
   grundAusPerson() {
     const fenster = this.wahlFenster, p = this.root, alle = this.medienVon(p);
-    const kachel = (src, titel) => `<button data-grund="${esc(src)}" data-titel="${esc(titel)}" title="${esc(titel)}"><img src="${esc(src)}" alt="${esc(titel)}" loading="lazy"></button>`;
+    const kachel = (src, titel, gross) => `<button data-grund="${esc(gross || src)}" data-titel="${esc(titel)}" title="${esc(titel)}"><img src="${esc(src)}" alt="${esc(titel)}" loading="lazy"></button>`;
     fenster.innerHTML = `<div class="bw-wahl-fenster bw-grund-wahl">
       <h3>${esc(t('Hintergrund aus den Bildern von {name}', { name: p.name.voll }))}</h3>
-      <div class="bw-wahl-raster">${alle.map(b => kachel(b.src, b.titel || p.name.voll)).join('')}</div>
+      <div class="bw-wahl-raster">${alle.map(b => kachel(b.src, b.titel || p.name.voll, b.gross)).join('')}</div>
       ${alle.length ? '' : `<p class="bw-tipp">${esc(t('Zu dieser Person gibt es keine Bilder.'))}</p>`}
       <div class="bw-wahl-knoepfe"><span></span><button class="klein" data-aw="fertig">${esc(t('Schließen'))}</button></div></div>`;
     fenster.hidden = false;
