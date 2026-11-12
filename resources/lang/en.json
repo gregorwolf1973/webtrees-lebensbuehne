@@ -472,5 +472,13 @@
   "Bild wird geladen …": "Loading image …",
   "Das Bild ließ sich nicht öffnen.": "The image could not be opened.",
   "Hintergrund aus den Bildern von {name}": "Background from the images of {name}",
-  "Zu dieser Person gibt es keine Bilder.": "There are no images of this person."
+  "Zu dieser Person gibt es keine Bilder.": "There are no images of this person.",
+  "Stammbäume": "Family trees",
+  "Besondere Bilder": "Special pictures",
+  "Porträts": "Portraits",
+  "Beschriftung": "Labels",
+  "Linien und Ranken": "Lines and tendrils",
+  "Art": "Type",
+  "Als PNG speichern": "Save as PNG",
+  "Größe der Bilder": "Size of the pictures"
 }

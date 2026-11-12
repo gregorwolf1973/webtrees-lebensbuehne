@@ -679,16 +679,34 @@ body.menue-offen .umschalter { flex-wrap: wrap; }
 .bw-szenen-meldung { margin: 6px 0 0; font-size: 13px; color: var(--text-2); overflow-wrap: anywhere; }
 .bw-szenen-meldung:empty { display: none; }
 .bw-huelle { position: fixed; inset: 0; z-index: 60; display: grid; grid-template-columns: 300px minmax(0, 1fr); background: #05070a; outline: none; color-scheme: dark; }
-.bw-seite { overflow-y: auto; padding: 14px 16px 24px; background: var(--flaeche-fest); border-right: 1px solid var(--linie); }
-.bw-kopf { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.bw-seite { display: flex; flex-direction: column; min-height: 0; overflow: hidden; background: var(--flaeche-fest); border-right: 1px solid var(--linie); }
+.bw-seite [hidden] { display: none !important; }
+.bw-gruppen { flex: 1; min-height: 0; overflow-y: auto; padding: 0 16px 12px; }
+.bw-gruppe { border-bottom: 1px solid var(--linie); }
+.bw-gruppe > summary { display: flex; align-items: baseline; gap: 10px; padding: 11px 0; cursor: pointer; list-style: none; }
+.bw-gruppe > summary::-webkit-details-marker { display: none; }
+.bw-gruppe > summary::before { content: '▸'; flex: none; width: 10px; font-size: 12px; color: var(--text-3); transition: transform 0.15s; }
+.bw-gruppe[open] > summary::before { transform: rotate(90deg); }
+.bw-gruppe > summary:hover h3, .bw-gruppe > summary:focus-visible h3 { color: var(--text); }
+.bw-gruppe > summary h3 { flex: none; margin: 0; }
+.bw-wert { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; font-size: 13px; color: var(--text-2); }
+.bw-gruppe[open] > summary .bw-wert { visibility: hidden; }
+.bw-gruppe-inhalt { padding: 0 0 12px; }
+.bw-unter { margin: 2px 0 6px; font-size: 12.5px; color: var(--text-3); }
+.bw-formen + .bw-unter { margin-top: 12px; }
+.bw-form-tipp { margin: 10px 0 8px; font-style: italic; }
+.bw-form-tipp:empty { display: none; }
+.bw-ausgabe { flex: none; padding: 10px 16px 12px; border-top: 1px solid var(--linie); background: var(--flaeche-fest); box-shadow: 0 -8px 18px rgba(0, 0, 0, 0.25); }
+.bw-ausgabe .bw-feld { margin-bottom: 8px; }
+.bw-ausgabe-knoepfe { display: grid; grid-template-columns: 1.4fr 1fr; gap: 8px; }
+.bw-ausgabe-knoepfe .bw-speichern { margin-top: 0; }
+.bw-kopf { flex: none; display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 6px; border-bottom: 1px solid var(--linie); }
 .bw-kopf h2 { margin: 0; font: 600 21px var(--serif); }
 .bw-seite .klein { background: var(--flaeche); border: 1px solid var(--linie); border-radius: 6px; padding: 4px 10px; font-size: 15px; color: var(--text); }
-.bw-seite section { padding: 12px 0; border-bottom: 1px solid var(--linie); }
-.bw-seite section:last-child { border-bottom: 0; }
 .bw-seite h3 { margin: 0 0 8px; font: 600 13px var(--sans); text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-3); }
 .bw-formen { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 .bw-formen canvas { width: 100%; max-width: 96px; height: auto; }
-.bw-formen button { min-width: 0; overflow-wrap: anywhere; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 3px 5px; font-size: 12.5px; line-height: 1.15; text-align: center; color: var(--text); background: var(--flaeche); border: 1px solid var(--linie); border-radius: 8px; }
+.bw-formen button { min-width: 0; overflow-wrap: anywhere; hyphens: manual; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 3px 5px; font-size: 12.5px; line-height: 1.15; text-align: center; color: var(--text); background: var(--flaeche); border: 1px solid var(--linie); border-radius: 8px; }
 .bw-formen button[aria-pressed="true"] { background: rgba(214, 162, 78, 0.22); border-color: var(--vater); }
 .bw-feld { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; font-size: 14px; color: var(--text-2); }
 .bw-feld select, .bw-feld input:not([type=color]) { flex: 1; width: 0; min-width: 0; max-width: 175px; padding: 4px 6px; font: inherit; color: var(--text); background: var(--flaeche); border: 1px solid var(--linie); border-radius: 6px; }

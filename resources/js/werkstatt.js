@@ -808,6 +808,11 @@ export class Werkstatt {
     if (!FORMEN[this.s.form]) this.s.form = VORGABE.form;
   }
 
+  /** welche Gruppen des Menüs aufgeklappt sind; anfangs Form und Personen */
+  offen(name) {
+    return (this.s.offen ?? { form: true, personen: true })[name] ?? false;
+  }
+
   merken() {
     try { localStorage.setItem('lb-werkstatt', JSON.stringify(this.s)); } catch (e) { /* ohne Speicher */ }
   }
@@ -823,28 +828,24 @@ export class Werkstatt {
     const wahl = (name, titel, optionen) => `<label class="bw-feld">${esc(titel)}<select name="${name}">${
       optionen.map(([w, n]) => `<option value="${w}">${esc(n)}</option>`).join('')}</select></label>`;
     const haken = (name, titel) => `<label class="bw-haken"><input type="checkbox" name="${name}"> ${esc(titel)}</label>`;
+    const gruppe = (name, titel, inhalt) => `<details class="bw-gruppe" data-gruppe="${name}"${this.offen(name) ? ' open' : ''}>
+      <summary><h3>${esc(titel)}</h3><span class="bw-wert"></span></summary><div class="bw-gruppe-inhalt">${inhalt}</div></details>`;
+    const formKnopf = n => `
+            <button data-form="${n}" title="${esc(t(FORM_TIPPS[n] ?? FORMEN[n].tipp))}" aria-pressed="false"><canvas width="96" height="72" aria-hidden="true"></canvas>${esc(t(FORM_NAMEN[n] ?? FORMEN[n].name))
+              .replace(/^(Gesichter|Ahnen|Wander|Lebens)(?=[a-zäöü])/, '$1\u00ad')}</button>`;
     const generationen = bis => Array.from({ length: bis - 3 }, (_, i) => [i + 4, t('{n} Generationen', { n: i + 4 })]);
     el.innerHTML = `
       <aside class="bw-seite">
         <div class="bw-kopf"><h2>${esc(t('Bildwerkstatt'))}</h2><button class="klein bw-zu" data-tun="zu" aria-label="${esc(t('Schließen'))}">✕</button></div>
-        <section class="bw-szenen"><h3>${esc(t('Szenen'))}</h3>
-          <select name="szeneWahl" aria-label="${esc(t('Gespeicherte Szenen'))}"></select>
-          <div class="bw-szenen-knoepfe">
-            <button class="klein" data-tun="szene-laden">${esc(t('Laden'))}</button>
-            <button class="klein" data-tun="szene-loeschen">${esc(t('Löschen'))}</button>
-          </div>
-          <div class="bw-szenen-neu">
-            <input name="szeneName" placeholder="${esc(t('Name der Szene'))}" aria-label="${esc(t('Name der Szene'))}" maxlength="60" autocomplete="off">
-            <button class="klein" data-tun="szene-speichern">${esc(t('Speichern'))}</button>
-          </div>
-          <p class="bw-szenen-meldung" role="status"></p>
-        </section>
-        <section><h3>${esc(t('Form'))}</h3>
-          <div class="bw-formen">${Object.keys(FORMEN).map(n => `
-            <button data-form="${n}" title="${esc(t(FORM_TIPPS[n] ?? FORMEN[n].tipp))}" aria-pressed="false"><canvas width="96" height="72" aria-hidden="true"></canvas>${esc(t(FORM_NAMEN[n] ?? FORMEN[n].name))}</button>`).join('')}
-          </div>
-        </section>
-        <section><h3>${esc(t('Personen'))}</h3>
+        <div class="bw-gruppen">
+        ${gruppe('form', t('Form'), `
+          <p class="bw-unter">${esc(t('Stammbäume'))}</p>
+          <div class="bw-formen">${Object.keys(FORMEN).filter(n => !SONDERFORMEN[n]).map(formKnopf).join('')}</div>
+          <p class="bw-unter">${esc(t('Besondere Bilder'))}</p>
+          <div class="bw-formen">${Object.keys(SONDERFORMEN).map(formKnopf).join('')}</div>
+          <p class="bw-tipp bw-form-tipp"></p>
+          ${haken('kontur', t('Kontur der Form'))}`)}
+        ${gruppe('personen', t('Personen'), `
           <label class="bw-feld">${esc(t('Hauptperson'))}<input name="hauptperson" list="namen" autocomplete="off"></label>
           <div class="bw-nur-frei">
             <p class="bw-tipp">${esc(t('Klick auf eine Person blendet Verwandte ein oder aus. Ziehen verschiebt sie.'))}</p>
@@ -860,13 +861,15 @@ export class Werkstatt {
           <p class="bw-zahl" aria-live="polite"></p>
           <details class="bw-einzeln"><summary>${esc(t('Einzelne Personen'))}</summary><div class="bw-liste"></div></details>
           <button class="klein bw-ordnen" data-tun="ordnen" hidden>${esc(t('Verschobene Personen zurücksetzen'))}</button>
-          </div>
-        </section>
-        <section><h3>${esc(t('Gestaltung'))}</h3>
-          <label class="bw-feld">${esc(t('Überschrift'))}<input name="titel" maxlength="90" autocomplete="off"></label>
-          <label class="bw-feld">${esc(t('Porträtgröße'))}<input type="range" name="groesse" min="0.4" max="2" step="0.05" title="${esc(t('Ändert nur die Bilder; Plätze und Linien bleiben, wie sie sind'))}"></label>
+          </div>`)}
+        ${gruppe('portraets', t('Porträts'), `
+          <label class="bw-feld" title="${esc(t('Ändert nur die Bilder; Plätze und Linien bleiben, wie sie sind'))}"><span class="bw-groesse-name">${esc(t('Porträtgröße'))}</span><input type="range" name="groesse" min="0.4" max="2" step="0.05"></label>
           ${wahl('rahmen', t('Rahmen'), [['rund', t('rund')], ['schild', t('Wappenschild')]])}
-          ${wahl('ton', t('Bilder'), [['farbe', t('Farbe')], ['sw', t('Schwarzweiß')], ['sepia', t('Sepia')]])}
+          ${wahl('ton', t('Bilder'), [['farbe', t('Farbe')], ['sw', t('Schwarzweiß')], ['sepia', t('Sepia')]])}`)}
+        ${gruppe('schrift', t('Beschriftung'), `
+          <label class="bw-feld">${esc(t('Überschrift'))}<input name="titel" maxlength="90" autocomplete="off"></label>
+          ${haken('namen', t('Namen'))}${haken('jahre', t('Lebensdaten'))}`)}
+        ${gruppe('linien', t('Linien und Ranken'), `
           ${wahl('linie', t('Verbindungslinien'), [['duenn', t('dünn')], ['mittel', t('mittel')], ['dick', t('dick')]])}
           ${wahl('linienart', t('Linienform'), [['geschwungen', t('geschwungen')], ['gerade', t('gerade')]])}
           <label class="bw-feld">${esc(t('Linienfarbe'))}<input type="color" name="linienfarbe"></label>
@@ -879,8 +882,9 @@ export class Werkstatt {
               <input type="color" id="bw-rankenfarbe" name="rankenFarbe"></div>
             <label class="bw-feld bw-rosenfarbe">${esc(t('Farbe der Rosen'))}<input type="color" name="rosenFarbe"></label>
             <button class="klein bw-wuerfel" data-tun="wuerfeln">${esc(t('Ranken neu würfeln'))}</button>
-          </div>
-          ${wahl('grund', t('Hintergrund'), [['dunkel', t('dunkel')], ['pergament', t('Pergament')], ['weiss', t('weiß')], ['klardunkel', t('transparent, für dunklen Grund')], ['klarhell', t('transparent, für hellen Grund')], ['bild', t('eigenes Bild')]])}
+          </div>`)}
+        ${gruppe('grund', t('Hintergrund'), `
+          ${wahl('grund', t('Art'), [['dunkel', t('dunkel')], ['pergament', t('Pergament')], ['weiss', t('weiß')], ['klardunkel', t('transparent, für dunklen Grund')], ['klarhell', t('transparent, für hellen Grund')], ['bild', t('eigenes Bild')]])}
           <div class="bw-nur-bild">
             <label class="klein bw-grund-datei">${esc(t('Bild wählen …'))}<input type="file" name="grundDatei" accept="image/*" hidden></label>
             <button class="klein" data-tun="grund-person">${esc(t('Bild der Hauptperson …'))}</button>
@@ -891,15 +895,29 @@ export class Werkstatt {
             <label class="bw-feld">${esc(t('senkrecht'))}<input type="range" name="grundY" min="0" max="1" step="0.005"></label>
             <label class="bw-feld" title="${esc(t('Links dunkler, rechts heller; die Schrift passt sich an'))}">${esc(t('Abdunkeln / Aufhellen'))}<input type="range" name="grundSchleier" min="-0.85" max="0.85" step="0.01"></label>
             <button class="klein" data-tun="grund-zurueck">${esc(t('Größe und Lage zurücksetzen'))}</button>
+          </div>`)}
+        ${gruppe('szenen', t('Szenen'), `
+          <div class="bw-szenen">
+          <select name="szeneWahl" aria-label="${esc(t('Gespeicherte Szenen'))}"></select>
+          <div class="bw-szenen-knoepfe">
+            <button class="klein" data-tun="szene-laden">${esc(t('Laden'))}</button>
+            <button class="klein" data-tun="szene-loeschen">${esc(t('Löschen'))}</button>
           </div>
-          ${haken('kontur', t('Kontur der Form'))}${haken('namen', t('Namen'))}${haken('jahre', t('Lebensdaten'))}
-        </section>
-        <section><h3>${esc(t('Ausgabe'))}</h3>
+          <div class="bw-szenen-neu">
+            <input name="szeneName" placeholder="${esc(t('Name der Szene'))}" aria-label="${esc(t('Name der Szene'))}" maxlength="60" autocomplete="off">
+            <button class="klein" data-tun="szene-speichern">${esc(t('Speichern'))}</button>
+          </div>
+          <p class="bw-szenen-meldung" role="status"></p>
+          </div>`)}
+        </div>
+        <div class="bw-ausgabe">
           ${wahl('format', t('Format'), formate().map(x => [x.id, `${x.name} (${x.b} × ${x.h})`]))}
-          <button class="bw-speichern" data-tun="speichern">${esc(t('Als Bild speichern (PNG)'))}</button>
-          <button class="bw-speichern bw-drucken" data-tun="drucken">${esc(t('Drucken'))}</button>
+          <div class="bw-ausgabe-knoepfe">
+            <button class="bw-speichern" data-tun="speichern">${esc(t('Als PNG speichern'))}</button>
+            <button class="bw-speichern bw-drucken" data-tun="drucken">${esc(t('Drucken'))}</button>
+          </div>
           <p class="bw-meldung" role="status"></p>
-        </section>
+        </div>
       </aside>
       <div class="bw-flaeche"><canvas class="bw-vorschau" role="img" aria-label="${esc(t('Vorschau'))}" title="${esc(t('Klick oder Rechtsklick auf eine Person: Eltern, Bild, Ausblenden. Ziehen: verschieben. Rechte Maustaste auf freier Fläche: ganzes Bild verschieben. Mausrad: zoomen'))}"></canvas>
         <button class="klein bw-zoom" data-tun="zoom" title="${esc(t('Zoom zurücksetzen'))}" hidden></button></div>
@@ -909,6 +927,10 @@ export class Werkstatt {
     this.leinwand = el.querySelector('.bw-vorschau');
     this.flaeche = el.querySelector('.bw-flaeche');
     this.feld = n => el.querySelector(`[name="${n}"]`);
+    el.querySelectorAll('.bw-gruppe').forEach(d => d.addEventListener('toggle', () => {
+      this.s.offen = { ...(this.s.offen ?? { form: true, personen: true }), [d.dataset.gruppe]: d.open };
+      this.merken();
+    }));
 
     el.addEventListener('input', ev => {
       if (ev.target.name === 'rankenGroesse') this.s.rankenGroesse = Number(ev.target.value);
@@ -1156,7 +1178,17 @@ export class Werkstatt {
     this.feld('jahre').disabled = !this.s.namen;
     // im Flügel, in der Tafel, der Eiche und der Stammlinie gilt das immer: Dort bleibt jede Seite auf ihrer Seite
     const flaeche = !!(form.flaeche || form.streng), seiten = this.feld('seiten');
-    for (const n of ['nachkommen', 'partner', 'geschwister']) this.feld(n).disabled = !!form.ohne?.includes(n);
+    // was die Form nicht nutzt, verschwindet aus dem Menü
+    const ohneFeld = new Set(form.ohne ?? []);
+    if (ohneFeld.has('namen')) ohneFeld.add('jahre');
+    for (const n of ['nachkommen', 'partner', 'geschwister', 'rahmen', 'namen', 'jahre']) {
+      this.feld(n).closest('label').hidden = ohneFeld.has(n);
+      if (ohneFeld.has(n)) this.feld(n).disabled = true;
+      else if (n !== 'jahre') this.feld(n).disabled = false;
+    }
+    this.el.querySelector('[data-gruppe="linien"]').hidden = ohneFeld.has('linien');
+    this.el.querySelector('.bw-groesse-name').textContent = t(form.groesseName ?? 'Porträtgröße');
+    this.el.querySelector('.bw-form-tipp').textContent = t(FORM_TIPPS[this.s.form] ?? form.tipp ?? '');
     this.el.querySelector('.bw-nur-stamm').hidden = !form.eigeneAuswahl;
     this.el.querySelector('.bw-nur-bild').hidden = this.s.grund !== 'bild';
     if (this.s.grund === 'bild') this.grundLaden();
@@ -1166,10 +1198,27 @@ export class Werkstatt {
     this.el.querySelector('.bw-zahl-frei').textContent = t('{n} Personen im Bild', { n: this.anzahl() });
     seiten.disabled = flaeche;
     seiten.checked = flaeche || this.s.seiten;
+    seiten.closest('label').hidden = flaeche;   // gilt dort ohnehin immer
     this.liste(eintraege);
     this.melden();
     for (const q of this.plan.plaetze) this.lade(this.bildVon(q.e.p).src);
+    this.zusammenfassen();
     this.malen();
+  }
+
+  /** In jedem Gruppenkopf steht kurz, was gerade eingestellt ist: So sieht man es auch zugeklappt */
+  zusammenfassen() {
+    const wert = (gruppe, text) => { this.el.querySelector(`[data-gruppe="${gruppe}"] .bw-wert`).textContent = text; };
+    const gewaehlt = n => this.feld(n).selectedOptions?.[0]?.textContent ?? '';
+    const form = FORMEN[this.s.form];
+    wert('form', t(FORM_NAMEN[this.s.form] ?? form.name));
+    wert('personen', `${this.root.rufname || this.root.name.voll} · ${this.anzahl()}`);
+    wert('portraets', [gewaehlt('ton'), this.feld('rahmen').closest('label').hidden ? '' : gewaehlt('rahmen')].filter(Boolean).join(', '));
+    wert('schrift', [this.s.titel?.trim() ? t('Überschrift') : '', this.s.namen && !this.feld('namen').closest('label').hidden ? t('Namen') : ''].filter(Boolean).join(', ') || t('aus'));
+    wert('linien', [gewaehlt('linie'), this.s.ranken !== 'aus' ? t('Ranken') : ''].filter(Boolean).join(', '));
+    wert('grund', this.s.grund === 'bild' ? (this.s.grundName || gewaehlt('grund')) : gewaehlt('grund'));
+    const n = this.szenen().length;
+    wert('szenen', n ? String(n) : '');
   }
 
   liste(eintraege) {
@@ -1636,6 +1685,7 @@ export class Werkstatt {
   }
 
   szenenZeigen(gewaehlt = this.feld('szeneWahl').value) {
+    if (this.root && this.plan) this.zusammenfassen();
     const wahl = this.feld('szeneWahl'), liste = this.szenen();
     wahl.innerHTML = liste.length ? liste.map(x => `<option value="${esc(x.name)}">${esc(x.name)}</option>`).join('') : `<option value="">${esc(t('Noch keine Szene gespeichert'))}</option>`;
     if (liste.some(x => x.name === gewaehlt)) wahl.value = gewaehlt;

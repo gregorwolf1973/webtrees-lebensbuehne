@@ -1134,13 +1134,15 @@ function mosaikAnordnen(eintraege) {
     const { g, f, m, bilder, wahl, stil } = k, ziel = wahl(start.p), bild = ziel.src ? bilder.get(ziel.src) : null;
     if (!ziel.src) return hinweis(k, t('Für die Hauptperson gibt es kein Bild.'));
     if (!bild) return hinweis(k, t('Bilder werden geladen …'));
+    // „Größe der Bilder“: größere Bilder, weniger Felder; die Fläche des Mosaiks bleibt gleich
+    const N = Math.max(14, Math.min(160, Math.round(ZELLEN / (stil.groesseJe?.mosaik ?? 1))));
     const c = document.createElement('canvas');
-    c.width = c.height = ZELLEN;
+    c.width = c.height = N;
     const o = c.getContext('2d', { willReadFrequently: true }), z = ziel.z ?? 1, sw = Math.min(bild.naturalWidth, bild.naturalHeight) / z;
     o.drawImage(bild, Math.max(0, Math.min(bild.naturalWidth - sw, (ziel.cx ?? 0.5) * bild.naturalWidth - sw / 2)),
-      Math.max(0, Math.min(bild.naturalHeight - sw, (ziel.cy ?? 0.5) * bild.naturalHeight - sw / 2)), sw, sw, 0, 0, ZELLEN, ZELLEN);
+      Math.max(0, Math.min(bild.naturalHeight - sw, (ziel.cy ?? 0.5) * bild.naturalHeight - sw / 2)), sw, sw, 0, 0, N, N);
     let pixel;
-    try { pixel = o.getImageData(0, 0, ZELLEN, ZELLEN).data; } catch (err) { return hinweis(k, t('Das Bild der Hauptperson lässt sich nicht auslesen.')); }
+    try { pixel = o.getImageData(0, 0, N, N).data; } catch (err) { return hinweis(k, t('Das Bild der Hauptperson lässt sich nicht auslesen.')); }
     const kacheln = [];
     for (const p of personen) {
       const w = wahl(p), b = w.src ? bilder.get(w.src) : null;
@@ -1148,8 +1150,8 @@ function mosaikAnordnen(eintraege) {
     }
     if (!kacheln.length) return hinweis(k, t('Bilder werden geladen …'));
     kacheln.sort((a, b) => a.hell - b.hell);
-    const [x0, y0] = f([0, 0]), zelle = Math.min(160, m * k.schaerfe), px = Math.max(8, Math.min(256, Math.ceil(zelle / 4) * 4));
-    const bild2 = vorrat(k, ['mosaik', ziel.src, ziel.cx, ziel.cy, ziel.z, stil.ton, k.verziert, stil.rankenSaat, kacheln.map(x => x.b.src).join(',')].join('|'), ZELLEN * zelle, ZELLEN * zelle, g => {
+    const [x0, y0] = f([0, 0]), zelle = Math.min(200, ZELLEN * m * k.schaerfe / N), px = Math.max(8, Math.min(256, Math.ceil(zelle / 4) * 4));
+    const bild2 = vorrat(k, ['mosaik', N, ziel.src, ziel.cx, ziel.cy, ziel.z, stil.ton, k.verziert, stil.rankenSaat, kacheln.map(x => x.b.src).join(',')].join('|'), N * zelle, N * zelle, g => {
     const zufall = wuerfel(stil.rankenSaat || 1), vorige = [];
     // jede Kachel einmal in den Hauptspeicher holen: Sonst liest der Browser sie bei jedem der tausenden Felder von der Grafikkarte zurück
     for (const kachel of kacheln) {
@@ -1158,8 +1160,8 @@ function mosaikAnordnen(eintraege) {
       c2.getContext('2d', { willReadFrequently: true }).drawImage(k.rund(kachel.b, px, kachel.ton, kachel.w, 'quadrat'), 0, 0);
       kachel.fertig = c2;
     }
-    for (let y = 0; y < ZELLEN; y++) for (let x = 0; x < ZELLEN; x++) {
-      const i = (y * ZELLEN + x) * 4, L = (0.299 * pixel[i] + 0.587 * pixel[i + 1] + 0.114 * pixel[i + 2]) / 255;
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+      const i = (y * N + x) * 4, L = (0.299 * pixel[i] + 0.587 * pixel[i + 1] + 0.114 * pixel[i + 2]) / 255;
       // unter den nach Helligkeit passendsten Bildern eins, das nicht gleich neben sich selbst liegt
       let lo = 0, hi = kacheln.length - 1;
       while (lo < hi) { const mid = (lo + hi) >> 1; if (kacheln[mid].hell < L) lo = mid + 1; else hi = mid; }
@@ -1212,7 +1214,7 @@ export const SONDERFORMEN = {
   karte: form('Wanderkarte', 'Jede Person an ihrem Geburtsort, Pfeile zeigen die Wege der Familie, Grenzen der Zeit', karteAnordnen,
     { symbol: 'karte', zierName: 'Landkarte zeichnen' }),
   galerie: form('Ahnengalerie', 'Ölbilder an der Schlosswand, Rahmen im Stil der Zeit, darunter ein Messingschild', galerieAnordnen,
-    { symbol: 'galerie', zierName: 'Wand zeichnen' }),
+    { symbol: 'galerie', zierName: 'Wand zeichnen', ohne: ['rahmen'] }),
   rosette: form('Rosette', 'Ein Kirchenfenster: Hauptperson in der Mitte, jede Generation ein Ring, Vaterseite links', rosetteAnordnen,
     { symbol: 'rosette', zierName: 'Buntglas und Maßwerk', ohne: ['nachkommen', 'partner', 'geschwister'] }),
   wurzeln: form('Wurzelwerk', 'Oben Hauptperson und Kinder als Baum, darunter die Vorfahren als Wurzeln in den Erdschichten der Jahrhunderte', wurzelnAnordnen,
@@ -1222,5 +1224,5 @@ export const SONDERFORMEN = {
   strom: form('Lebensstrom', 'Die Vorfahren sind Quellen, ihre Bäche fließen zum Strom der Hauptperson zusammen', stromAnordnen,
     { symbol: 'strom', zierName: 'Höhenlinien zeichnen', ohne: ['partner', 'geschwister'] }),
   mosaik: form('Gesichtermosaik', 'Das Bild der Hauptperson aus den Bildern ihrer Familie zusammengesetzt', mosaikAnordnen,
-    { symbol: 'mosaik', zierName: 'Bild durchscheinen lassen' }),
+    { symbol: 'mosaik', zierName: 'Bild durchscheinen lassen', groesseName: 'Größe der Bilder', ohne: ['linien', 'rahmen', 'namen'] }),
 };
