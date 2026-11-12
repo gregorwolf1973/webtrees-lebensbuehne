@@ -71,7 +71,7 @@ function hinweis(k, text) {
   schreibe(k, text, b / 2, h / 2, k.grund.text2);
 }
 
-const dunkelGrund = k => ['dunkel', 'klardunkel'].includes(k.stil.grund);
+const dunkelGrund = k => k.grund.dunkel ?? ['dunkel', 'klardunkel'].includes(k.stil.grund);
 
 /** Überlappungen auflösen: Kästen aus Gesicht und Namen schieben sich auseinander, eine Feder zieht sie zu ihrem Ziel zurück */
 function entzerren(plaetze, w, h, ziele = null, runden = 140) {
@@ -494,7 +494,7 @@ function galerieAnordnen(eintraege, { namen, verhaeltnis }) {
 
   const hinten = k => {
     if (!k.verziert) return;
-    const { g, f, m, b, h } = k, art = k.stil.grund;
+    const { g, f, m, b, h } = k, art = k.stil.grund === 'bild' ? (k.grund.dunkel ? 'dunkel' : 'weiss') : k.stil.grund;
     const wand = ['dunkel', 'klardunkel'].includes(art) ? ['#1d332d', '#2a463d'] : art === 'pergament' ? ['#5e222c', '#76303b'] : ['#d5cab7', '#e2d8c6'];
     k.g.drawImage(vorrat(k, `wand|${wand[0]}|${Math.round(m * 10)}`, b, h, g => {
     g.fillStyle = wand[0];

@@ -11,7 +11,8 @@ Object.assign(FORMEN, SONDERFORMEN);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const SCHRIFT = '"Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif';
 const VORGABE = { form: 'herz', vorfahren: 4, nachkommen: 0, partner: false, geschwister: false, aus: [], mehr: [], portraets: {}, freiJe: {}, freiGroesse: 0.3, ranken: 'aus', rankenSaat: 1, rankenArt: 'ranke', rankenGroesse: 1, rankenFarbe: '', rosenFarbe: '#a51e33', titel: '', stammLinie: 'vater', rahmenJe: {}, groesseJe: {}, paareJe: {}, ohneLinieJe: {}, massstabJe: {}, verschoben: {}, versatzJe: {}, ton: 'farbe', linie: 'mittel',
-  linienart: 'geschwungen', linienfarbe: '#d6a24e', kontur: true, seiten: false, namen: true, jahre: true, grund: 'dunkel', format: 'bildschirm' };
+  linienart: 'geschwungen', linienfarbe: '#d6a24e', kontur: true, seiten: false, namen: true, jahre: true, grund: 'dunkel', format: 'bildschirm',
+  grundBild: '', grundName: '', grundArt: 'fuellen', grundGroesse: 1, grundX: 0.5, grundY: 0.5, grundSchleier: 0 };
 const STAERKE = { duenn: 1.2, mittel: 2.4, dick: 5 };     // bei 1080 Pixeln Bildhöhe
 const GRUENDE = {
   dunkel: { innen: '#1b2130', aussen: '#090b11', text: '#f2ede4', text2: '#b9bfca', leer: '#232a38' },
@@ -40,8 +41,10 @@ function formate() {
 }
 
 // Was eine Szene für die ganze Werkstatt festhält; dazu kommt, was je Form und Hauptperson gilt (szeneErstellen)
+const GRUND_REGLER = ['grundGroesse', 'grundX', 'grundY', 'grundSchleier'];
 const SZENEN_WERTE = ['form', 'vorfahren', 'nachkommen', 'partner', 'geschwister', 'seiten', 'aus', 'mehr', 'portraets', 'ton', 'linie', 'linienart', 'linienfarbe',
-  'kontur', 'namen', 'jahre', 'grund', 'format', 'freiGroesse', 'ranken', 'rankenSaat', 'rankenArt', 'rankenGroesse', 'rankenFarbe', 'rosenFarbe', 'titel', 'stammLinie'];
+  'kontur', 'namen', 'jahre', 'grund', 'format', 'freiGroesse', 'ranken', 'rankenSaat', 'rankenArt', 'rankenGroesse', 'rankenFarbe', 'rosenFarbe', 'titel', 'stammLinie',
+  'grundBild', 'grundName', 'grundArt', 'grundGroesse', 'grundX', 'grundY', 'grundSchleier'];
 const FORM_NAMEN = { herz: 'Herz', fluegel: 'Flügel', frei: 'Frei', tafel: 'Tafel', eiche: 'Ahnen-Eiche', stamm: 'Stammlinie' };
 const FORM_TIPPS = {
   herz: 'Hauptperson unten, nach oben die älteren Generationen',
@@ -462,7 +465,99 @@ function ranken(g, pfade, stil, einheit) {
 }
 
 /** Malt das ganze Bild in die Fläche b × h. Für Vorschau und Ausgabe dieselbe Funktion, damit beide gleich aussehen. */
-function male(g, b, h, plan, stil, bilder, wahl, { schaerfe = 1, zwischen = null, massstab = 1, versatz = [0, 0] } = {}) {
+// --- Eigenes Hintergrundbild: liegt als Datei in IndexedDB (zu groß für localStorage), Einstellungen und Szenen merken nur die Nummer
+const GRUND_DB = 'lb-werkstatt-bilder', GRUND_MAX = 7200, GRUND_VORSCHAU = 1600;
+
+function grundDb() {
+  return new Promise((ok, nein) => {
+    const r = indexedDB.open(GRUND_DB, 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('bilder');
+    r.onsuccess = () => ok(r.result);
+    r.onerror = () => nein(r.error);
+  });
+}
+
+async function grundSpeicher(art, tun) {
+  const db = await grundDb();
+  try {
+    return await new Promise((ok, nein) => {
+      const tx = db.transaction('bilder', art), r = tun(tx.objectStore('bilder'));
+      tx.oncomplete = () => ok(r?.result);
+      tx.onerror = tx.onabort = () => nein(tx.error);
+    });
+  } finally { db.close(); }
+}
+
+const leinwandAus = (bild, b, h) => {
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.round(b));
+  c.height = Math.max(1, Math.round(h));
+  const g = c.getContext('2d', { willReadFrequently: true });
+  g.imageSmoothingQuality = 'high';
+  g.drawImage(bild, 0, 0, c.width, c.height);
+  return c;
+};
+
+/** Datei → Bild in voller (höchstens Druck-)Größe, kleine Fassung für die Vorschau, Mittelfarbe und Helligkeit */
+async function grundAufbereiten(datei) {
+  let bild = await createImageBitmap(datei), blob = datei;
+  const gross = Math.max(bild.width, bild.height);
+  if (gross > GRUND_MAX) {
+    const c = leinwandAus(bild, bild.width * GRUND_MAX / gross, bild.height * GRUND_MAX / gross);
+    blob = await new Promise(ok => c.toBlob(ok, datei.type === 'image/png' ? 'image/png' : 'image/jpeg', 0.92)) ?? datei;
+    bild.close();
+    bild = await createImageBitmap(c);
+  }
+  const k = Math.min(1, GRUND_VORSCHAU / Math.max(bild.width, bild.height));
+  const vorschau = k < 1 ? await createImageBitmap(leinwandAus(bild, bild.width * k, bild.height * k)) : bild;
+  const px = leinwandAus(bild, 32, 32).getContext('2d', { willReadFrequently: true }).getImageData(0, 0, 32, 32).data;
+  const summe = [0, 0, 0];
+  let hell = 0;
+  for (let i = 0; i < px.length; i += 4) {
+    for (let j = 0; j < 3; j++) summe[j] += px[i + j];
+    hell += (0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2]) / 255;
+  }
+  const n = px.length / 4;
+  return { blob, bild, vorschau, mittel: summe.map(x => Math.round(x / n)), hell: hell / n };
+}
+
+/** Schriftfarben auf dem eigenen Bild: nach seiner Helligkeit samt Schleier; der Hof hält Namen auf unruhigen Fotos lesbar */
+function grundSchrift(gb, schleier) {
+  const s = Number(schleier) || 0, hell = gb ? (s >= 0 ? gb.hell + (1 - gb.hell) * s : gb.hell * (1 + s)) : 0;
+  return hell > 0.55
+    ? { text: '#1e1913', text2: '#3f362a', leer: '#e3d6bb', hof: 'rgba(255, 255, 255, 0.68)', dunkel: false }
+    : { text: '#f6f1e8', text2: '#d9dee6', leer: '#232a38', hof: 'rgba(9, 11, 17, 0.62)', dunkel: true };
+}
+
+/** Bild füllend, ganz oder gekachelt hinlegen; groesse skaliert, x und y verschieben (0 … 1) */
+function grundMalen(g, b, h, gb, stil, schaerfe) {
+  const art = stil.grundArt ?? 'fuellen', k = Number(stil.grundGroesse) || 1;
+  const x = Number(stil.grundX ?? 0.5), y = Number(stil.grundY ?? 0.5);
+  g.fillStyle = gb ? `rgb(${gb.mittel.join(',')})` : '#1b2130';
+  g.fillRect(0, 0, b, h);
+  if (gb) {
+    const iw = gb.bild.width, ih = gb.bild.height;
+    const s = art === 'kacheln' ? h / 3 / ih * k : (art === 'ganz' ? Math.min(b / iw, h / ih) : Math.max(b / iw, h / ih)) * k;
+    const dw = iw * s, dh = ih * s;
+    const quelle = gb.vorschau !== gb.bild && dw * schaerfe <= gb.vorschau.width * 1.1 ? gb.vorschau : gb.bild, q = iw / quelle.width;
+    g.save();
+    g.imageSmoothingQuality = 'high';
+    if (art === 'kacheln') {
+      const muster = g.createPattern(quelle, 'repeat');
+      muster.setTransform(new DOMMatrix([s * q, 0, 0, s * q, x * dw, y * dh]));
+      g.fillStyle = muster;
+      g.fillRect(0, 0, b, h);
+    } else g.drawImage(quelle, (b - dw) * x, (h - dh) * y, dw, dh);
+    g.restore();
+  }
+  const schleier = Number(stil.grundSchleier) || 0;
+  if (schleier) {
+    g.fillStyle = schleier > 0 ? `rgba(255, 255, 255, ${schleier})` : `rgba(0, 0, 0, ${-schleier})`;
+    g.fillRect(0, 0, b, h);
+  }
+}
+
+function male(g, b, h, plan, stil, bilder, wahl, { schaerfe = 1, zwischen = null, massstab = 1, versatz = [0, 0], grundBild = null } = {}) {
   // im Zoom scharf bleiben; bereits gerechnete Porträts wiederverwenden, sonst stockt das Mausrad
   const rund = (bild, px, ton, w, form = plan.rahmen) => {
     if (!zwischen) return portraet(bild, px, ton, w, form);
@@ -473,8 +568,10 @@ function male(g, b, h, plan, stil, bilder, wahl, { schaerfe = 1, zwischen = null
     }
     return zwischen.get(schluessel);
   };
-  const grund = GRUENDE[stil.grund] ?? GRUENDE.dunkel, einheit = h / 1080;
-  if (grund.innen) {
+  const eigenesBild = stil.grund === 'bild', einheit = h / 1080;
+  const grund = eigenesBild ? grundSchrift(grundBild, stil.grundSchleier) : GRUENDE[stil.grund] ?? GRUENDE.dunkel;
+  if (eigenesBild) grundMalen(g, b, h, grundBild, stil, schaerfe);
+  else if (grund.innen) {
     const v = g.createRadialGradient(b / 2, h / 2, 0, b / 2, h / 2, Math.hypot(b, h) / 2);
     v.addColorStop(0, grund.innen);
     v.addColorStop(1, grund.aussen);
@@ -783,7 +880,18 @@ export class Werkstatt {
             <label class="bw-feld bw-rosenfarbe">${esc(t('Farbe der Rosen'))}<input type="color" name="rosenFarbe"></label>
             <button class="klein bw-wuerfel" data-tun="wuerfeln">${esc(t('Ranken neu würfeln'))}</button>
           </div>
-          ${wahl('grund', t('Hintergrund'), [['dunkel', t('dunkel')], ['pergament', t('Pergament')], ['weiss', t('weiß')], ['klardunkel', t('transparent, für dunklen Grund')], ['klarhell', t('transparent, für hellen Grund')]])}
+          ${wahl('grund', t('Hintergrund'), [['dunkel', t('dunkel')], ['pergament', t('Pergament')], ['weiss', t('weiß')], ['klardunkel', t('transparent, für dunklen Grund')], ['klarhell', t('transparent, für hellen Grund')], ['bild', t('eigenes Bild')]])}
+          <div class="bw-nur-bild">
+            <label class="klein bw-grund-datei">${esc(t('Bild wählen …'))}<input type="file" name="grundDatei" accept="image/*" hidden></label>
+            <button class="klein" data-tun="grund-person">${esc(t('Bild der Hauptperson …'))}</button>
+            <p class="bw-tipp bw-grund-meldung" role="status"></p>
+            ${wahl('grundArt', t('Einpassen'), [['fuellen', t('Fläche füllen')], ['ganz', t('ganz zeigen')], ['kacheln', t('kacheln')]])}
+            <label class="bw-feld">${esc(t('Größe'))}<input type="range" name="grundGroesse" min="0.2" max="4" step="0.01"></label>
+            <label class="bw-feld">${esc(t('waagrecht'))}<input type="range" name="grundX" min="0" max="1" step="0.005"></label>
+            <label class="bw-feld">${esc(t('senkrecht'))}<input type="range" name="grundY" min="0" max="1" step="0.005"></label>
+            <label class="bw-feld" title="${esc(t('Links dunkler, rechts heller; die Schrift passt sich an'))}">${esc(t('Abdunkeln / Aufhellen'))}<input type="range" name="grundSchleier" min="-0.85" max="0.85" step="0.01"></label>
+            <button class="klein" data-tun="grund-zurueck">${esc(t('Größe und Lage zurücksetzen'))}</button>
+          </div>
           ${haken('kontur', t('Kontur der Form'))}${haken('namen', t('Namen'))}${haken('jahre', t('Lebensdaten'))}
         </section>
         <section><h3>${esc(t('Ausgabe'))}</h3>
@@ -805,7 +913,11 @@ export class Werkstatt {
     el.addEventListener('input', ev => {
       if (ev.target.name === 'rankenGroesse') this.s.rankenGroesse = Number(ev.target.value);
       else if (ev.target.name === 'groesse') this.s.groesseJe[this.s.form] = Number(ev.target.value);
-      else return;
+      else if (GRUND_REGLER.includes(ev.target.name)) {   // nur der Hintergrund ändert sich: kein neuer Plan nötig
+        this.s[ev.target.name] = Number(ev.target.value);
+        this.merken();
+        return this.malen();
+      } else return;
       this.geaendert();
     });
     this.kontext = el.querySelector('.bw-kontext');
@@ -938,6 +1050,8 @@ export class Werkstatt {
       if (tun === 'speichern') this.speichern();
       if (tun === 'drucken') this.drucken();
       if (tun === 'rankenfarbe') { this.s.rankenFarbe = ''; this.geaendert(); }
+      if (tun === 'grund-person') this.grundAusPerson();
+      if (tun === 'grund-zurueck') { Object.assign(this.s, { grundGroesse: 1, grundX: 0.5, grundY: 0.5 }); this.grundFelder(); this.merken(); this.malen(); }
       if (tun === 'wuerfeln') { this.s.rankenSaat = (this.s.rankenSaat || 1) + 1; this.geaendert(); }
     });
     el.addEventListener('change', ev => {
@@ -950,7 +1064,8 @@ export class Werkstatt {
         return;
       }
       if (n === 'hauptperson') return this.hauptperson(w.value);
-      if (n === 'groesse' || n === 'rankenGroesse') return;   // läuft schon über „input“
+      if (n === 'groesse' || n === 'rankenGroesse' || GRUND_REGLER.includes(n)) return;   // läuft schon über „input“
+      if (n === 'grundDatei') { if (w.files?.[0]) this.grundWaehlen(w.files[0]); w.value = ''; return; }
       if (n === 'rahmen') this.s.rahmenJe[this.s.form] = w.value;
       else if (n === 'aus') {
         this.s.aus = this.s.aus.filter(id => id !== w.value);
@@ -975,6 +1090,7 @@ export class Werkstatt {
     this.root = root;
     this.feld('hauptperson').value = root.name.voll;
     for (const n of ['vorfahren', 'nachkommen', 'ranken', 'rankenArt', 'rankenGroesse', 'ton', 'linie', 'linienart', 'linienfarbe', 'grund', 'format', 'stammLinie', 'titel']) this.feld(n).value = this.s[n] ?? '';
+    this.grundFelder();
     this.feld('titel').placeholder = root.name.nachname ? t('z. B. Stammbaum der Familie {name}', { name: root.name.nachname }) : '';
     for (const n of ['partner', 'geschwister', 'seiten', 'kontur', 'namen', 'jahre']) this.feld(n).checked = this.s[n];
     if (!this.feld('format').value) this.feld('format').value = this.s.format = VORGABE.format;
@@ -1042,6 +1158,8 @@ export class Werkstatt {
     const flaeche = !!(form.flaeche || form.streng), seiten = this.feld('seiten');
     for (const n of ['nachkommen', 'partner', 'geschwister']) this.feld(n).disabled = !!form.ohne?.includes(n);
     this.el.querySelector('.bw-nur-stamm').hidden = !form.eigeneAuswahl;
+    this.el.querySelector('.bw-nur-bild').hidden = this.s.grund !== 'bild';
+    if (this.s.grund === 'bild') this.grundLaden();
     this.feld('kontur').nextSibling.textContent = ' ' + t(form.zierName ?? (form.baum ? 'Baum zeichnen' : 'Kontur der Form'));
     if (this.plan.warten) this.plan.warten.then(() => this.malen());
     for (const p of this.plan.bilderLaden ?? []) this.lade(this.bildVon(p).src);
@@ -1104,15 +1222,108 @@ export class Werkstatt {
       a.y = Math.max(0, Math.min(a.z - 1, a.y));
       const vx = a.x * c.width, vy = a.y * c.height;
       g.setTransform(a.z, 0, 0, a.z, -vx, -vy);
-      this.sicht = { ...male(g, c.width, c.height, this.plan, this.s, this.bilder, p => this.bildVon(p), { schaerfe: a.z, zwischen: this.zwischen, massstab: this.massstab(), versatz: this.versatz() }), f: c.width / b, vx, vy };
+      this.sicht = { ...male(g, c.width, c.height, this.plan, this.s, this.bilder, p => this.bildVon(p), { schaerfe: a.z, zwischen: this.zwischen, massstab: this.massstab(), versatz: this.versatz(), grundBild: this.grundAktuell() }), f: c.width / b, vx, vy };
       const anzeige = this.el.querySelector('.bw-zoom');
       const gesamt = a.z * this.massstab();
       anzeige.hidden = Math.abs(gesamt - 1) < 0.005 && !this.s.versatzJe[this.s.form];
       anzeige.textContent = `${Math.round(gesamt * 100)} % ✕`;
       c.classList.toggle('gezoomt', a.z > 1);
-      c.classList.toggle('klar', !GRUENDE[this.s.grund]?.innen);
+      c.classList.toggle('klar', this.s.grund !== 'bild' && !GRUENDE[this.s.grund]?.innen);
       c.classList.toggle('klar-hell', this.s.grund === 'klarhell');
     });
+  }
+
+  // --- eigenes Hintergrundbild ------------------------------------------------------------------------------
+  grundAktuell() {
+    return this.grundBild?.id === this.s.grundBild ? this.grundBild : null;
+  }
+
+  grundFelder() {
+    for (const n of ['grundArt', ...GRUND_REGLER]) this.feld(n).value = this.s[n] ?? VORGABE[n];
+    this.grundMelden();
+  }
+
+  grundMelden(text) {
+    this.el.querySelector('.bw-grund-meldung').textContent = text
+      ?? (this.s.grundBild ? this.s.grundName : t('Noch kein Bild gewählt. Es bleibt nur in diesem Browser.'));
+  }
+
+  /** gemerktes Bild aus IndexedDB holen (nach dem Öffnen oder beim Laden einer Szene) */
+  grundLaden() {
+    const id = this.s.grundBild;
+    if (!id) { this.grundMelden(); return Promise.resolve(); }
+    if (this.grundBild?.id === id) return Promise.resolve();
+    if (this.grundLaedt?.id === id) return this.grundLaedt.p;
+    const p = (async () => {
+      try {
+        const blob = await grundSpeicher('readonly', st => st.get(id));
+        if (!blob) throw new Error('fehlt');
+        const gb = await grundAufbereiten(blob);
+        delete gb.blob;
+        this.grundBild = { id, ...gb };
+        this.grundMelden();
+        this.malen();
+      } catch (e) {
+        this.grundMelden(t('Das gemerkte Bild ist in diesem Browser nicht mehr vorhanden. Bitte neu wählen.'));
+      } finally { if (this.grundLaedt?.id === id) this.grundLaedt = null; }
+    })();
+    this.grundLaedt = { id, p };
+    return p;
+  }
+
+  /** Hintergrund aus den Bildern der Hauptperson in webtrees wählen */
+  grundAusPerson() {
+    const fenster = this.wahlFenster, p = this.root, alle = this.medienVon(p);
+    const kachel = (src, titel) => `<button data-grund="${esc(src)}" data-titel="${esc(titel)}" title="${esc(titel)}"><img src="${esc(src)}" alt="${esc(titel)}" loading="lazy"></button>`;
+    fenster.innerHTML = `<div class="bw-wahl-fenster bw-grund-wahl">
+      <h3>${esc(t('Hintergrund aus den Bildern von {name}', { name: p.name.voll }))}</h3>
+      <div class="bw-wahl-raster">${alle.map(b => kachel(b.src, b.titel || p.name.voll)).join('')}</div>
+      ${alle.length ? '' : `<p class="bw-tipp">${esc(t('Zu dieser Person gibt es keine Bilder.'))}</p>`}
+      <div class="bw-wahl-knoepfe"><span></span><button class="klein" data-aw="fertig">${esc(t('Schließen'))}</button></div></div>`;
+    fenster.hidden = false;
+    fenster.querySelectorAll('.bw-wahl-raster img').forEach(i => { i.onerror = () => i.closest('button').remove(); });
+    fenster.oninput = fenster.onchange = ev => ev.stopPropagation();
+    fenster.onclick = async ev => {
+      const k = ev.target.closest('[data-grund]');
+      if (k) {
+        fenster.hidden = true;
+        this.grundMelden(t('Bild wird geladen …'));
+        try {
+          const r = await fetch(k.dataset.grund, { credentials: 'same-origin' });
+          if (!r.ok) throw new Error(String(r.status));
+          await this.grundWaehlen(await r.blob(), k.dataset.titel);
+        } catch (e) { this.grundMelden(t('Das Bild ließ sich nicht öffnen.')); }
+      }
+      if (ev.target.closest('[data-aw="fertig"]') || ev.target === fenster) fenster.hidden = true;
+    };
+    fenster.querySelector('[data-aw="fertig"]').focus();
+  }
+
+  async grundWaehlen(datei, name = datei.name) {
+    this.grundMelden(t('Bild wird geladen …'));
+    try {
+      const gb = await grundAufbereiten(datei), id = `g${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+      await grundSpeicher('readwrite', st => st.put(gb.blob, id));
+      delete gb.blob;
+      this.grundBild = { id, ...gb };
+      Object.assign(this.s, { grund: 'bild', grundBild: id, grundName: String(name || '').slice(0, 80), grundGroesse: 1, grundX: 0.5, grundY: 0.5 });
+      this.feld('grund').value = 'bild';
+      this.grundFelder();
+      this.geaendert();
+      this.grundAufraeumen();
+    } catch (e) {
+      this.grundMelden(t('Das Bild ließ sich nicht öffnen.'));
+    }
+  }
+
+  /** Bilder löschen, die weder die Werkstatt noch eine Szene mehr braucht */
+  async grundAufraeumen() {
+    try {
+      const noch = new Set([this.s.grundBild, ...this.szenen().map(sz => sz.werte?.grundBild)].filter(Boolean));
+      const alle = await grundSpeicher('readonly', st => st.getAllKeys());
+      const weg = (alle ?? []).filter(k => !noch.has(k));
+      if (weg.length) await grundSpeicher('readwrite', st => { weg.forEach(k => st.delete(k)); });
+    } catch (e) { /* ohne IndexedDB */ }
   }
 
   massstab() {
@@ -1485,6 +1696,7 @@ export class Werkstatt {
       return;
     }
     this.szenenSichern(this.szenen().filter(x => x.name !== name));
+    this.grundAufraeumen();
     this.szenenZeigen();
     this.szenenMeldung(t('Szene „{name}“ gelöscht.', { name }));
   }
@@ -1522,7 +1734,8 @@ export class Werkstatt {
     const c = document.createElement('canvas');
     c.width = f.b;
     c.height = f.h;
-    male(c.getContext('2d'), f.b, f.h, this.plan, this.s, karte, p => this.bildVon(p), { massstab: this.massstab(), versatz: this.versatz() });
+    if (this.s.grund === 'bild') await this.grundLaden();
+    male(c.getContext('2d'), f.b, f.h, this.plan, this.s, karte, p => this.bildVon(p), { massstab: this.massstab(), versatz: this.versatz(), grundBild: this.grundAktuell() });
     const blob = await new Promise(ok => c.toBlob(ok, 'image/png'));
     if (!blob) throw new Error('kein Bild');
     return { blob, f, klein, name: `Stammbaum-${this.root.name.voll}-${f.b}x${f.h}`.replace(/[^\p{L}\p{N}]+/gu, '-') + '.png' };

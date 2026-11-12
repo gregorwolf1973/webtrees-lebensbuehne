@@ -753,3 +753,9 @@ body.menue-offen .umschalter { flex-wrap: wrap; }
   .bw-flaeche { grid-row: 1; }
   .bw-seite { grid-row: 2; border-right: 0; border-top: 1px solid var(--linie); }
 }
+.bw-nur-bild { display: flex; flex-direction: column; gap: 6px; margin: 4px 0 8px; padding-left: 10px; border-left: 2px solid var(--linie); }
+.bw-nur-bild[hidden] { display: none; }
+.bw-nur-bild > .klein { align-self: flex-start; }
+.bw-grund-datei { display: inline-block; cursor: pointer; }
+.bw-grund-meldung { margin: 0; overflow-wrap: anywhere; }
+.bw-grund-wahl { grid-template-columns: minmax(0, 1fr); }

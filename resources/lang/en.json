@@ -455,5 +455,22 @@
   "Für diese Personen sind keine Geburtsorte mit Koordinaten bekannt.": "No birthplaces with coordinates are known for these people.",
   "Für die Hauptperson gibt es kein Bild.": "There is no picture of the main person.",
   "Bilder werden geladen …": "Loading pictures …",
-  "Das Bild der Hauptperson lässt sich nicht auslesen.": "The main person's picture cannot be read."
+  "Das Bild der Hauptperson lässt sich nicht auslesen.": "The main person's picture cannot be read.",
+  "eigenes Bild": "your own image",
+  "Bild der Hauptperson …": "Image of the main person …",
+  "Einpassen": "Fit",
+  "Fläche füllen": "fill the area",
+  "ganz zeigen": "show whole image",
+  "kacheln": "tile",
+  "waagrecht": "horizontal",
+  "senkrecht": "vertical",
+  "Links dunkler, rechts heller; die Schrift passt sich an": "Left darker, right lighter; the lettering adapts",
+  "Abdunkeln / Aufhellen": "Darken / lighten",
+  "Größe und Lage zurücksetzen": "Reset size and position",
+  "Noch kein Bild gewählt. Es bleibt nur in diesem Browser.": "No image chosen yet. It stays in this browser only.",
+  "Das gemerkte Bild ist in diesem Browser nicht mehr vorhanden. Bitte neu wählen.": "The saved image is no longer available in this browser. Please choose it again.",
+  "Bild wird geladen …": "Loading image …",
+  "Das Bild ließ sich nicht öffnen.": "The image could not be opened.",
+  "Hintergrund aus den Bildern von {name}": "Background from the images of {name}",
+  "Zu dieser Person gibt es keine Bilder.": "There are no images of this person."
 }
