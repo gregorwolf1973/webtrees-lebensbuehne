@@ -15,6 +15,7 @@ use Fisharebest\Webtrees\Contracts\UserInterface;
 use Fisharebest\Webtrees\DB;
 use Fisharebest\Webtrees\Http\Exceptions\HttpAccessDeniedException;
 use Fisharebest\Webtrees\Http\Exceptions\HttpNotFoundException;
+use Fisharebest\Webtrees\Http\RequestHandlers\IndividualPage;
 use Fisharebest\Webtrees\Http\RequestHandlers\LoginPage;
 use Fisharebest\Webtrees\I18N;
 use Fisharebest\Webtrees\Individual;
@@ -47,8 +48,10 @@ use function array_filter;
 use function array_keys;
 use function array_map;
 use function array_values;
+use function array_is_list;
 use function basename;
 use function class_exists;
+use function csrf_token;
 use function extension_loaded;
 use function fclose;
 use function file_get_contents;
@@ -105,7 +108,7 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
     use ModuleChartTrait;
     use ModuleGlobalTrait;
 
-    public const string VERSION = '1.14.1';
+    public const string VERSION = '1.15.0';
 
     // Oberflächenwörter des Moduls, die webtrees selbst in viele Sprachen übersetzt (deutscher Schlüssel => englische msgid)
     private const array WEBTREES_WOERTER = [
@@ -125,6 +128,10 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
     private const string ROUTE_GESICHT = 'lebensbuehne-gesicht';
     private const string ROUTE_KLANG   = 'lebensbuehne-klang';
     private const string ROUTE_GESCHICHTE = 'lebensbuehne-geschichte';
+    private const string ROUTE_ANSICHTEN  = 'lebensbuehne-ansichten';
+    private const string ROUTE_ANSICHTEN_SPEICHERN = 'lebensbuehne-ansichten-speichern';
+    // gespeicherte Ansichten je Benutzer und Stammbaum (Moduleinstellung, Name höchstens 32 Zeichen)
+    private const int ANSICHTEN_HOECHSTENS = 512000;
 
     // Tags und Attribute, die aus den Geschichten des webtrees-Moduls „Geschichten“ übernommen werden
     private const array HTML_TAGS = ['p', 'br', 'b', 'strong', 'i', 'em', 'u', 'ul', 'ol', 'li', 'h2', 'h3', 'h4', 'blockquote', 'a', 'img',
@@ -148,6 +155,8 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
         $karte->get(self::ROUTE_GESICHT, '/tree/{tree}/lebensbuehne-gesicht/{xref}/{media}', $this);
         $karte->get(self::ROUTE_KLANG, '/tree/{tree}/lebensbuehne-klang/{datei}', $this);
         $karte->get(self::ROUTE_GESCHICHTE, '/tree/{tree}/lebensbuehne-geschichte/{xref}', $this);
+        $karte->get(self::ROUTE_ANSICHTEN, '/tree/{tree}/lebensbuehne-ansichten', $this);
+        $karte->post(self::ROUTE_ANSICHTEN_SPEICHERN, '/tree/{tree}/lebensbuehne-ansichten', $this);
 
         View::registerNamespace($this->name(), $this->resourcesFolder() . 'views/');
     }
@@ -243,6 +252,8 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
             self::ROUTE_GESICHT => $this->gesicht($request, $tree),
             self::ROUTE_KLANG   => $this->klang($request, $tree),
             self::ROUTE_GESCHICHTE => $this->geschichte($request, $tree, $user),
+            self::ROUTE_ANSICHTEN  => $this->ansichten($tree, $user),
+            self::ROUTE_ANSICHTEN_SPEICHERN => $this->ansichtenSpeichern($request, $tree, $user),
             default             => throw new HttpNotFoundException(),
         };
     }
@@ -306,6 +317,9 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
             'daten'         => route(self::ROUTE_DATEN, ['tree' => $tree->name(), 'xref' => $individual->xref()]),
             'seite'         => route(self::ROUTE_SEITE, ['tree' => $tree->name(), 'xref' => 'XREF']),
             'geschichte'    => route(self::ROUTE_GESCHICHTE, ['tree' => $tree->name(), 'xref' => 'XREF']),
+            'person'        => route(IndividualPage::class, ['tree' => $tree->name(), 'xref' => 'XREF']),
+            'ansichten'     => route(self::ROUTE_ANSICHTEN, ['tree' => $tree->name()]),
+            'csrf'          => csrf_token(),
             'grenzen'       => (object) $grenzen,
             'zeitgeschehen' => $this->assetUrl('data/zeitgeschehen.json'),
             'sterne'        => $this->assetUrl('data/sterne.json'),
@@ -485,6 +499,34 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
     }
 
     // Eigene Klänge und das Lied liegen im webtrees-Datenordner unter lebensbuehne/ (nicht öffentlich erreichbar)
+    /** Name der Moduleinstellung mit den Ansichten eines Benutzers in einem Stammbaum */
+    private function ansichtenSchluessel(Tree $tree, UserInterface $user): string
+    {
+        return 'ansichten-' . $tree->id() . '-' . $user->id();
+    }
+
+    /** Gespeicherte Ansichten des angemeldeten Benutzers (JSON-Objekt: Hauptperson → Ansichten) */
+    private function ansichten(Tree $tree, UserInterface $user): ResponseInterface
+    {
+        $json = $this->getPreference($this->ansichtenSchluessel($tree, $user), '{}');
+
+        return response($json !== '' ? $json : '{}', 200, ['content-type' => 'application/json', 'cache-control' => 'private, no-cache']);
+    }
+
+    /** Ansichten speichern: Feld „daten“ mit einem JSON-Objekt, höchstens ANSICHTEN_HOECHSTENS Bytes */
+    private function ansichtenSpeichern(ServerRequestInterface $request, Tree $tree, UserInterface $user): ResponseInterface
+    {
+        $roh   = Validator::parsedBody($request)->string('daten', '{}');
+        $daten = strlen($roh) <= self::ANSICHTEN_HOECHSTENS ? json_decode($roh, true) : null;
+        if (!is_array($daten) || ($daten !== [] && array_is_list($daten))) {
+            return response(json_encode(['fehler' => 'ungueltig']), 400, ['content-type' => 'application/json']);
+        }
+        $json = $daten === [] ? '{}' : (string) json_encode($daten, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $this->setPreference($this->ansichtenSchluessel($tree, $user), $json);
+
+        return response(json_encode(['ok' => true]), 200, ['content-type' => 'application/json', 'cache-control' => 'private, no-cache']);
+    }
+
     private function klang(ServerRequestInterface $request, Tree $tree): ResponseInterface
     {
         $datei  = Validator::attributes($request)->string('datei');

@@ -70,13 +70,17 @@ let hauptperson = null;
 
 // Personen der Ansicht: die Hauptperson, ihre Vorfahren und/oder Nachkommen; setzt die Ansichtsfelder an den Personen
 // `generationen` begrenzt, wie weit der Fächer von der Hauptperson (und vom Partner) aus reicht; `liste.gekuerzt` sagt, ob dadurch Personen fehlen
-// `ohneVorfahren`: Personen-IDs, deren Vorfahren (samt deren Seitenlinien) ausgeblendet sind – per Rechtsklick auf der Bühne
+// Per Rechtsklick auf der Bühne: `ohneVorfahren` = Personen-IDs, deren Vorfahren (samt deren Seitenlinien) ausgeblendet
+// sind; `nurLinie` = ID eines Vorfahren, von dem aus nur die Linie zur Hauptperson (oder ihrem Partner) und seine eigenen
+// Vorfahren zu sehen sind. Wo deshalb Eltern fehlen, steht in `versteckt` die Liste der weggelassenen Eltern.
 export function ansicht(daten, root, { vorfahren = true, nachkommen = false, partner = false, geschwister = false, generationen = Infinity,
-  ohneVorfahren = new Set() } = {}) {
+  ohneVorfahren = new Set(), nurLinie = null } = {}) {
   for (const p of daten.personen) {
     p.imBild = false; p.rolle = null; p.generation = null; p.seite = null; p.partnerseite = false; p.bezug = null;
     p.sosa = null; p.zumStart = null; p.mannesstamm = false; p.zweig = null; p.halb = false; p.k = null; p.kern = null;
+    p.versteckt = null;
   }
+  const linie = linieZu(root, nurLinie ? daten.byId.get(nurLinie) : null);
   hauptperson = root;
   Object.assign(root, { imBild: true, rolle: 'start', generation: 0, seite: 'start', sosa: 1 });
   const liste = [root];
@@ -86,9 +90,10 @@ export function ansicht(daten, root, { vorfahren = true, nachkommen = false, par
     const reihe = [start];
     while (reihe.length) {
       const x = reihe.shift();
-      if (ohneVorfahren.has(x.id)) continue;
+      if (ohneVorfahren.has(x.id)) { x.versteckt = [x.vaterP, x.mutterP].filter(Boolean); continue; }
       [[x.vaterP, 0], [x.mutterP, 1]].forEach(([e, add]) => {
         if (!e || e.imBild) return;   // Ahnenschwund: jede Person nur einmal
+        if (linie.weg.has(x) && !linie.erlaubt.has(e)) { (x.versteckt ??= []).push(e); return; }
         if (x.generation >= generationen) { gekuerzt = true; return; }
         Object.assign(e, { imBild: true, rolle: 'vorfahr', generation: x.generation + 1, sosa: x.sosa * 2 + add, zumStart: x,
           seite: x === start ? (add ? 'mutter' : 'vater') : x.seite, partnerseite, bezug: partnerseite ? start : null,
@@ -197,6 +202,30 @@ export function ansicht(daten, root, { vorfahren = true, nachkommen = false, par
   if (geschwister) seitenlinien();
   liste.gekuerzt = gekuerzt;
   return liste;
+}
+
+/** Für „Nur diese Linie“: `weg` = Personen zwischen der Hauptperson (oder ihren Partnern) und dem Vorfahren `ziel`,
+ *  `erlaubt` = die Eltern, über die es auf diesem Weg weitergeht (samt `ziel`). Ist `ziel` kein Vorfahr, bleibt alles leer. */
+export function linieZu(root, ziel) {
+  const leer = { weg: new Set(), erlaubt: new Set() };
+  if (!ziel) return leer;
+  const vorfahren = new Set();
+  const reihe = [root, ...root.partnerP];
+  while (reihe.length) {
+    const x = reihe.shift();
+    if (vorfahren.has(x)) continue;
+    vorfahren.add(x);
+    reihe.push(...[x.vaterP, x.mutterP].filter(Boolean));
+  }
+  if (!vorfahren.has(ziel) || ziel === root || root.partnerP.includes(ziel)) return leer;
+  // Nachkommen des Ziels, die zugleich Vorfahren (oder die Hauptperson / ihr Partner) sind
+  const erlaubt = new Set([ziel]), runter = [ziel];
+  while (runter.length) {
+    const x = runter.shift();
+    for (const k of x.kinderP) if (vorfahren.has(k) && !erlaubt.has(k)) { erlaubt.add(k); runter.push(k); }
+  }
+  const weg = new Set([...erlaubt].filter(x => x !== ziel));
+  return { weg, erlaubt };
 }
 
 // Netz (wie die Ansicht „Lineage“): Personen, die über Eltern, Kinder oder Partner mit der Hauptperson verbunden sind,

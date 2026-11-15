@@ -143,6 +143,23 @@ function textSprite(text, { groesse = 1, farbe = '#8b93a1', gewicht = 500 } = {}
   return s;
 }
 
+/** Kleines Schild „▲ n“ mit dunklem Grund und goldenem Rand: über Personen, deren Vorfahren ausgeblendet sind */
+function markeSprite(text, groesse) {
+  const c = document.createElement('canvas'), g = c.getContext('2d');
+  g.font = '700 56px "Segoe UI", system-ui, sans-serif';
+  c.width = Math.ceil(g.measureText(text).width) + 44; c.height = 80;
+  rundRechteck(g, 3, 3, c.width - 6, c.height - 6, 22);
+  g.fillStyle = 'rgba(12, 15, 21, 0.88)'; g.fill();
+  g.lineWidth = 4; g.strokeStyle = '#e8c06f'; g.stroke();
+  g.font = '700 56px "Segoe UI", system-ui, sans-serif';
+  g.fillStyle = '#e8c06f'; g.textBaseline = 'middle'; g.textAlign = 'center'; g.fillText(text, c.width / 2, c.height / 2 + 3);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false }));
+  s.scale.set(groesse * c.width / c.height, groesse, 1);
+  return s;
+}
+
 const kulisse = new THREE.Group();
 scene.add(kulisse);
 const ringMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.07 });
@@ -207,6 +224,9 @@ scene.add(gruppe);
 let root = daten.start, modus = { vorfahren: true, nachkommen: false, partner: false, geschwister: false, netz: false };
 let imBild = [], karten = [], linien = [];
 let ohneVorfahren = new Set();   // Personen-IDs, deren Vorfahren per Rechtsklick ausgeblendet sind
+let nurLinie = null;             // ID eines Vorfahren: nur seine Linie zur Hauptperson (Rechtsklick „Nur diese Linie zeigen“)
+let marken = [];                 // Markierungen „▲ n“ über Personen mit ausgeblendeten Vorfahren
+let adresseModus = null, adresseTeil = null;   // geteilter Link: #XREF/Ansicht/Einstellungen
 
 // Netz-Tiefe (Schritte über Eltern, Kinder, Partner) und Weltgeschehen; beides merkt sich der Browser
 const netzTiefeWahl = document.getElementById('netz-tiefe');
@@ -230,8 +250,9 @@ let mitWelt = true;
 try { mitWelt = localStorage.getItem('lb-welt') !== '0'; } catch (e) { /* an */ }
 weltgeschehenZeigen(mitWelt);
 {
-  const [id, m] = decodeURIComponent(location.hash.slice(1)).split('/');
+  const [id, m, teil] = decodeURIComponent(location.hash.slice(1)).split('/');
   if (daten.byId.has(id)) root = daten.byId.get(id);
+  if (teil) { adresseModus = m ?? ''; adresseTeil = teil; }
   if (m) modus = { vorfahren: m.includes('v'), nachkommen: m.includes('n'), partner: m.includes('p'), geschwister: m.includes('g'), netz: m.includes('x') };
 }
 
@@ -244,7 +265,7 @@ function baue() {
   }
   sim = null; netzKanten = null; netzHell = null; netzSterne = null;
   controls.autoRotate = false;
-  imBild = modus.netz ? netz(daten, root, netzTiefe) : ansicht(daten, root, { ...modus, generationen, ohneVorfahren });
+  imBild = modus.netz ? netz(daten, root, netzTiefe) : ansicht(daten, root, { ...modus, generationen, ohneVorfahren, nurLinie });
   // großer Stammbaum: sagen, dass nur die Umgebung der Hauptperson geladen ist
   const zahl = n => n.toLocaleString(SPRACHE_EN ? 'en' : 'de');
   const ausschnitt = daten.ausschnitt ? ' · ' + t('Ausschnitt: {n} von {m} Personen geladen', { n: zahl(daten.personen.length), m: zahl(daten.ausschnitt.gesamt) }) : '';
@@ -323,6 +344,27 @@ function baue() {
     return rohr;
   });
 
+  // Markierung über Personen, deren Vorfahren ausgeblendet sind: „▲ Anzahl“, ein Klick blendet sie wieder ein
+  marken = [];
+  if (!modus.netz) for (const p of imBild) {
+    if (!p.versteckt?.length) continue;
+    const weg = new Set(), reihe = [...p.versteckt];
+    while (reihe.length) {
+      const x = reihe.shift();
+      if (!x || weg.has(x) || x.imBild) continue;
+      weg.add(x);
+      reihe.push(x.vaterP, x.mutterP);
+    }
+    if (!weg.size) continue;
+    const groesse = 0.85, g = p.rolle === 'start' ? 1.35 : 1;
+    const m = markeSprite(`▲ ${weg.size}`, groesse);
+    m.center.set(0.5, -(1.55 * g + 0.12) / groesse);   // über der Karte, von jeder Seite gesehen
+    m.position.copy(p.pos);
+    m.renderOrder = 3;
+    m.userData = { marke: p, anzahl: weg.size };
+    gruppe.add(m);
+    marken.push(m);
+  }
   if (modus.netz) netzLinienBauen();
   // die direkte Linie läuft nie über Seitenverwandte (sonst ohne Auswahl über den ältesten Großonkel)
   const nachGeburt = [...imBild].filter(p => modus.netz ? p.rolle === 'vorfahr' || p.rolle === 'start' : p.rolle !== 'seiten' && p.rolle !== 'angeheiratet')
@@ -792,6 +834,8 @@ function setzeHauptperson(p) {
     return;
   }
   root = p;
+  const start = startAnsichtFuer(p);   // gespeicherte Startansicht der neuen Hauptperson
+  if (start) ansichtUebernehmen(start);
   baue();
   waehle(p);
 }
@@ -1526,7 +1570,7 @@ function treffer(ev) {
   ray.setFromCamera(maus, camera);
   // Karten (Instanzen im Atlas) rechnet karten.js selbst, die Zeitmarken der Raycaster; es gilt das Nächste
   const karte = stapel.treffer(maus.x, maus.y, camera);
-  const marke = ray.intersectObjects(zeitMarken, false).find(h => h.object.material.opacity > 0.2);
+  const marke = ray.intersectObjects([...marken, ...zeitMarken], false).find(h => h.object.userData.marke || h.object.material.opacity > 0.2);
   if (marke && (!karte || marke.distance < karte.abstand)) return marke.object;
   return karte ? karte.karte : null;
 }
@@ -1556,8 +1600,12 @@ function hoverAuswerten() {
   const zeiger = o ? 'pointer' : 'grab';
   if (renderer.domElement.style.cursor !== zeiger) renderer.domElement.style.cursor = zeiger;
   if (!o) { tip.hidden = true; return; }
-  const p = o.p, z = o.userData?.zeit;
-  tip.innerHTML = p ? `<b>${p.name.voll}</b><span>${jahreKurz(p)} · ${verwandtschaft(p)}${!modus.netz && ohneVorfahren.has(p.id) ? ' · ' + t('Vorfahren ausgeblendet') : ''}</span>`
+  const p = o.p, z = o.userData?.zeit, mk = o.userData?.marke;
+  if (mk) {
+    tip.innerHTML = '<b></b><span></span>';
+    tip.querySelector('b').textContent = mk.name.voll;
+    tip.querySelector('span').textContent = t('{n} Vorfahren ausgeblendet · Klick blendet sie ein', { n: o.userData.anzahl });
+  } else tip.innerHTML = p ? `<b>${p.name.voll}</b><span>${jahreKurz(p)} · ${verwandtschaft(p)}${!modus.netz && ohneVorfahren.has(p.id) ? ' · ' + t('Vorfahren ausgeblendet') : ''}</span>`
     : `<b>${z.titel}</b><span>${z.bis ? `${z.jahr}–${z.bis}` : z.jahr} · ${t('Zeitgeschehen')}</span>`;
   tip.style.left = Math.min(ev.clientX + 16, innerWidth - 300) + 'px';
   tip.style.top = ev.clientY + 14 + 'px';
@@ -1575,8 +1623,10 @@ renderer.domElement.addEventListener('dblclick', ev => {
   if (o?.p && o.p !== root) { stoppeAbspielen(); setzeHauptperson(o.p); }
 });
 renderer.domElement.addEventListener('pointerup', ev => {
+  if (langDruck) { clearTimeout(langDruck.uhr); const offen = langDruck.offen; langDruck = null; if (offen) return; }
   if (!runter || Math.hypot(ev.clientX - runter.x, ev.clientY - runter.y) > 5) return;
   const o = treffer(ev);
+  if (o?.userData?.marke) { kontextSchliessen(); return vorfahrenEinblenden(o.userData.marke); }
   // rechte Maustaste ohne Ziehen (Ziehen verschiebt die Ansicht): Menü zur Person
   if (ev.button === 2) { if (o?.p && !modus.netz) kontextOeffnen(o.p, ev.clientX, ev.clientY); return; }
   kontextSchliessen();
@@ -1586,10 +1636,12 @@ renderer.domElement.addEventListener('pointerup', ev => {
 
 addEventListener('keydown', ev => {
   if (ev.key === 'Escape' && !kontext.hidden) { kontextSchliessen(); ev.preventDefault(); return; }
+  if (ev.key === 'Escape' && !fenster.hidden) { fenster.hidden = true; ev.preventDefault(); return; }
   if (ev.key === 'Escape' && !ev.defaultPrevented) panel.schliesse();
 });
 
-// --- Rechtsklick auf eine Person: ihre Vorfahren aus- und wieder einblenden ---------------------------------------
+// --- Personenmenü: Rechtsklick, auf Handy und Tablet langes Drücken -------------------------------------------------
+const LBK = window.LEBENSBUEHNE || {};
 const kontext = document.createElement('div');
 kontext.className = 'bw-kontext lb-kontext';
 kontext.setAttribute('role', 'menu');
@@ -1597,57 +1649,163 @@ kontext.hidden = true;
 document.body.append(kontext);
 renderer.domElement.addEventListener('contextmenu', ev => ev.preventDefault());
 function kontextSchliessen() { kontext.hidden = true; }
+/** Vorfahren der Person wieder einblenden (Markierung oder Menü) */
+function vorfahrenEinblenden(p) {
+  if (ohneVorfahren.has(p.id)) ohneVorfahren.delete(p.id);
+  else if (nurLinie) nurLinie = null;
+  stoppeAbspielen();
+  panel.schliesse();
+  baue();
+}
 function kontextOeffnen(p, x, y) {
-  // Vorfahren stehen im Bild, wenn ein Elternteil über diese Person in den Fächer kam
-  const aus = ohneVorfahren.has(p.id), sichtbar = p.eltern.some(e => e.imBild && e.zumStart === p);
-  const text = aus ? t('Vorfahren einblenden') : sichtbar ? t('Vorfahren ausblenden') : t('Keine Vorfahren im Bild');
-  kontext.innerHTML = `<h4></h4><button role="menuitem" data-k="vorfahren"${aus || sichtbar ? '' : ' disabled'}></button>`;
-  kontext.querySelector('h4').textContent = p.name.voll;
-  const knopf = kontext.querySelector('button');
-  knopf.textContent = text;
-  knopf.addEventListener('click', () => {
+  const eintraege = [];
+  if (!modus.netz) {
+    const aus = ohneVorfahren.has(p.id), sichtbar = p.eltern.some(e => e.imBild && e.zumStart === p);
+    eintraege.push(['vorfahren', aus ? t('Vorfahren einblenden') : sichtbar ? t('Vorfahren ausblenden') : t('Keine Vorfahren im Bild'), aus || sichtbar]);
+    if (nurLinie === p.id) eintraege.push(['ganz', t('Ganze Familie zeigen'), true]);
+    else {
+      if (p.rolle === 'vorfahr') eintraege.push(['linie', t('Nur diese Linie zeigen'), true]);
+      if (nurLinie) eintraege.push(['ganz', t('Ganze Familie zeigen'), true]);
+    }
+  }
+  if (p !== root) eintraege.push(['hauptperson', t('Als Hauptperson'), true]);
+  eintraege.push(['geschichte', t('Lebensgeschichte öffnen'), true]);
+  if (LBK.person) eintraege.push(['webtrees', t('In webtrees öffnen'), true]);
+  const kopf = document.createElement('h4');
+  kopf.textContent = p.name.voll;
+  kontext.replaceChildren(kopf, ...eintraege.map(([k, text, an]) => {
+    const b = document.createElement('button');
+    b.setAttribute('role', 'menuitem');
+    b.dataset.k = k;
+    b.textContent = text;
+    b.disabled = !an;
+    return b;
+  }));
+  kontext.onclick = ev => {
+    const k = ev.target.closest('button')?.dataset.k;
+    if (!k) return;
     kontextSchliessen();
-    if (aus) ohneVorfahren.delete(p.id); else ohneVorfahren.add(p.id);
+    if (k === 'webtrees') return void window.open(LBK.person.replace('XREF', encodeURIComponent(p.id)), '_blank', 'noopener');
     stoppeAbspielen();
+    if (k === 'hauptperson') return setzeHauptperson(p);
+    if (k === 'geschichte') return waehle(p);
     panel.schliesse();
-    // Kamera bleibt, wo sie ist: man sieht, was verschwindet oder dazukommt
+    if (k === 'vorfahren') {
+      if (ohneVorfahren.has(p.id)) ohneVorfahren.delete(p.id); else ohneVorfahren.add(p.id);
+      return baue();   // Kamera bleibt: man sieht, was verschwindet oder dazukommt
+    }
+    nurLinie = k === 'linie' ? p.id : null;
     baue();
-  });
+    ueberblick();
+  };
   kontext.hidden = false;
-  kontext.style.left = `${Math.min(x, innerWidth - kontext.offsetWidth - 8)}px`;
-  kontext.style.top = `${Math.min(y, innerHeight - kontext.offsetHeight - 8)}px`;
+  kontext.style.left = `${Math.max(8, Math.min(x, innerWidth - kontext.offsetWidth - 8))}px`;
+  kontext.style.top = `${Math.max(8, Math.min(y, innerHeight - kontext.offsetHeight - 8))}px`;
   tip.hidden = true;
-  if (!knopf.disabled) knopf.focus();
+  kontext.querySelector('button:not([disabled])')?.focus();
 }
 addEventListener('pointerdown', ev => { if (!kontext.hidden && !kontext.contains(ev.target)) kontextSchliessen(); }, true);
 renderer.domElement.addEventListener('wheel', kontextSchliessen, { passive: true });
+// langes Drücken (Touch): nach 550 ms ohne Bewegung das Menü; ein zweiter Finger (Zoomen) bricht ab
+let langDruck = null;
+renderer.domElement.addEventListener('pointerdown', ev => {
+  clearTimeout(langDruck?.uhr);
+  langDruck = null;
+  if (ev.pointerType !== 'touch' || !ev.isPrimary) return;
+  const { clientX: x, clientY: y } = ev;
+  langDruck = { x, y, uhr: setTimeout(() => {
+    const o = treffer({ clientX: x, clientY: y });
+    if (!o?.p) return;
+    langDruck.offen = true;
+    kontextOeffnen(o.p, x, y);
+  }, 550) };
+});
+renderer.domElement.addEventListener('pointermove', ev => {
+  if (langDruck && !langDruck.offen && Math.hypot(ev.clientX - langDruck.x, ev.clientY - langDruck.y) > 10) { clearTimeout(langDruck.uhr); langDruck = null; }
+});
+renderer.domElement.addEventListener('pointercancel', () => { clearTimeout(langDruck?.uhr); langDruck = null; });
 
-// --- Ansicht speichern / Grundeinstellung -----------------------------------------------------------------------------
-// Je Stammbaum und Hauptperson merkt sich der Browser eine Ansicht (localStorage lb-ansichten): Ansichtsknöpfe,
-// Generationen, Netz-Tiefe, ausgeblendete Vorfahren, Kamera und Jahr. Sie gilt beim nächsten Öffnen dieser Hauptperson.
-// „Ansicht laden“ holt sie jederzeit zurück, „Grundeinstellung“ stellt die Vorgaben wieder her (die gespeicherte bleibt).
+// --- Ansichten: mehrere je Hauptperson, eine davon als Startansicht; im webtrees-Konto, sonst im Browser ------------
+// Je Hauptperson { start: Name | null, liste: [{ name, modus, generationen, netzTiefe, ohneVorfahren, nurLinie, kamera,
+// jahr, gespeichert }] }. Im Konto liegt das für jeden Benutzer und Stammbaum auf dem Server (Route lebensbuehne-ansichten),
+// ohne Server (Prototyp) in localStorage lb-ansichten unter „<Stammbaum>|<XREF>“.
 const ANSICHTEN = 'lb-ansichten';
-const ansichtSchluessel = () => `${(window.LEBENSBUEHNE || {}).seite || 'lokal'}|${root.id}`;
-function ansichtenLesen() {
-  try { const a = JSON.parse(localStorage.getItem(ANSICHTEN) || '{}'); return a && typeof a === 'object' ? a : {}; } catch (e) { return {}; }
+const baumKennung = LBK.seite || 'lokal';
+let ansichtenAlle = {}, ansichtenOrt = 'browser';
+const istObjekt = v => !!v && typeof v === 'object' && !Array.isArray(v);
+function lokaleAnsichten() {
+  try { const a = JSON.parse(localStorage.getItem(ANSICHTEN) || '{}'); return istObjekt(a) ? a : {}; } catch (e) { return {}; }
 }
-function ansichtenSchreiben(a) {
-  try { localStorage.setItem(ANSICHTEN, JSON.stringify(a)); return true; } catch (e) { return false; }
+/** Browser-Einträge dieses Stammbaums; das Format von 1.14 (eine Ansicht je Person) wird zur Liste */
+function ansichtenAusBrowser() {
+  const aus = {};
+  for (const [k, v] of Object.entries(lokaleAnsichten())) {
+    if (!k.startsWith(baumKennung + '|') || !istObjekt(v)) continue;
+    const name = t('Gespeicherte Ansicht');
+    aus[k.slice(baumKennung.length + 1)] = Array.isArray(v.liste) ? v : { start: name, liste: [{ ...v, name }] };
+  }
+  return aus;
 }
-const gespeicherteAnsicht = () => ansichtenLesen()[ansichtSchluessel()] ?? null;
+function browserSchreiben(alle) {
+  const lokal = lokaleAnsichten();
+  for (const k of Object.keys(lokal)) if (k.startsWith(baumKennung + '|')) delete lokal[k];
+  for (const [x, v] of Object.entries(alle)) lokal[`${baumKennung}|${x}`] = v;
+  try { localStorage.setItem(ANSICHTEN, JSON.stringify(lokal)); return true; } catch (e) { return false; }
+}
+async function ansichtenSichern() {
+  if (ansichtenOrt !== 'konto') return browserSchreiben(ansichtenAlle);
+  try {
+    const r = await fetch(LBK.ansichten, { method: 'POST', credentials: 'same-origin',
+      headers: { 'X-CSRF-TOKEN': LBK.csrf || '', 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ daten: JSON.stringify(ansichtenAlle) }) });
+    // abgelaufene Sitzung: webtrees leitet um und liefert kein { ok: true }
+    return r.ok && (await r.json().catch(() => null))?.ok === true;
+  } catch (e) { return false; }
+}
+async function ansichtenLaden() {
+  const browser = ansichtenAusBrowser();
+  if (LBK.ansichten) {
+    try {
+      const r = await fetch(LBK.ansichten, { credentials: 'same-origin', headers: { Accept: 'application/json' } });
+      const server = r.ok ? await r.json() : null;
+      if (istObjekt(server)) {
+        ansichtenOrt = 'konto';
+        ansichtenAlle = server;
+        // was bisher nur in diesem Browser lag, einmal ins Konto übernehmen
+        const neu = Object.keys(browser).filter(x => !ansichtenAlle[x]);
+        for (const x of neu) ansichtenAlle[x] = browser[x];
+        if (neu.length && await ansichtenSichern()) browserSchreiben({});
+        return;
+      }
+    } catch (e) { /* ohne Server: im Browser */ }
+  }
+  ansichtenAlle = browser;
+}
+const eintragFuer = p => {
+  const e = ansichtenAlle[p.id];
+  return istObjekt(e) && Array.isArray(e.liste) ? { start: typeof e.start === 'string' ? e.start : null, liste: e.liste.filter(a => istObjekt(a) && typeof a.name === 'string') } : { start: null, liste: [] };
+};
+const startAnsichtFuer = p => { const e = eintragFuer(p); return e.liste.find(a => a.name === e.start) ?? null; };
+const modusKuerzel = m => `${m.vorfahren ? 'v' : ''}${m.nachkommen ? 'n' : ''}${m.partner ? 'p' : ''}${m.geschwister ? 'g' : ''}${m.netz ? 'x' : ''}`;
+const modusAus = k => ({ vorfahren: k.includes('v'), nachkommen: k.includes('n'), partner: k.includes('p'), geschwister: k.includes('g'), netz: k.includes('x') });
+const runde = v => Math.round(v * 100) / 100;
+function aktuelleAnsicht(name) {
+  return { name, modus: { ...modus }, generationen: generationenWahl.value, netzTiefe: netzTiefeWahl.value, ohneVorfahren: [...ohneVorfahren],
+    nurLinie, kamera: { pos: camera.position.toArray().map(runde), ziel: controls.target.toArray().map(runde) }, jahr: zeitJahr, gespeichert: Date.now() };
+}
 const wahlGueltig = (wahl, w) => [...wahl.options].some(o => o.value === w);
 /** Gespeicherte Werte übernehmen (ohne neu zu bauen); fehlerhafte Einträge fallen auf die Vorgaben zurück */
 function ansichtUebernehmen(a) {
-  const m = a.modus ?? {};
-  modus = { vorfahren: !!m.vorfahren, nachkommen: !!m.nachkommen, partner: !!m.partner, geschwister: !!m.geschwister, netz: !!m.netz };
+  modus = modusAus(modusKuerzel(istObjekt(a.modus) ? a.modus : {}));
   if (!modus.vorfahren && !modus.nachkommen && !modus.geschwister) modus.vorfahren = true;
   if (wahlGueltig(generationenWahl, a.generationen)) generationenWahl.value = a.generationen;
   generationen = generationenWahl.value === 'alle' ? Infinity : Number(generationenWahl.value);
   if (wahlGueltig(netzTiefeWahl, a.netzTiefe)) netzTiefeWahl.value = a.netzTiefe;
   netzTiefe = netzTiefeWahl.value === 'alle' ? Infinity : Number(netzTiefeWahl.value);
   ohneVorfahren = new Set(Array.isArray(a.ohneVorfahren) ? a.ohneVorfahren.filter(id => daten.byId.has(id)) : []);
+  nurLinie = typeof a.nurLinie === 'string' && daten.byId.has(a.nurLinie) ? a.nurLinie : null;
 }
-/** Kamera und Jahr der gespeicherten Ansicht; false, wenn keine brauchbare Kamera gespeichert ist */
+/** Kamera und Jahr; false, wenn keine brauchbare Kamera dabei ist */
 function ansichtKamera(a) {
   const zahlen = v => Array.isArray(v) && v.length === 3 && v.every(Number.isFinite);
   if (typeof a.jahr === 'number' && Number.isFinite(a.jahr)) setzeJahr(Math.min(+regler.max, Math.max(+regler.min, a.jahr)));
@@ -1659,24 +1817,7 @@ function ansichtKamera(a) {
   zeichnen();
   return true;
 }
-function knopfMeldung(knopf, text) {
-  clearTimeout(knopf._meldung);
-  knopf.textContent = text;
-  knopf._meldung = setTimeout(() => { knopf.textContent = knopf.dataset.text; }, 2200);
-}
-const speicherKnopf = document.getElementById('ansicht-speichern'), ladeKnopf = document.getElementById('ansicht-laden'),
-  grundKnopf = document.getElementById('ansicht-grund');
-for (const k of [speicherKnopf, ladeKnopf, grundKnopf]) if (k) k.dataset.text = k.textContent;
-/** „Ansicht laden“ nur mit gespeicherter Ansicht; der Tooltip nennt, wann gespeichert wurde */
-function ladeKnopfSetzen() {
-  if (!ladeKnopf) return;
-  const a = gespeicherteAnsicht();
-  ladeKnopf.disabled = !a;
-  ladeKnopf.title = a ? t('Gespeichert am {datum}', { datum: new Date(a.gespeichert).toLocaleString(SPRACHE_EN ? 'en' : 'de', { dateStyle: 'medium', timeStyle: 'short' }) })
-    : t('Noch keine Ansicht für diese Hauptperson gespeichert');
-}
-ladeKnopfSetzen();
-/** Gespeicherte oder Vorgabe-Ansicht anwenden: neu bauen, Kamera und Jahr setzen */
+/** Ansicht anwenden: neu bauen, Kamera und Jahr setzen (Vorgabe: Überblick) */
 function ansichtAnwenden(a, vorgabe = false) {
   stoppeAbspielen();
   kontextSchliessen();
@@ -1690,23 +1831,143 @@ function ansichtAnwenden(a, vorgabe = false) {
   aktualisiereDarstellung();
   if (vorgabe || !ansichtKamera(a)) ueberblick();
 }
-speicherKnopf?.addEventListener('click', () => {
-  const a = ansichtenLesen();
-  a[ansichtSchluessel()] = {
-    modus: { ...modus }, generationen: generationenWahl.value, netzTiefe: netzTiefeWahl.value, ohneVorfahren: [...ohneVorfahren],
-    kamera: { pos: camera.position.toArray(), ziel: controls.target.toArray() }, jahr: zeitJahr, gespeichert: Date.now(),
-  };
-  knopfMeldung(speicherKnopf, ansichtenSchreiben(a) ? t('✓ Ansicht gespeichert') : t('Speichern nicht möglich'));
-  ladeKnopfSetzen();
+/** Link, der genau diese Ansicht öffnet: #XREF/Ansicht/a=…;l=…;g=…;t=…;j=…;k=… */
+function ansichtLink(a) {
+  const teile = [];
+  if (a.ohneVorfahren?.length) teile.push('a=' + a.ohneVorfahren.join(','));
+  if (a.nurLinie) teile.push('l=' + a.nurLinie);
+  teile.push('g=' + a.generationen, 't=' + a.netzTiefe);
+  if (typeof a.jahr === 'number') teile.push('j=' + Math.round(a.jahr * 10) / 10);
+  if (a.kamera) teile.push('k=' + [...a.kamera.pos, ...a.kamera.ziel].map(runde).join(','));
+  const basis = LBK.seite ? LBK.seite.replace('XREF', encodeURIComponent(root.id)) : location.pathname + location.search;
+  return new URL(basis, location.href).href.split('#')[0] + '#' + encodeURIComponent(root.id) + '/' + modusKuerzel(a.modus) + '/' + teile.join(';');
+}
+/** Gegenstück zu ansichtLink: Ansicht aus dem dritten Teil der Adresse (oder null) */
+function ansichtAusAdresse(kuerzel, teil) {
+  if (!teil) return null;
+  const w = Object.fromEntries(teil.split(';').map(x => x.split('=')).filter(x => x.length === 2));
+  const k = (w.k ?? '').split(',').map(Number);
+  return { modus: modusAus(kuerzel ?? 'v'), ohneVorfahren: w.a ? w.a.split(',') : [], nurLinie: w.l ?? null, generationen: w.g, netzTiefe: w.t,
+    jahr: w.j != null && w.j !== '' ? Number(w.j) : null, kamera: k.length === 6 ? { pos: k.slice(0, 3), ziel: k.slice(3) } : null };
+}
+async function linkKopieren(text) {
+  // ohne Klick des Nutzers oder bei gesperrter Zwischenablage kann das Versprechen hängen: nach 1,5 s aufgeben
+  try { return await Promise.race([navigator.clipboard.writeText(text).then(() => true), new Promise(r => setTimeout(() => r(false), 1500))]); } catch (e) { return false; }
+}
+
+// Fenster „Ansichten“ (im Menü „Weitere“)
+const fenster = document.createElement('div');
+fenster.className = 'lb-ansichten';
+fenster.setAttribute('role', 'dialog');
+fenster.setAttribute('aria-label', t('Ansichten'));
+fenster.hidden = true;
+fenster.innerHTML = `<div class="lb-ansichten-kopf"><h4></h4><button class="lb-ansichten-zu" aria-label="${t('Schließen')}">✕</button></div>
+  <ul class="lb-ansichten-liste"></ul><p class="lb-ansichten-leer"></p>
+  <form class="lb-ansichten-neu"><input name="name" maxlength="60" required autocomplete="off"><button type="submit"></button></form>
+  <button class="lb-ansichten-link" type="button"></button>
+  <input class="lb-ansichten-adresse" readonly hidden>
+  <p class="lb-ansichten-ort"></p><p class="lb-ansichten-meldung" aria-live="polite"></p>`;
+document.body.append(fenster);
+const $f = s => fenster.querySelector(s);
+$f('.lb-ansichten-neu button').textContent = t('Aktuelle Ansicht speichern');
+$f('.lb-ansichten-neu input').placeholder = t('Name der Ansicht');
+$f('.lb-ansichten-link').textContent = t('🔗 Link zur aktuellen Ansicht kopieren');
+let meldungUhr = 0;
+function fensterMeldung(text) {
+  const m = $f('.lb-ansichten-meldung');
+  m.textContent = text;
+  clearTimeout(meldungUhr);
+  meldungUhr = setTimeout(() => { m.textContent = ''; }, 4000);
+}
+/** Link anzeigen, falls der Browser das Kopieren nicht erlaubt (http ohne Zwischenablage) */
+async function linkAusgeben(link) {
+  const feld = $f('.lb-ansichten-adresse');
+  if (await linkKopieren(link)) { feld.hidden = true; return fensterMeldung(t('Link kopiert – er öffnet genau diese Ansicht.')); }
+  feld.value = link;
+  feld.hidden = false;
+  feld.select();
+  fensterMeldung(t('Kopieren nicht möglich – bitte den Link oben markieren und kopieren.'));
+}
+function fensterZeigen() {
+  const e = eintragFuer(root);
+  $f('h4').textContent = t('Ansichten für {name}', { name: root.name.voll });
+  const datum = ms => new Date(ms).toLocaleString(SPRACHE_EN ? 'en' : 'de', { dateStyle: 'medium', timeStyle: 'short' });
+  $f('.lb-ansichten-liste').replaceChildren(...e.liste.map(a => {
+    const li = document.createElement('li');
+    const laden = document.createElement('button');
+    laden.className = 'lb-ansicht-laden';
+    laden.dataset.a = 'laden';
+    laden.innerHTML = '<b></b><small></small>';
+    laden.querySelector('b').textContent = a.name;
+    laden.querySelector('small').textContent = Number.isFinite(a.gespeichert) ? datum(a.gespeichert) : '';
+    laden.title = t('Diese Ansicht laden');
+    const knopf = (aktion, text, titel) => {
+      const b = document.createElement('button');
+      b.dataset.a = aktion; b.textContent = text; b.title = titel; b.setAttribute('aria-label', titel);
+      return b;
+    };
+    const start = knopf('start', '★', t(a.name === e.start ? 'Startansicht – beim Öffnen dieser Hauptperson' : 'Als Startansicht verwenden'));
+    start.setAttribute('aria-pressed', a.name === e.start);
+    li.dataset.name = a.name;
+    li.append(laden, start, knopf('link', '🔗', t('Link zu dieser Ansicht kopieren')), knopf('weg', '✕', t('Ansicht löschen')));
+    return li;
+  }));
+  $f('.lb-ansichten-leer').textContent = e.liste.length ? '' : t('Noch keine Ansicht gespeichert. Die gespeicherte Ansicht merkt sich Ansichtsknöpfe, Generationen, ausgeblendete Vorfahren, Kamera und Jahr.');
+  $f('.lb-ansichten-leer').hidden = e.liste.length > 0;
+  $f('.lb-ansichten-ort').textContent = ansichtenOrt === 'konto'
+    ? t('Gespeichert in deinem webtrees-Konto – auf jedem Gerät gleich.') : t('Gespeichert in diesem Browser.');
+  const feld = $f('.lb-ansichten-neu input');
+  if (!feld.value) feld.value = nurLinie ? t('Linie {name}', { name: daten.byId.get(nurLinie)?.name.voll ?? '' }) : t('Ansicht {n}', { n: e.liste.length + 1 });
+  $f('.lb-ansichten-adresse').hidden = true;
+  fenster.hidden = false;
+}
+async function eintragSetzen(e) {
+  ansichtenAlle[root.id] = e;
+  if (!e.liste.length) delete ansichtenAlle[root.id];
+  const ok = await ansichtenSichern();
+  fensterZeigen();
+  if (!ok) fensterMeldung(t('Speichern nicht möglich – bitte die Seite neu laden und noch einmal versuchen.'));
+  return ok;
+}
+$f('.lb-ansichten-zu').addEventListener('click', () => { fenster.hidden = true; });
+$f('.lb-ansichten-neu').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const feld = $f('.lb-ansichten-neu input'), name = feld.value.trim().slice(0, 60);
+  if (!name) return;
+  const e = eintragFuer(root), alt = e.liste.findIndex(a => a.name === name);
+  const neu = aktuelleAnsicht(name);
+  if (alt >= 0) e.liste[alt] = neu; else e.liste.push(neu);
+  e.start ??= name;   // die erste gespeicherte Ansicht erscheint beim Öffnen
+  feld.value = '';
+  if (await eintragSetzen(e)) fensterMeldung(t(alt >= 0 ? 'Ansicht „{name}“ überschrieben.' : 'Ansicht „{name}“ gespeichert.', { name }));
 });
-ladeKnopf?.addEventListener('click', () => {
-  const a = gespeicherteAnsicht();
-  if (a) ansichtAnwenden(a);
+$f('.lb-ansichten-link').addEventListener('click', () => linkAusgeben(ansichtLink(aktuelleAnsicht(''))));
+$f('.lb-ansichten-liste').addEventListener('click', async ev => {
+  const b = ev.target.closest('button'), name = b?.closest('li')?.dataset.name;
+  if (!b || name == null) return;
+  const e = eintragFuer(root), a = e.liste.find(x => x.name === name);
+  if (!a) return;
+  if (b.dataset.a === 'laden') { fenster.hidden = true; return ansichtAnwenden(a); }
+  if (b.dataset.a === 'link') return linkAusgeben(ansichtLink(a));
+  if (b.dataset.a === 'start') { e.start = e.start === name ? null : name; return eintragSetzen(e); }
+  if (b.dataset.a === 'weg') {
+    // zweimal klicken: kein Browser-Dialog, aber auch kein versehentliches Löschen
+    if (!b.classList.contains('sicher')) {
+      b.classList.add('sicher'); b.textContent = t('Löschen?');
+      return setTimeout(() => { b.classList.remove('sicher'); b.textContent = '✕'; }, 3000);
+    }
+    e.liste = e.liste.filter(x => x.name !== name);
+    if (e.start === name) e.start = null;
+    return eintragSetzen(e);
+  }
 });
+fenster.addEventListener('keydown', ev => { if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); fenster.hidden = true; } });
+document.getElementById('ansichten')?.addEventListener('click', () => { weitereZeigen(false); fensterZeigen(); $f('.lb-ansichten-neu input').focus(); });
+const grundKnopf = document.getElementById('ansicht-grund');
+if (grundKnopf) grundKnopf.dataset.text = grundKnopf.textContent;
 grundKnopf?.addEventListener('click', () => {
   try { localStorage.removeItem('lb-generationen'); localStorage.removeItem('lb-netztiefe'); } catch (e) { /* ohne Speicher */ }
-  ansichtAnwenden({ modus: { vorfahren: true }, generationen: standardGenerationen, netzTiefe: 'alle', ohneVorfahren: [] }, true);
-  knopfMeldung(grundKnopf, t('✓ Grundeinstellung'));
+  ansichtAnwenden({ modus: { vorfahren: true }, generationen: standardGenerationen, netzTiefe: 'alle', ohneVorfahren: [], nurLinie: null }, true);
 });
 // nach verlorenem WebGL-Kontext (vor allem auf Handys) die Karten neu aufbauen: die Atlanten liegen nur auf der Grafikkarte
 renderer.domElement.addEventListener('webglcontextrestored', () => baue());
@@ -1720,7 +1981,9 @@ addEventListener('resize', () => {
 });
 
 // --- Start und Schleife --------------------------------------------------------------------------------
-const startAnsicht = gespeicherteAnsicht();
+await ansichtenLaden();
+// ein geteilter Link geht vor, sonst die Startansicht der Hauptperson
+const startAnsicht = ansichtAusAdresse(adresseModus, adresseTeil) ?? startAnsichtFuer(root);
 if (startAnsicht) ansichtUebernehmen(startAnsicht);
 baue();
 camera.position.set(-40, 60, 90);
@@ -1765,4 +2028,4 @@ renderer.setAnimationLoop(now => {
   renderer.render(scene, camera);
 });
 document.body.classList.add('bereit');
-window.__lb = { camera, controls, fliege, THREE, zVon, daten, himmel: himmelFolgt, karten: () => karten, stapel, zeichnen, renderer, waehle: id => waehle(daten.byId.get(id)), klang: () => klang.zustand() };  // zum Ausprobieren in der Konsole
+window.__lb = { ansicht: () => ({ nurLinie, ohneVorfahren: [...ohneVorfahren], modus: { ...modus }, adresseTeil, ansichtenOrt }), camera, controls, fliege, THREE, zVon, daten, himmel: himmelFolgt, karten: () => karten, stapel, zeichnen, renderer, waehle: id => waehle(daten.byId.get(id)), klang: () => klang.zustand() };  // zum Ausprobieren in der Konsole
