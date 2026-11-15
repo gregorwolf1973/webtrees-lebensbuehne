@@ -16,8 +16,11 @@ use Fisharebest\Webtrees\Registry;
 use Fisharebest\Webtrees\Tree;
 use Fisharebest\Webtrees\Webtrees;
 
+use function array_chunk;
 use function array_column;
 use function array_filter;
+use function array_keys;
+use function array_key_exists;
 use function array_map;
 use function array_slice;
 use function array_values;
@@ -107,6 +110,9 @@ final class Daten
     /** @var array<string,int> Medium => Zahl der markierten Personen */
     private array $personenAuf = [];
 
+    /** @var array<string,true> Personen, die der Ausschnitt schon aus der Datenbank geholt hat (auch nicht sichtbare) */
+    private array $geholt = [];
+
     public function __construct(
         private readonly Tree $tree,
         private readonly int $stufe,
@@ -136,6 +142,29 @@ final class Daten
     public function alle(): array
     {
         $this->ladeDatensaetze();
+
+        return $this->aufbereiten($this->tree->getPreference('PEDIGREE_ROOT_ID'));
+    }
+
+    /**
+     * Nur die Umgebung einer Person, für sehr große Stammbäume: zuerst ihre direkte Linie (Vorfahren und Nachkommen),
+     * dann Schritt für Schritt über Eltern, Kinder und Partner die übrigen Verwandten (Geschwister, Partner, Onkel,
+     * Cousins …), bis höchstens $hoechstens Personen erreicht sind. Es gelten dieselben Datenschutzregeln wie bei alle().
+     *
+     * @return array{start:string,personen:list<array<string,mixed>>}
+     */
+    public function ausschnitt(string $um, int $hoechstens): array
+    {
+        $this->ladeUmgebung($um, $hoechstens);
+
+        return $this->aufbereiten($um);
+    }
+
+    /**
+     * @return array{start:string,personen:list<array<string,mixed>>}
+     */
+    private function aufbereiten(string $start): array
+    {
         $this->ladeOrte();
         $this->ladeGesichter();
 
@@ -154,7 +183,135 @@ final class Daten
         }
         unset($p);
 
-        return ['start' => $this->tree->getPreference('PEDIGREE_ROOT_ID'), 'personen' => $liste];
+        return ['start' => $start, 'personen' => $liste];
+    }
+
+    private function ladeUmgebung(string $um, int $hoechstens): void
+    {
+        $art   = [$um => 's'];   // s = Startperson, v = Vorfahr, n = Nachkomme, a = andere Verwandte
+        $ebene = [$um];
+        while ($ebene !== []) {
+            // direkte Linie: Eltern der Vorfahren und Kinder der Nachkommen gehören noch zur selben Stufe
+            $warte = $ebene;
+            while ($warte !== []) {
+                $this->holePersonen($warte);
+                $neu = [];
+                foreach ($warte as $x) {
+                    $verwandte = [];
+                    if ($art[$x] === 's' || $art[$x] === 'v') {
+                        $verwandte['v'] = $this->elternVon($x);
+                    }
+                    if ($art[$x] === 's' || $art[$x] === 'n') {
+                        $verwandte['n'] = $this->kinderVon($x);
+                    }
+                    foreach ($verwandte as $a => $xrefs) {
+                        foreach ($xrefs as $y) {
+                            if (!isset($art[$y]) && count($art) < $hoechstens) {
+                                $art[$y] = $a;
+                                $neu[]   = $y;
+                            }
+                        }
+                    }
+                }
+                $ebene = [...$ebene, ...$neu];
+                $warte = $neu;
+            }
+            // nächste Stufe: alle übrigen Eltern, Kinder und Partner der bisher Geholten
+            $naechste = [];
+            foreach ($ebene as $x) {
+                foreach ([...$this->elternVon($x), ...$this->kinderVon($x), ...$this->partnerVon($x)] as $y) {
+                    if (!isset($art[$y]) && count($art) < $hoechstens) {
+                        $art[$y]    = 'a';
+                        $naechste[] = $y;
+                    }
+                }
+            }
+            $this->holePersonen($naechste);
+            $ebene = $naechste;
+        }
+    }
+
+    /**
+     * Personen (und ihre Familien) stapelweise aus der Datenbank holen; sichtbar wird nur, was der Betrachter sehen darf.
+     *
+     * @param list<string> $xrefs
+     */
+    private function holePersonen(array $xrefs): void
+    {
+        $fehlt = array_values(array_filter($xrefs, fn (string $x): bool => !isset($this->geholt[$x])));
+        foreach (array_chunk($fehlt, 500) as $teil) {
+            foreach ($teil as $x) {
+                $this->geholt[$x] = true;
+            }
+            $zeilen = DB::table('individuals')->where('i_file', '=', $this->tree->id())->whereIn('i_id', $teil)->pluck('i_gedcom', 'i_id');
+            foreach ($zeilen as $xref => $gedcom) {
+                $person = Registry::individualFactory()->make((string) $xref, $this->tree, $gedcom);
+                if ($person !== null && $person->canShow($this->stufe)) {
+                    $this->personen[(string) $xref] = $person->privatizeGedcom($this->stufe);
+                }
+            }
+        }
+
+        $familien = [];
+        foreach ($fehlt as $x) {
+            foreach ($this->verweise('/\n1 FAM[CS] @([^@]+)@/', $this->personen[$x] ?? '') as $f) {
+                if (!array_key_exists($f, $this->familien)) {
+                    $familien[$f] = true;
+                }
+            }
+        }
+        foreach (array_chunk(array_keys($familien), 500) as $teil) {
+            foreach ($teil as $f) {
+                $this->familien[(string) $f] = '';   // nicht sichtbar oder nicht vorhanden
+            }
+            $zeilen = DB::table('families')->where('f_file', '=', $this->tree->id())->whereIn('f_id', $teil)->pluck('f_gedcom', 'f_id');
+            foreach ($zeilen as $xref => $gedcom) {
+                $familie = Registry::familyFactory()->make((string) $xref, $this->tree, $gedcom);
+                if ($familie !== null && $familie->canShow($this->stufe)) {
+                    $this->familien[(string) $xref] = $familie->privatizeGedcom($this->stufe);
+                }
+            }
+        }
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function elternVon(string $x): array
+    {
+        $famc = $this->verweise('/\n1 FAMC @([^@]+)@/', $this->personen[$x] ?? '')[0] ?? null;
+
+        return $famc !== null ? $this->verweise('/\n1 (?:HUSB|WIFE) @([^@]+)@/', $this->familien[$famc] ?? '') : [];
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function kinderVon(string $x): array
+    {
+        $kinder = [];
+        foreach ($this->verweise('/\n1 FAMS @([^@]+)@/', $this->personen[$x] ?? '') as $fam) {
+            $kinder = [...$kinder, ...$this->verweise('/\n1 CHIL @([^@]+)@/', $this->familien[$fam] ?? '')];
+        }
+
+        return $kinder;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function partnerVon(string $x): array
+    {
+        $partner = [];
+        foreach ($this->verweise('/\n1 FAMS @([^@]+)@/', $this->personen[$x] ?? '') as $fam) {
+            foreach ($this->verweise('/\n1 (?:HUSB|WIFE) @([^@]+)@/', $this->familien[$fam] ?? '') as $m) {
+                if ($m !== $x) {
+                    $partner[] = $m;
+                }
+            }
+        }
+
+        return $partner;
     }
 
     private function ladeDatensaetze(): void

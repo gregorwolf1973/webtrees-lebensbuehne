@@ -60,7 +60,9 @@ export async function ladeDaten() {
       }
 
   // Einträge mit „nurKlang“ steuern nur die Geräusche und erscheinen nicht im Zeitgeschehen
-  return { personen, byId, zeit: zeit.filter(z => !z.nurKlang), klangZeit: zeit.filter(z => z.klang), start: byId.get(LB.start) || byId.get(roh.start) || personen[0] };
+  return { personen, byId, zeit: zeit.filter(z => !z.nurKlang), klangZeit: zeit.filter(z => z.klang), start: byId.get(LB.start) || byId.get(roh.start) || personen[0],
+    // großer Stammbaum: nur die Umgebung der Hauptperson ist geladen (gesamt = Personen im ganzen Stammbaum)
+    ausschnitt: roh.ausschnitt || null };
 }
 
 // Wer gerade die Hauptperson ist (für Texte wie „der Großvater von Anna“)

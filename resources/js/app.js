@@ -244,10 +244,13 @@ function baue() {
   sim = null; netzKanten = null; netzHell = null; netzSterne = null;
   controls.autoRotate = false;
   imBild = modus.netz ? netz(daten, root, netzTiefe) : ansicht(daten, root, { ...modus, generationen });
+  // großer Stammbaum: sagen, dass nur die Umgebung der Hauptperson geladen ist
+  const zahl = n => n.toLocaleString(SPRACHE_EN ? 'en' : 'de');
+  const ausschnitt = daten.ausschnitt ? ' · ' + t('Ausschnitt: {n} von {m} Personen geladen', { n: zahl(daten.personen.length), m: zahl(daten.ausschnitt.gesamt) }) : '';
   if (!modus.netz) document.getElementById('faecher-anzahl').textContent =
-    t(imBild.gekuerzt ? '{n} Personen, weitere Generationen ausgeblendet' : '{n} Personen', { n: imBild.length.toLocaleString(SPRACHE_EN ? 'en' : 'de') });
+    t(imBild.gekuerzt ? '{n} Personen, weitere Generationen ausgeblendet' : '{n} Personen', { n: zahl(imBild.length) }) + ausschnitt;
   if (modus.netz) document.getElementById('netz-anzahl').textContent =
-    t(imBild.gekuerzt ? '{n} Personen, gekürzt' : '{n} Personen', { n: imBild.length.toLocaleString(SPRACHE_EN ? 'en' : 'de') });
+    t(imBild.gekuerzt ? '{n} Personen, gekürzt' : '{n} Personen', { n: zahl(imBild.length) }) + ausschnitt;
   kulisse.visible = !modus.netz;
   document.body.classList.toggle('netz', modus.netz);
   zeitAnsicht = zeitFuerAnsicht(imBild, zeit);
@@ -782,6 +785,11 @@ function waehle(p, { panelOeffnen = true } = {}) {
 
 function setzeHauptperson(p) {
   if (!p) return;
+  // großer Stammbaum: die Umgebung der neuen Hauptperson laden (Ansicht und Auswahl bleiben über die Adresse erhalten)
+  if (daten.ausschnitt && p !== root && LB.seite) {
+    location.href = LB.seite.replace('XREF', encodeURIComponent(p.id)) + location.hash.replace(/^#[^/]*/, '#' + encodeURIComponent(p.id));
+    return;
+  }
   root = p;
   baue();
   waehle(p);

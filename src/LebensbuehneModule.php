@@ -105,7 +105,7 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
     use ModuleChartTrait;
     use ModuleGlobalTrait;
 
-    public const string VERSION = '1.13.0';
+    public const string VERSION = '1.13.1';
 
     // Oberflächenwörter des Moduls, die webtrees selbst in viele Sprachen übersetzt (deutscher Schlüssel => englische msgid)
     private const array WEBTREES_WOERTER = [
@@ -115,6 +115,10 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
         'Foto' => 'Photo', 'Dokument' => 'Document', 'Grab' => 'Tombstone', 'Zeitung' => 'Newspaper', 'Jahr' => 'Year',
         'geboren' => 'born', 'verstorben' => 'died',
     ];
+
+    // Sehr große Stammbäume lädt die Lebensbühne nicht ganz, sondern nur die Umgebung der Hauptperson (Issue #7)
+    private const int GROSSER_BAUM = 5000;
+    private const int AUSSCHNITT_HOECHSTENS = 5000;
 
     private const string ROUTE_SEITE   = 'lebensbuehne-seite';
     private const string ROUTE_DATEN   = 'lebensbuehne-daten';
@@ -235,7 +239,7 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
 
         return match ($name) {
             self::ROUTE_SEITE   => $this->seite($request, $tree),
-            self::ROUTE_DATEN   => $this->daten($tree, $user),
+            self::ROUTE_DATEN   => $this->daten($request, $tree, $user),
             self::ROUTE_GESICHT => $this->gesicht($request, $tree),
             self::ROUTE_KLANG   => $this->klang($request, $tree),
             self::ROUTE_GESCHICHTE => $this->geschichte($request, $tree, $user),
@@ -299,7 +303,8 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
             'zeitgeschehenEigen' => is_array($eigene) ? array_values(array_filter($eigene, 'is_array')) : [],
             'klaengeMit'    => (object) $klaengeMit,
             'lieder'        => $lieder,
-            'daten'         => route(self::ROUTE_DATEN, ['tree' => $tree->name()]),
+            'daten'         => route(self::ROUTE_DATEN, ['tree' => $tree->name(), 'xref' => $individual->xref()]),
+            'seite'         => route(self::ROUTE_SEITE, ['tree' => $tree->name(), 'xref' => 'XREF']),
             'geschichte'    => route(self::ROUTE_GESCHICHTE, ['tree' => $tree->name(), 'xref' => 'XREF']),
             'grenzen'       => (object) $grenzen,
             'zeitgeschehen' => $this->assetUrl('data/zeitgeschehen.json'),
@@ -328,9 +333,14 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
         ]));
     }
 
-    private function daten(Tree $tree, UserInterface $user): ResponseInterface
+    private function daten(ServerRequestInterface $request, Tree $tree, UserInterface $user): ResponseInterface
     {
         $stufe = Auth::accessLevel($tree, $user);
+
+        // Große Stammbäume: nur die Umgebung der Hauptperson der Seite, sonst dauert schon das Prüfen aller Datensätze zu lang
+        $um     = Validator::queryParams($request)->isXref()->string('xref', '');
+        $gesamt = DB::table('individuals')->where('i_file', '=', $tree->id())->count();
+        $um     = $gesamt > self::GROSSER_BAUM ? $um : '';
 
         // Zwischenspeicher je Stammbaum und Zugriffsstufe; jede Änderung im Stammbaum erneuert ihn
         $stand = DB::table('change')->where('gedcom_id', '=', $tree->id())
@@ -341,10 +351,15 @@ final class LebensbuehneModule extends AbstractModule implements ModuleCustomInt
         $tiefen        = Webtrees::DATA_DIR . 'lebensbuehne/tiefen';
         $sprache       = $this->sprache();
         $schluessel    = 'lebensbuehne-' . $tree->id() . '-' . $stufe . '-' . $sprache . '-' . I18N::languageTag() . '-' . ($stand->m ?? 0) . '-' . ($stand->a ?? 0) . '-' . self::VERSION
-            . '-' . md5(implode(',', array_keys($mitGeschichte)) . '|' . (is_dir($tiefen) ? (string) filemtime($tiefen) : ''));
+            . '-' . md5(implode(',', array_keys($mitGeschichte)) . '|' . (is_dir($tiefen) ? (string) filemtime($tiefen) : ''))
+            . ($um !== '' ? '-um-' . $um : '');
 
-        $json = Registry::cache()->file()->remember($schluessel, function () use ($tree, $stufe, $mitGeschichte, $sprache): string {
-            $alle = (new Daten($tree, $stufe, self::ROUTE_GESICHT, $sprache))->alle();
+        $json = Registry::cache()->file()->remember($schluessel, function () use ($tree, $stufe, $mitGeschichte, $sprache, $um, $gesamt): string {
+            $daten = new Daten($tree, $stufe, self::ROUTE_GESICHT, $sprache);
+            $alle  = $um !== '' ? $daten->ausschnitt($um, self::AUSSCHNITT_HOECHSTENS) : $daten->alle();
+            if ($um !== '') {
+                $alle['ausschnitt'] = ['gesamt' => $gesamt];
+            }
             foreach ($alle['personen'] as &$p) {
                 if (isset($mitGeschichte[$p['id']])) {
                     $p['geschichte'] = true;
