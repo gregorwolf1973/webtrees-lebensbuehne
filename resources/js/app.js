@@ -1625,7 +1625,7 @@ renderer.domElement.addEventListener('wheel', kontextSchliessen, { passive: true
 // --- Ansicht speichern / Grundeinstellung -----------------------------------------------------------------------------
 // Je Stammbaum und Hauptperson merkt sich der Browser eine Ansicht (localStorage lb-ansichten): Ansichtsknöpfe,
 // Generationen, Netz-Tiefe, ausgeblendete Vorfahren, Kamera und Jahr. Sie gilt beim nächsten Öffnen dieser Hauptperson.
-// „Grundeinstellung“ stellt die Vorgaben wieder her und vergisst die gespeicherte Ansicht.
+// „Ansicht laden“ holt sie jederzeit zurück, „Grundeinstellung“ stellt die Vorgaben wieder her (die gespeicherte bleibt).
 const ANSICHTEN = 'lb-ansichten';
 const ansichtSchluessel = () => `${(window.LEBENSBUEHNE || {}).seite || 'lokal'}|${root.id}`;
 function ansichtenLesen() {
@@ -1664,8 +1664,32 @@ function knopfMeldung(knopf, text) {
   knopf.textContent = text;
   knopf._meldung = setTimeout(() => { knopf.textContent = knopf.dataset.text; }, 2200);
 }
-const speicherKnopf = document.getElementById('ansicht-speichern'), grundKnopf = document.getElementById('ansicht-grund');
-for (const k of [speicherKnopf, grundKnopf]) if (k) k.dataset.text = k.textContent;
+const speicherKnopf = document.getElementById('ansicht-speichern'), ladeKnopf = document.getElementById('ansicht-laden'),
+  grundKnopf = document.getElementById('ansicht-grund');
+for (const k of [speicherKnopf, ladeKnopf, grundKnopf]) if (k) k.dataset.text = k.textContent;
+/** „Ansicht laden“ nur mit gespeicherter Ansicht; der Tooltip nennt, wann gespeichert wurde */
+function ladeKnopfSetzen() {
+  if (!ladeKnopf) return;
+  const a = gespeicherteAnsicht();
+  ladeKnopf.disabled = !a;
+  ladeKnopf.title = a ? t('Gespeichert am {datum}', { datum: new Date(a.gespeichert).toLocaleString(SPRACHE_EN ? 'en' : 'de', { dateStyle: 'medium', timeStyle: 'short' }) })
+    : t('Noch keine Ansicht für diese Hauptperson gespeichert');
+}
+ladeKnopfSetzen();
+/** Gespeicherte oder Vorgabe-Ansicht anwenden: neu bauen, Kamera und Jahr setzen */
+function ansichtAnwenden(a, vorgabe = false) {
+  stoppeAbspielen();
+  kontextSchliessen();
+  weitereZeigen(false);
+  panel.schliesse();
+  ansichtUebernehmen(a);
+  zeitJahr = null; letztesJahr = null; jahrAnzeige.textContent = '–'; lebendAnzeige.textContent = '';
+  gesichterAnpassen(null);
+  zeigeTicker([]); setTimeout(() => { if (zeitJahr == null) zeitKarte.hidden = true; }, 500);
+  baue();
+  aktualisiereDarstellung();
+  if (vorgabe || !ansichtKamera(a)) ueberblick();
+}
 speicherKnopf?.addEventListener('click', () => {
   const a = ansichtenLesen();
   a[ansichtSchluessel()] = {
@@ -1673,22 +1697,15 @@ speicherKnopf?.addEventListener('click', () => {
     kamera: { pos: camera.position.toArray(), ziel: controls.target.toArray() }, jahr: zeitJahr, gespeichert: Date.now(),
   };
   knopfMeldung(speicherKnopf, ansichtenSchreiben(a) ? t('✓ Ansicht gespeichert') : t('Speichern nicht möglich'));
+  ladeKnopfSetzen();
+});
+ladeKnopf?.addEventListener('click', () => {
+  const a = gespeicherteAnsicht();
+  if (a) ansichtAnwenden(a);
 });
 grundKnopf?.addEventListener('click', () => {
-  const a = ansichtenLesen();
-  delete a[ansichtSchluessel()];
-  ansichtenSchreiben(a);
   try { localStorage.removeItem('lb-generationen'); localStorage.removeItem('lb-netztiefe'); } catch (e) { /* ohne Speicher */ }
-  stoppeAbspielen();
-  kontextSchliessen();
-  panel.schliesse();
-  ansichtUebernehmen({ modus: { vorfahren: true }, generationen: standardGenerationen, netzTiefe: 'alle', ohneVorfahren: [] });
-  zeitJahr = null; letztesJahr = null; jahrAnzeige.textContent = '–'; lebendAnzeige.textContent = '';
-  gesichterAnpassen(null);
-  zeigeTicker([]); setTimeout(() => { if (zeitJahr == null) zeitKarte.hidden = true; }, 500);
-  baue();
-  aktualisiereDarstellung();
-  ueberblick();
+  ansichtAnwenden({ modus: { vorfahren: true }, generationen: standardGenerationen, netzTiefe: 'alle', ohneVorfahren: [] }, true);
   knopfMeldung(grundKnopf, t('✓ Grundeinstellung'));
 });
 // nach verlorenem WebGL-Kontext (vor allem auf Handys) die Karten neu aufbauen: die Atlanten liegen nur auf der Grafikkarte

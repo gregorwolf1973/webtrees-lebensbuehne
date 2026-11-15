@@ -492,5 +492,9 @@
   "Ansicht speichern": "Weergave opslaan",
   "Grundeinstellung": "Standaardinstelling",
   "Diese Ansicht für die Hauptperson merken: Ansicht, Generationen, ausgeblendete Vorfahren, Kamera und Jahr. Sie erscheint beim nächsten Öffnen wieder.": "Deze weergave voor de hoofdpersoon onthouden: weergave, generaties, verborgen voorouders, camera en jaar. Ze verschijnt de volgende keer weer.",
-  "Alles auf die Grundeinstellung zurücksetzen und die gespeicherte Ansicht vergessen": "Alles terugzetten naar de standaardinstelling en de opgeslagen weergave vergeten"
+  "Ansicht laden": "Weergave laden",
+  "Die gespeicherte Ansicht dieser Hauptperson wiederherstellen": "De opgeslagen weergave van deze hoofdpersoon herstellen",
+  "Alles auf die Grundeinstellung zurücksetzen; die gespeicherte Ansicht bleibt erhalten": "Alles terugzetten naar de standaardinstelling; de opgeslagen weergave blijft bewaard",
+  "Gespeichert am {datum}": "Opgeslagen op {datum}",
+  "Noch keine Ansicht für diese Hauptperson gespeichert": "Nog geen weergave opgeslagen voor deze hoofdpersoon"
 }

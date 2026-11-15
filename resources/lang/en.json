@@ -492,5 +492,9 @@
   "Ansicht speichern": "Save view",
   "Grundeinstellung": "Defaults",
   "Diese Ansicht für die Hauptperson merken: Ansicht, Generationen, ausgeblendete Vorfahren, Kamera und Jahr. Sie erscheint beim nächsten Öffnen wieder.": "Remember this view for the main person: view settings, generations, hidden ancestors, camera and year. It will be restored the next time you open it.",
-  "Alles auf die Grundeinstellung zurücksetzen und die gespeicherte Ansicht vergessen": "Reset everything to the defaults and forget the saved view"
+  "Ansicht laden": "Load view",
+  "Die gespeicherte Ansicht dieser Hauptperson wiederherstellen": "Restore the saved view of this main person",
+  "Alles auf die Grundeinstellung zurücksetzen; die gespeicherte Ansicht bleibt erhalten": "Reset everything to the defaults; the saved view is kept",
+  "Gespeichert am {datum}": "Saved on {datum}",
+  "Noch keine Ansicht für diese Hauptperson gespeichert": "No view saved for this main person yet"
 }

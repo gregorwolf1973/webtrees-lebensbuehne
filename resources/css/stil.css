@@ -660,6 +660,8 @@ body.netz .legende-netz { display: flex; }
 .umschalter .weitere-menue button { border-radius: 6px; border: 1px solid transparent; text-align: left; background: transparent; padding: 6px 10px; }
 .umschalter .weitere-menue button:hover { background: var(--flaeche); border-color: var(--linie); }
 .umschalter .weitere-menue button[aria-pressed="true"] { background: rgba(214, 162, 78, 0.22); border-color: var(--vater); }
+.weitere-menue .weitere-trenner { width: 100%; margin: 2px 0; border: 0; border-top: 1px solid var(--linie); }
+.umschalter .weitere-menue button:disabled { opacity: 0.45; cursor: default; background: transparent; border-color: transparent; }
 
 /* im Menü ☰ passt die Leiste nicht in eine Zeile: „Weitere“ bekommt eine eigene */
 body.menue-offen .umschalter { flex-wrap: wrap; }
