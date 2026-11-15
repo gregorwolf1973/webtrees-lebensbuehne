@@ -206,6 +206,7 @@ const gruppe = new THREE.Group();
 scene.add(gruppe);
 let root = daten.start, modus = { vorfahren: true, nachkommen: false, partner: false, geschwister: false, netz: false };
 let imBild = [], karten = [], linien = [];
+let ohneVorfahren = new Set();   // Personen-IDs, deren Vorfahren per Rechtsklick ausgeblendet sind
 
 // Netz-Tiefe (Schritte über Eltern, Kinder, Partner) und Weltgeschehen; beides merkt sich der Browser
 const netzTiefeWahl = document.getElementById('netz-tiefe');
@@ -243,7 +244,7 @@ function baue() {
   }
   sim = null; netzKanten = null; netzHell = null; netzSterne = null;
   controls.autoRotate = false;
-  imBild = modus.netz ? netz(daten, root, netzTiefe) : ansicht(daten, root, { ...modus, generationen });
+  imBild = modus.netz ? netz(daten, root, netzTiefe) : ansicht(daten, root, { ...modus, generationen, ohneVorfahren });
   // großer Stammbaum: sagen, dass nur die Umgebung der Hauptperson geladen ist
   const zahl = n => n.toLocaleString(SPRACHE_EN ? 'en' : 'de');
   const ausschnitt = daten.ausschnitt ? ' · ' + t('Ausschnitt: {n} von {m} Personen geladen', { n: zahl(daten.personen.length), m: zahl(daten.ausschnitt.gesamt) }) : '';
@@ -1556,7 +1557,7 @@ function hoverAuswerten() {
   if (renderer.domElement.style.cursor !== zeiger) renderer.domElement.style.cursor = zeiger;
   if (!o) { tip.hidden = true; return; }
   const p = o.p, z = o.userData?.zeit;
-  tip.innerHTML = p ? `<b>${p.name.voll}</b><span>${jahreKurz(p)} · ${verwandtschaft(p)}</span>`
+  tip.innerHTML = p ? `<b>${p.name.voll}</b><span>${jahreKurz(p)} · ${verwandtschaft(p)}${!modus.netz && ohneVorfahren.has(p.id) ? ' · ' + t('Vorfahren ausgeblendet') : ''}</span>`
     : `<b>${z.titel}</b><span>${z.bis ? `${z.jahr}–${z.bis}` : z.jahr} · ${t('Zeitgeschehen')}</span>`;
   tip.style.left = Math.min(ev.clientX + 16, innerWidth - 300) + 'px';
   tip.style.top = ev.clientY + 14 + 'px';
@@ -1576,12 +1577,119 @@ renderer.domElement.addEventListener('dblclick', ev => {
 renderer.domElement.addEventListener('pointerup', ev => {
   if (!runter || Math.hypot(ev.clientX - runter.x, ev.clientY - runter.y) > 5) return;
   const o = treffer(ev);
+  // rechte Maustaste ohne Ziehen (Ziehen verschiebt die Ansicht): Menü zur Person
+  if (ev.button === 2) { if (o?.p && !modus.netz) kontextOeffnen(o.p, ev.clientX, ev.clientY); return; }
+  kontextSchliessen();
   if (o?.p) { stoppeAbspielen(); waehle(o.p); }
   else if (o?.userData?.zeit) { stoppeAbspielen(); setzeJahr(o.userData.zeit.jahr); }
 });
 
 addEventListener('keydown', ev => {
+  if (ev.key === 'Escape' && !kontext.hidden) { kontextSchliessen(); ev.preventDefault(); return; }
   if (ev.key === 'Escape' && !ev.defaultPrevented) panel.schliesse();
+});
+
+// --- Rechtsklick auf eine Person: ihre Vorfahren aus- und wieder einblenden ---------------------------------------
+const kontext = document.createElement('div');
+kontext.className = 'bw-kontext lb-kontext';
+kontext.setAttribute('role', 'menu');
+kontext.hidden = true;
+document.body.append(kontext);
+renderer.domElement.addEventListener('contextmenu', ev => ev.preventDefault());
+function kontextSchliessen() { kontext.hidden = true; }
+function kontextOeffnen(p, x, y) {
+  // Vorfahren stehen im Bild, wenn ein Elternteil über diese Person in den Fächer kam
+  const aus = ohneVorfahren.has(p.id), sichtbar = p.eltern.some(e => e.imBild && e.zumStart === p);
+  const text = aus ? t('Vorfahren einblenden') : sichtbar ? t('Vorfahren ausblenden') : t('Keine Vorfahren im Bild');
+  kontext.innerHTML = `<h4></h4><button role="menuitem" data-k="vorfahren"${aus || sichtbar ? '' : ' disabled'}></button>`;
+  kontext.querySelector('h4').textContent = p.name.voll;
+  const knopf = kontext.querySelector('button');
+  knopf.textContent = text;
+  knopf.addEventListener('click', () => {
+    kontextSchliessen();
+    if (aus) ohneVorfahren.delete(p.id); else ohneVorfahren.add(p.id);
+    stoppeAbspielen();
+    panel.schliesse();
+    // Kamera bleibt, wo sie ist: man sieht, was verschwindet oder dazukommt
+    baue();
+  });
+  kontext.hidden = false;
+  kontext.style.left = `${Math.min(x, innerWidth - kontext.offsetWidth - 8)}px`;
+  kontext.style.top = `${Math.min(y, innerHeight - kontext.offsetHeight - 8)}px`;
+  tip.hidden = true;
+  if (!knopf.disabled) knopf.focus();
+}
+addEventListener('pointerdown', ev => { if (!kontext.hidden && !kontext.contains(ev.target)) kontextSchliessen(); }, true);
+renderer.domElement.addEventListener('wheel', kontextSchliessen, { passive: true });
+
+// --- Ansicht speichern / Grundeinstellung -----------------------------------------------------------------------------
+// Je Stammbaum und Hauptperson merkt sich der Browser eine Ansicht (localStorage lb-ansichten): Ansichtsknöpfe,
+// Generationen, Netz-Tiefe, ausgeblendete Vorfahren, Kamera und Jahr. Sie gilt beim nächsten Öffnen dieser Hauptperson.
+// „Grundeinstellung“ stellt die Vorgaben wieder her und vergisst die gespeicherte Ansicht.
+const ANSICHTEN = 'lb-ansichten';
+const ansichtSchluessel = () => `${(window.LEBENSBUEHNE || {}).seite || 'lokal'}|${root.id}`;
+function ansichtenLesen() {
+  try { const a = JSON.parse(localStorage.getItem(ANSICHTEN) || '{}'); return a && typeof a === 'object' ? a : {}; } catch (e) { return {}; }
+}
+function ansichtenSchreiben(a) {
+  try { localStorage.setItem(ANSICHTEN, JSON.stringify(a)); return true; } catch (e) { return false; }
+}
+const gespeicherteAnsicht = () => ansichtenLesen()[ansichtSchluessel()] ?? null;
+const wahlGueltig = (wahl, w) => [...wahl.options].some(o => o.value === w);
+/** Gespeicherte Werte übernehmen (ohne neu zu bauen); fehlerhafte Einträge fallen auf die Vorgaben zurück */
+function ansichtUebernehmen(a) {
+  const m = a.modus ?? {};
+  modus = { vorfahren: !!m.vorfahren, nachkommen: !!m.nachkommen, partner: !!m.partner, geschwister: !!m.geschwister, netz: !!m.netz };
+  if (!modus.vorfahren && !modus.nachkommen && !modus.geschwister) modus.vorfahren = true;
+  if (wahlGueltig(generationenWahl, a.generationen)) generationenWahl.value = a.generationen;
+  generationen = generationenWahl.value === 'alle' ? Infinity : Number(generationenWahl.value);
+  if (wahlGueltig(netzTiefeWahl, a.netzTiefe)) netzTiefeWahl.value = a.netzTiefe;
+  netzTiefe = netzTiefeWahl.value === 'alle' ? Infinity : Number(netzTiefeWahl.value);
+  ohneVorfahren = new Set(Array.isArray(a.ohneVorfahren) ? a.ohneVorfahren.filter(id => daten.byId.has(id)) : []);
+}
+/** Kamera und Jahr der gespeicherten Ansicht; false, wenn keine brauchbare Kamera gespeichert ist */
+function ansichtKamera(a) {
+  const zahlen = v => Array.isArray(v) && v.length === 3 && v.every(Number.isFinite);
+  if (typeof a.jahr === 'number' && Number.isFinite(a.jahr)) setzeJahr(Math.min(+regler.max, Math.max(+regler.min, a.jahr)));
+  if (!zahlen(a.kamera?.pos) || !zahlen(a.kamera?.ziel)) return false;
+  flug = null;
+  camera.position.set(...a.kamera.pos);
+  controls.target.set(...a.kamera.ziel);
+  controls.update();
+  zeichnen();
+  return true;
+}
+function knopfMeldung(knopf, text) {
+  clearTimeout(knopf._meldung);
+  knopf.textContent = text;
+  knopf._meldung = setTimeout(() => { knopf.textContent = knopf.dataset.text; }, 2200);
+}
+const speicherKnopf = document.getElementById('ansicht-speichern'), grundKnopf = document.getElementById('ansicht-grund');
+for (const k of [speicherKnopf, grundKnopf]) if (k) k.dataset.text = k.textContent;
+speicherKnopf?.addEventListener('click', () => {
+  const a = ansichtenLesen();
+  a[ansichtSchluessel()] = {
+    modus: { ...modus }, generationen: generationenWahl.value, netzTiefe: netzTiefeWahl.value, ohneVorfahren: [...ohneVorfahren],
+    kamera: { pos: camera.position.toArray(), ziel: controls.target.toArray() }, jahr: zeitJahr, gespeichert: Date.now(),
+  };
+  knopfMeldung(speicherKnopf, ansichtenSchreiben(a) ? t('✓ Ansicht gespeichert') : t('Speichern nicht möglich'));
+});
+grundKnopf?.addEventListener('click', () => {
+  const a = ansichtenLesen();
+  delete a[ansichtSchluessel()];
+  ansichtenSchreiben(a);
+  try { localStorage.removeItem('lb-generationen'); localStorage.removeItem('lb-netztiefe'); } catch (e) { /* ohne Speicher */ }
+  stoppeAbspielen();
+  kontextSchliessen();
+  panel.schliesse();
+  ansichtUebernehmen({ modus: { vorfahren: true }, generationen: standardGenerationen, netzTiefe: 'alle', ohneVorfahren: [] });
+  zeitJahr = null; letztesJahr = null; jahrAnzeige.textContent = '–'; lebendAnzeige.textContent = '';
+  gesichterAnpassen(null);
+  zeigeTicker([]); setTimeout(() => { if (zeitJahr == null) zeitKarte.hidden = true; }, 500);
+  baue();
+  aktualisiereDarstellung();
+  ueberblick();
+  knopfMeldung(grundKnopf, t('✓ Grundeinstellung'));
 });
 // nach verlorenem WebGL-Kontext (vor allem auf Handys) die Karten neu aufbauen: die Atlanten liegen nur auf der Grafikkarte
 renderer.domElement.addEventListener('webglcontextrestored', () => baue());
@@ -1595,10 +1703,12 @@ addEventListener('resize', () => {
 });
 
 // --- Start und Schleife --------------------------------------------------------------------------------
+const startAnsicht = gespeicherteAnsicht();
+if (startAnsicht) ansichtUebernehmen(startAnsicht);
 baue();
 camera.position.set(-40, 60, 90);
 controls.target.set(0, 0, zVon(1880));
-ueberblick();
+if (!startAnsicht || !ansichtKamera(startAnsicht)) ueberblick();
 let letzterRahmen = null, letztesBild = 0;
 const glatt = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 // Gezeichnet wird nur, wenn sich etwas bewegt oder ändert; im Leerlauf hat die Grafikkarte Ruhe. Was nicht von Hand

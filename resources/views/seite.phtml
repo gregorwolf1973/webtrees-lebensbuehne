@@ -50,6 +50,8 @@ $json = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HE
         <input id="suche" list="namen" placeholder="<?= e($t('Person suchen …')) ?>" autocomplete="off">
         <datalist id="namen"></datalist>
         <button id="ansicht-ueberblick"><?= e($t('Überblick')) ?></button>
+        <button id="ansicht-speichern" title="<?= e($t('Diese Ansicht für die Hauptperson merken: Ansicht, Generationen, ausgeblendete Vorfahren, Kamera und Jahr. Sie erscheint beim nächsten Öffnen wieder.')) ?>"><?= e($t('Ansicht speichern')) ?></button>
+        <button id="ansicht-grund" title="<?= e($t('Alles auf die Grundeinstellung zurücksetzen und die gespeicherte Ansicht vergessen')) ?>"><?= e($t('Grundeinstellung')) ?></button>
         <span class="umschalter" role="group" aria-label="<?= e($t('Ansicht')) ?>">
           <button id="modus-vorfahren" aria-pressed="true"><?= e($t('Vorfahren')) ?></button>
           <button id="modus-nachkommen" aria-pressed="false"><?= e($t('Nachkommen')) ?></button>

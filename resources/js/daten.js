@@ -70,7 +70,9 @@ let hauptperson = null;
 
 // Personen der Ansicht: die Hauptperson, ihre Vorfahren und/oder Nachkommen; setzt die Ansichtsfelder an den Personen
 // `generationen` begrenzt, wie weit der Fächer von der Hauptperson (und vom Partner) aus reicht; `liste.gekuerzt` sagt, ob dadurch Personen fehlen
-export function ansicht(daten, root, { vorfahren = true, nachkommen = false, partner = false, geschwister = false, generationen = Infinity } = {}) {
+// `ohneVorfahren`: Personen-IDs, deren Vorfahren (samt deren Seitenlinien) ausgeblendet sind – per Rechtsklick auf der Bühne
+export function ansicht(daten, root, { vorfahren = true, nachkommen = false, partner = false, geschwister = false, generationen = Infinity,
+  ohneVorfahren = new Set() } = {}) {
   for (const p of daten.personen) {
     p.imBild = false; p.rolle = null; p.generation = null; p.seite = null; p.partnerseite = false; p.bezug = null;
     p.sosa = null; p.zumStart = null; p.mannesstamm = false; p.zweig = null; p.halb = false; p.k = null; p.kern = null;
@@ -84,6 +86,7 @@ export function ansicht(daten, root, { vorfahren = true, nachkommen = false, par
     const reihe = [start];
     while (reihe.length) {
       const x = reihe.shift();
+      if (ohneVorfahren.has(x.id)) continue;
       [[x.vaterP, 0], [x.mutterP, 1]].forEach(([e, add]) => {
         if (!e || e.imBild) return;   // Ahnenschwund: jede Person nur einmal
         if (x.generation >= generationen) { gekuerzt = true; return; }
@@ -150,7 +153,8 @@ export function ansicht(daten, root, { vorfahren = true, nachkommen = false, par
       frei--;
       return true;
     };
-    for (const a of liste.filter(x => (vorfahren && x.rolle === 'vorfahr') || x.rolle === 'partner')) {
+    // Seitenlinien hängen an den Eltern – sind die Vorfahren einer Person ausgeblendet, auch ihre Geschwister
+    for (const a of liste.filter(x => ((vorfahren && x.rolle === 'vorfahr') || x.rolle === 'partner') && !ohneVorfahren.has(x.id))) {
       const geschw = [...new Set([a.vaterP, a.mutterP].filter(Boolean).flatMap(e => e.kinderP))]
         .filter(c => c !== a && !c.imBild).sort((x, y) => x.jahrE - y.jahrE);
       const bezug = a.rolle === 'partner' ? a : a.bezug;

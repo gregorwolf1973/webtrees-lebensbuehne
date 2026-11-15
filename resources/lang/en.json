@@ -481,5 +481,16 @@
   "Linien und Ranken": "Lines and tendrils",
   "Art": "Type",
   "Als PNG speichern": "Save as PNG",
-  "Größe der Bilder": "Size of the pictures"
+  "Größe der Bilder": "Size of the pictures",
+  "Vorfahren ausgeblendet": "ancestors hidden",
+  "Vorfahren einblenden": "Show ancestors",
+  "Vorfahren ausblenden": "Hide ancestors",
+  "Keine Vorfahren im Bild": "No ancestors shown",
+  "✓ Ansicht gespeichert": "✓ View saved",
+  "Speichern nicht möglich": "Unable to save",
+  "✓ Grundeinstellung": "✓ Defaults restored",
+  "Ansicht speichern": "Save view",
+  "Grundeinstellung": "Defaults",
+  "Diese Ansicht für die Hauptperson merken: Ansicht, Generationen, ausgeblendete Vorfahren, Kamera und Jahr. Sie erscheint beim nächsten Öffnen wieder.": "Remember this view for the main person: view settings, generations, hidden ancestors, camera and year. It will be restored the next time you open it.",
+  "Alles auf die Grundeinstellung zurücksetzen und die gespeicherte Ansicht vergessen": "Reset everything to the defaults and forget the saved view"
 }
